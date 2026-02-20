@@ -80,9 +80,7 @@ export async function sendCustomerReceivedEmail(order: ContainerOrder) {
 export async function sendInternalNewOrderEmail(order: ContainerOrder) {
   if (!resend) return;
   const wasteType = await getContainerOrderWasteTypeById(order.wasteType);
-  const wasteTypeLine = wasteType
-    ? `${wasteType.label} (kód ${wasteType.code})`
-    : order.wasteType;
+  const wasteTypeLine = wasteType ? wasteType.label : order.wasteType;
 
   await resend.emails.send({
     from: fromAddress(),

@@ -2315,27 +2315,25 @@ export function OrderWizard({
         ) : null}
 
         {step === 1 ? (
-          <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
+          <div className="space-y-2.5 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-2.5 sm:space-y-3 sm:p-3">
             <p className="text-sm text-zinc-300">Vyberte typ odpadu, počet kontejnerů a doplňkové služby.</p>
 
-            <div id="order-waste-type" className="grid gap-2 sm:grid-cols-2">
+            <div id="order-waste-type" className="grid gap-1.5 sm:grid-cols-2 sm:gap-2">
               {availableWasteTypes.map((waste) => (
                 <button
                   key={waste.id}
                   type="button"
                   onClick={() => update("wasteType", waste.id)}
                   className={cx(
-                    "rounded-xl border p-3 text-left",
+                    "rounded-lg border px-3 py-2 text-left sm:rounded-xl sm:p-3",
                     waste.id === data.wasteType
                       ? "border-[var(--color-accent)] bg-[var(--color-accent)]/20"
                       : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
                   )}
                 >
-                  <p className="font-semibold">{waste.label}</p>
-                  <p className="mt-1 text-xs text-zinc-400">{waste.shortDescription}</p>
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-zinc-400">Cena dle ceníku: {waste.priceLabel}</p>
-                    <p className="font-semibold text-[var(--color-accent)]">{waste.code}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold leading-tight sm:text-base">{waste.label}</p>
+                    <p className="shrink-0 text-sm font-semibold text-[var(--color-accent)] sm:text-base">{waste.priceLabel}</p>
                   </div>
                 </button>
               ))}

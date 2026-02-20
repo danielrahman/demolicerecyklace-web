@@ -91,7 +91,6 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div>
             <dt className="text-zinc-400">Typ odpadu</dt>
             <dd>{wasteType?.label ?? order.wasteType}</dd>
-            <dd className="mt-1 text-xs text-zinc-400">Kód: {wasteType?.code ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-zinc-400">Potvrzený termín</dt>
