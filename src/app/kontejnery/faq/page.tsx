@@ -1,10 +1,13 @@
 import Link from "next/link";
 
-import { CONTAINER_FAQ } from "@/lib/container-content";
+import { FaqSection } from "@/components/faq-section";
+import { getFaqContent } from "@/lib/cms/getters";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
-export default function KontejneryFaqPage() {
+export default async function KontejneryFaqPage() {
+  const faqContent = await getFaqContent();
+
   return (
     <div className="space-y-8 pb-8">
       <header className="space-y-3">
@@ -15,14 +18,12 @@ export default function KontejneryFaqPage() {
         </p>
       </header>
 
-      <section className="space-y-3">
-        {CONTAINER_FAQ.map((faq) => (
-          <article key={faq.question} className={cx(ui.card, "p-5")}>
-            <h2 className="text-xl font-bold">{faq.question}</h2>
-            <p className="mt-2 text-zinc-300">{faq.answer}</p>
-          </article>
-        ))}
-      </section>
+      <FaqSection
+        title="Kontejnery: nejčastější dotazy"
+        description="Vše důležité k online objednávce, podmínkám odpadu a potvrzení termínu."
+        items={faqContent.containers.items}
+        columns={1}
+      />
 
       <section className={cx(ui.cardSoft, "p-6")}>
         <h2 className="text-2xl font-bold">Potřebujete rychle poradit?</h2>
@@ -31,7 +32,7 @@ export default function KontejneryFaqPage() {
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>
-            Zavolat dispečink
+            Zavolat {CONTACT.phone}
           </a>
           <Link href="/kontejnery/objednat" className={ui.buttonSecondary}>
             Přejít do objednávky

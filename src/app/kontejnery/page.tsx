@@ -1,23 +1,22 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  CONTAINER_FAQ,
-  CONTAINER_HOW_IT_WORKS,
-  CONTAINER_RULE_WARNINGS,
-  CONTAINER_TRUST_POINTS,
-} from "@/lib/container-content";
+import { FaqSection } from "@/components/faq-section";
+import { getContainersPageContent, getFaqContent } from "@/lib/cms/getters";
 import { CONTAINER_OPTIONS, WASTE_TYPES } from "@/lib/catalog";
-import { CONTAINER_PRODUCT, SERVICE_AREA } from "@/lib/site-config";
+import { SERVICE_AREA } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
-export default function KontejneryPage() {
+export default async function KontejneryPage() {
+  const [content, faqContent] = await Promise.all([getContainersPageContent(), getFaqContent()]);
+  const containerFaq = faqContent.containers;
+
   return (
     <div className="space-y-10 pb-8">
       <section className="relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-10 sm:px-10">
         <Image
-          src="/legacy/current-web/cache_template_bg-image__1239x698_fit_to_width_1521724840_img-2627.jpg"
-          alt="Kontejnerový vůz v provozu"
+          src={content.heroImageUrl}
+          alt={content.heroImageAlt}
           width={1239}
           height={698}
           className="absolute inset-0 h-full w-full object-cover opacity-30"
@@ -28,18 +27,14 @@ export default function KontejneryPage() {
           <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-accent)]">
             Kontejnery - online objednávka
           </p>
-          <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Objednejte kontejner jednoduše online</h1>
-          <p className="text-lg text-zinc-200">
-            Začněte adresou, vyberte typ odpadu a odešlete objednávku. Aktuálně objednáte kontejner
-            {" "}
-            {CONTAINER_PRODUCT.availableNow}. Termín vždy potvrzuje operátor ručně.
-          </p>
+          <h1 className="text-4xl font-bold leading-tight sm:text-5xl">{content.heroTitle}</h1>
+          <p className="text-lg text-zinc-200">{content.heroDescription}</p>
           <div className="flex flex-wrap gap-3 pt-2">
             <Link href="/kontejnery/objednat" className={ui.buttonPrimary}>
               Objednat kontejner
             </Link>
-            <Link href="/kontejnery/cenik" className={ui.buttonSecondary}>
-              Zobrazit ceník v HTML
+            <Link href="/cenik#kontejnery" className={ui.buttonSecondary}>
+              Zobrazit ceník kontejnerů
             </Link>
             <Link href="/kontejnery/co-patri-nepatri" className={ui.buttonSecondary}>
               Co patří a nepatří
@@ -65,7 +60,7 @@ export default function KontejneryPage() {
         <div>
           <h2 className="text-3xl font-bold">Jak probíhá objednávka</h2>
           <div className="mt-5 space-y-3">
-            {CONTAINER_HOW_IT_WORKS.map((step, index) => (
+            {content.howItWorks.map((step, index) => (
               <article key={step.title} className={cx(ui.cardSoft, "p-4")}>
                 <p className="font-mono text-sm text-[var(--color-accent)]">Krok {index + 1}</p>
                 <h3 className="mt-1 text-xl font-bold">{step.title}</h3>
@@ -77,13 +72,15 @@ export default function KontejneryPage() {
 
         <aside className={cx(ui.card, "h-fit p-6")}>
           <h2 className="text-2xl font-bold">Servisní oblast</h2>
-          <p className="mt-2 text-zinc-300">Obsluhujeme {SERVICE_AREA.regionsLabel}. Podporované PSČ ověříme hned v prvním kroku formuláře.</p>
+          <p className="mt-2 text-zinc-300">
+            Obsluhujeme {SERVICE_AREA.regionsLabel}. Podporované PSČ ověříme hned v prvním kroku formuláře.
+          </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-300">
             <span className="rounded-full border border-zinc-700 px-3 py-1">Praha</span>
             <span className="rounded-full border border-zinc-700 px-3 py-1">Středočeský kraj</span>
           </div>
-          <Link href="/kontejnery/lokality" className={cx(ui.buttonSecondary, "mt-4")}>
-            Zobrazit seznam PSČ
+          <Link href="/kontejnery/objednat" className={cx(ui.buttonSecondary, "mt-4")}>
+            Otevřít objednávku
           </Link>
         </aside>
       </section>
@@ -101,7 +98,7 @@ export default function KontejneryPage() {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {WASTE_TYPES.map((wasteType) => (
-            <article key={wasteType.id} className={cx(ui.cardSoft, "p-4") }>
+            <article key={wasteType.id} className={cx(ui.cardSoft, "p-4")}>
               <h3 className="text-xl font-bold">{wasteType.label}</h3>
               <p className="mt-2 text-sm text-zinc-300">{wasteType.shortDescription}</p>
               <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">Příklad co patří</p>
@@ -115,7 +112,7 @@ export default function KontejneryPage() {
         <article className={cx(ui.card, "p-6")}>
           <h2 className="text-2xl font-bold">Důvěra a podmínky</h2>
           <ul className="mt-4 space-y-2 text-zinc-300">
-            {CONTAINER_TRUST_POINTS.map((point) => (
+            {content.trustPoints.map((point) => (
               <li key={point}>- {point}</li>
             ))}
           </ul>
@@ -124,23 +121,20 @@ export default function KontejneryPage() {
         <article className={cx(ui.card, "p-6")}>
           <h2 className="text-2xl font-bold">Důležitá upozornění</h2>
           <ul className="mt-4 space-y-2 text-zinc-300">
-            {CONTAINER_RULE_WARNINGS.map((warning) => (
+            {content.ruleWarnings.map((warning) => (
               <li key={warning}>- {warning}</li>
             ))}
           </ul>
         </article>
       </section>
 
-      <section className="border-t border-zinc-800 pt-8">
-        <h2 className="text-3xl font-bold">Nejčastější dotazy</h2>
-        <div className="mt-5 space-y-3">
-          {CONTAINER_FAQ.slice(0, 4).map((faq) => (
-            <article key={faq.question} className={cx(ui.cardSoft, "p-4")}>
-              <h3 className="text-lg font-bold">{faq.question}</h3>
-              <p className="mt-2 text-zinc-300">{faq.answer}</p>
-            </article>
-          ))}
-        </div>
+      <section className="space-y-4 border-t border-zinc-800 pt-8">
+        <FaqSection
+          title="Nejčastější dotazy ke kontejnerům"
+          description="Rychlé odpovědi na nejčastější otázky před odesláním objednávky."
+          items={containerFaq.items.slice(0, 4)}
+          columns={2}
+        />
         <Link href="/kontejnery/faq" className={cx(ui.buttonInline, "mt-4")}>
           Zobrazit celé FAQ
         </Link>
