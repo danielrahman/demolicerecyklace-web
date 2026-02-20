@@ -38,14 +38,7 @@ const containerCategoryOrder = ["Beton", "Cihly a keramika", "Asfalt", "Zemina a
 
 type ContainerCategory = {
   label: string;
-  image: string;
-  alt: string;
   rows: CmsPricingRow[];
-};
-
-const fallbackCategory = {
-  image: "/photos/competitor/competitor-04.jpg",
-  alt: "Kontejnery připravené k přistavení",
 };
 
 function containerVisualFor(item: string) {
@@ -79,8 +72,6 @@ function buildContainerGroups(rows: CmsPricingRow[]) {
 
     grouped.set(key, {
       label,
-      image: row.imageUrl || visual.image,
-      alt: row.imageAlt || visual.alt,
       rows: [row],
     });
   });
@@ -174,16 +165,8 @@ export default async function KompletníCeníkPage() {
               )}
             >
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative h-16 w-20 overflow-hidden rounded-lg border border-zinc-800">
-                  <Image
-                    src={group.image || fallbackCategory.image}
-                    alt={group.alt || fallbackCategory.alt}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
                 <div>
-                  <h3 className="text-lg font-bold">{group.label}</h3>
+                  <h3 className="text-base font-bold">{group.label}</h3>
                   <p className="text-xs text-zinc-400">{group.rows.length} položek</p>
                 </div>
               </div>
@@ -192,12 +175,12 @@ export default async function KompletníCeníkPage() {
                 {group.rows.map((item) => (
                   <article
                     key={`${group.label}-${item.item}-${item.code}`}
-                    className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/40 px-2 py-2"
+                    className="flex min-h-20 items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-3"
                   >
                     {(() => {
                       const rowVisual = containerVisualFor(item.item);
                       return (
-                        <div className="relative h-11 w-14 shrink-0 overflow-hidden rounded-md border border-zinc-700">
+                        <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md border border-zinc-700">
                           <Image
                             src={item.imageUrl || rowVisual.image}
                             alt={item.imageAlt || rowVisual.alt}
