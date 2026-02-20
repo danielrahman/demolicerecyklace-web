@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { getContainerOrderWasteTypeById } from "@/lib/container-order-source";
 import { formatCzechDayCount } from "@/lib/czech";
 import { getOrder } from "@/lib/order-store";
 import type { OrderStatus } from "@/lib/types";
@@ -24,6 +25,7 @@ const statusBadgeClass: Record<OrderStatus, string> = {
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const order = getOrder(id);
+  const wasteType = order ? await getContainerOrderWasteTypeById(order.wasteType) : null;
 
   if (!order) {
     notFound();
@@ -85,6 +87,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div>
             <dt className="text-zinc-400">Doba pronájmu</dt>
             <dd>{formatCzechDayCount(order.rentalDays)}</dd>
+          </div>
+          <div>
+            <dt className="text-zinc-400">Typ odpadu</dt>
+            <dd>{wasteType?.label ?? order.wasteType}</dd>
+            <dd className="mt-1 text-xs text-zinc-400">Kód: {wasteType?.code ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-zinc-400">Potvrzený termín</dt>

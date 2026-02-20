@@ -15,7 +15,7 @@ export const pricingPreviewSchema = z.object({
     .string()
     .regex(/^\d{5}$/, "PSČ musí mít 5 číslic")
     .refine(isSupportedPostalCode, "PSČ zatím online nepodporujeme"),
-  wasteType: z.enum(["sut-cista", "sut-smesna", "objemny", "zemina", "drevo"]),
+  wasteType: z.string().trim().min(1, "Vyberte typ odpadu"),
   containerCount: z.number().int().min(1).max(3),
   rentalDays: z.number().int().min(1).max(14).default(1),
   extras: z.object({
@@ -41,7 +41,7 @@ export const createOrderSchema = z
     city: z.string().trim().min(2),
     street: z.string().trim().min(2),
     houseNumber: z.string().trim().min(1),
-    wasteType: z.enum(["sut-cista", "sut-smesna", "objemny", "zemina", "drevo"]),
+    wasteType: z.string().trim().min(1, "Vyberte typ odpadu"),
     containerSizeM3: z.literal(3),
     containerCount: z.number().int().min(1).max(3),
     rentalDays: z.number().int().min(1).max(14).default(1),

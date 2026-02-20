@@ -8,12 +8,7 @@ export type PlacementType = "soukromy" | "verejny";
 
 export type CustomerType = "fo" | "firma";
 
-export type WasteTypeId =
-  | "sut-cista"
-  | "sut-smesna"
-  | "objemny"
-  | "zemina"
-  | "drevo";
+export type WasteTypeId = string;
 
 export type PriceEstimate = {
   rentalDays: number;

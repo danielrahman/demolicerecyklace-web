@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 
 import type { CallbackRequest } from "@/lib/callback-request-store";
+import { getContainerOrderWasteTypeById } from "@/lib/container-order-source";
 import { formatCzechDayCount } from "@/lib/czech";
 import type { ContainerOrder } from "@/lib/types";
 
@@ -78,6 +79,10 @@ export async function sendCustomerReceivedEmail(order: ContainerOrder) {
 
 export async function sendInternalNewOrderEmail(order: ContainerOrder) {
   if (!resend) return;
+  const wasteType = await getContainerOrderWasteTypeById(order.wasteType);
+  const wasteTypeLine = wasteType
+    ? `${wasteType.label} (kód ${wasteType.code})`
+    : order.wasteType;
 
   await resend.emails.send({
     from: fromAddress(),
@@ -89,7 +94,7 @@ export async function sendInternalNewOrderEmail(order: ContainerOrder) {
       `Kontakt: ${order.phone}, ${order.email}\n` +
       `Adresa: ${orderAddressLine(order)}\n` +
       (order.pinLocation ? `Pin: ${order.pinLocation.lat.toFixed(6)}, ${order.pinLocation.lng.toFixed(6)}\n` : "") +
-      `Typ odpadu: ${order.wasteType}\n` +
+      `Typ odpadu: ${wasteTypeLine}\n` +
       `Kontejner: ${order.containerSizeM3}m³, počet ${order.containerCount}\n` +
       `Doba pronájmu: ${formatCzechDayCount(order.rentalDays)}\n` +
       (order.deliveryFlexibilityDays ? `Flexibilita termínu: ±${formatCzechDayCount(order.deliveryFlexibilityDays)}\n` : "") +

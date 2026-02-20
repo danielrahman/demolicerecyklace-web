@@ -1,8 +1,11 @@
 import { Suspense } from "react";
 
 import { OrderWizardLazy } from "@/components/order-wizard-lazy";
+import { getContainerOrderWasteTypes } from "@/lib/container-order-source";
 
-export default function ObjednatPage() {
+export default async function ObjednatPage() {
+  const wasteTypes = await getContainerOrderWasteTypes();
+
   return (
     <div className="space-y-3 pb-5">
       <Suspense
@@ -12,7 +15,7 @@ export default function ObjednatPage() {
           </div>
         }
       >
-        <OrderWizardLazy />
+        <OrderWizardLazy wasteTypes={wasteTypes} />
       </Suspense>
     </div>
   );

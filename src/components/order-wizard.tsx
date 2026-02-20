@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { trackAnalyticsEvent } from "@/lib/analytics";
-import { WASTE_TYPES } from "@/lib/catalog";
+import {
+  FALLBACK_CONTAINER_ORDER_WASTE_TYPES,
+  type ContainerOrderWasteType,
+} from "@/lib/container-order-catalog";
 import { formatCzechDayCount } from "@/lib/czech";
 import {
   formatIsoLocalDate,
@@ -215,6 +218,7 @@ type StepFieldKey =
   | "city"
   | "street"
   | "houseNumber"
+  | "wasteType"
   | "containerCount"
   | "deliveryDateRequested"
   | "rentalDays"
@@ -258,34 +262,36 @@ const extrasDescriptions = {
   opakovanyOdvoz: "Po naplnění zajistíme další odvoz bez nové objednávky.",
 } as const;
 
-const defaultData: WizardData = {
-  customerType: "firma",
-  name: "",
-  companyName: "",
-  ico: "",
-  dic: "",
-  email: "",
-  phone: "",
-  postalCode: "",
-  city: "",
-  street: "",
-  houseNumber: "",
-  wasteType: "sut-cista",
-  containerCount: 1,
-  rentalDays: 1,
-  deliveryDateRequested: "",
-  deliveryFlexibilityDays: undefined,
-  timeWindowRequested: "08:00-09:00",
-  placementType: "soukromy",
-  permitConfirmed: false,
-  nakladkaOdNas: false,
-  expresniPristaveni: false,
-  opakovanyOdvoz: false,
-  note: "",
-  callbackNote: "",
-  gdprConsent: false,
-  marketingConsent: false,
-};
+function buildDefaultData(initialWasteType: WasteTypeId): WizardData {
+  return {
+    customerType: "firma",
+    name: "",
+    companyName: "",
+    ico: "",
+    dic: "",
+    email: "",
+    phone: "",
+    postalCode: "",
+    city: "",
+    street: "",
+    houseNumber: "",
+    wasteType: initialWasteType,
+    containerCount: 1,
+    rentalDays: 1,
+    deliveryDateRequested: "",
+    deliveryFlexibilityDays: undefined,
+    timeWindowRequested: "08:00-09:00",
+    placementType: "soukromy",
+    permitConfirmed: false,
+    nakladkaOdNas: false,
+    expresniPristaveni: false,
+    opakovanyOdvoz: false,
+    note: "",
+    callbackNote: "",
+    gdprConsent: false,
+    marketingConsent: false,
+  };
+}
 
 function isAddressInputReadyForMap(addressInput: string) {
   const trimmed = addressInput.trim();
@@ -304,6 +310,7 @@ const stepFieldLabels: Record<StepFieldKey, string> = {
   city: "Město",
   street: "Ulice",
   houseNumber: "Číslo popisné",
+  wasteType: "Typ odpadu",
   containerCount: "Počet kontejnerů",
   deliveryDateRequested: "Datum přistavení",
   rentalDays: "Počet dní pronájmu",
@@ -323,6 +330,7 @@ const stepFieldInputIds: Record<StepFieldKey, string> = {
   city: "order-city",
   street: "order-street",
   houseNumber: "order-house-number",
+  wasteType: "order-waste-type",
   containerCount: "order-container-count",
   deliveryDateRequested: "order-delivery-date",
   rentalDays: "order-rental-days",
@@ -738,13 +746,21 @@ function chevronClipPath(index: number, total: number) {
   return `polygon(${chevronArrowPx}px 0, calc(100% - ${chevronArrowPx}px) 0, 100% 50%, calc(100% - ${chevronArrowPx}px) 100%, ${chevronArrowPx}px 100%, 0 50%)`;
 }
 
-export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: string }) {
+export function OrderWizard({
+  initialPostalCode = "",
+  wasteTypes,
+}: {
+  initialPostalCode?: string;
+  wasteTypes: ContainerOrderWasteType[];
+}) {
+  const availableWasteTypes = wasteTypes.length > 0 ? wasteTypes : FALLBACK_CONTAINER_ORDER_WASTE_TYPES;
+  const defaultWasteTypeId = availableWasteTypes[0]?.id ?? "";
   const normalizedInitialPostalCode = initialPostalCode.replace(/\D/g, "").slice(0, 5);
 
   const [step, setStep] = useState(0);
   const [furthestStep, setFurthestStep] = useState(0);
   const [data, setData] = useState<WizardData>(() => ({
-    ...defaultData,
+    ...buildDefaultData(defaultWasteTypeId),
     postalCode: normalizedInitialPostalCode,
   }));
   const [dateMode, setDateMode] = useState<DateMode>("exact");
@@ -806,7 +822,10 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
   const resolveAddressFromPinRef = useRef<(nextPinLocation: PinLocation) => Promise<void>>(async () => undefined);
 
   const todayIso = useMemo(() => todayIsoLocalDate(), []);
-  const selectedWaste = useMemo(() => WASTE_TYPES.find((waste) => waste.id === data.wasteType), [data.wasteType]);
+  const selectedWaste = useMemo(
+    () => availableWasteTypes.find((waste) => waste.id === data.wasteType),
+    [availableWasteTypes, data.wasteType],
+  );
   const shouldShowAddressMap = isAddressInputReadyForMap(addressInput) || Boolean(pinLocation);
 
   const postalCodeOk = useMemo(() => {
@@ -873,6 +892,17 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
   useEffect(() => {
     setFurthestStep((previous) => Math.max(previous, step));
   }, [step]);
+
+  useEffect(() => {
+    if (availableWasteTypes.some((wasteType) => wasteType.id === data.wasteType)) {
+      return;
+    }
+
+    setData((previous) => ({
+      ...previous,
+      wasteType: defaultWasteTypeId,
+    }));
+  }, [availableWasteTypes, data.wasteType, defaultWasteTypeId]);
 
   function goToStep(targetStep: number) {
     if (targetStep === step || targetStep < 0 || targetStep > furthestStep) return;
@@ -1206,6 +1236,10 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
     }
 
     if (stepToValidate === 1) {
+      if (!availableWasteTypes.some((wasteType) => wasteType.id === data.wasteType)) {
+        nextErrors.wasteType = "Vyberte platný typ odpadu.";
+      }
+
       const containerCount = Number(data.containerCount);
       if (!Number.isInteger(containerCount) || containerCount < 1 || containerCount > CONTAINER_PRODUCT.maxContainerCountPerOrder) {
         nextErrors.containerCount = `Počet kontejnerů musí být 1 až ${CONTAINER_PRODUCT.maxContainerCountPerOrder}.`;
@@ -2284,8 +2318,8 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
           <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
             <p className="text-sm text-zinc-300">Vyberte typ odpadu, počet kontejnerů a doplňkové služby.</p>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              {WASTE_TYPES.map((waste) => (
+            <div id="order-waste-type" className="grid gap-2 sm:grid-cols-2">
+              {availableWasteTypes.map((waste) => (
                 <button
                   key={waste.id}
                   type="button"
@@ -2299,9 +2333,14 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
                 >
                   <p className="font-semibold">{waste.label}</p>
                   <p className="mt-1 text-xs text-zinc-400">{waste.shortDescription}</p>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-zinc-400">Cena dle ceníku: {waste.priceLabel}</p>
+                    <p className="font-semibold text-[var(--color-accent)]">{waste.code}</p>
+                  </div>
                 </button>
               ))}
             </div>
+            {renderFieldError("wasteType")}
 
             <div>
               <p className="mb-1.5 text-sm font-semibold">Počet kontejnerů</p>
@@ -2693,7 +2732,7 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
                   </p>
                 ) : null}
                 <p>
-                  <span className="text-zinc-400">Odpad:</span> {selectedWaste?.label}
+                  <span className="text-zinc-400">Odpad:</span> {selectedWaste?.label ?? "nevybráno"}
                 </p>
                 <p>
                   <span className="text-zinc-400">Kontejner:</span> {CONTAINER_PRODUCT.availableNow}, počet {data.containerCount}

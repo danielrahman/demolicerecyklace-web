@@ -1,5 +1,4 @@
-import { WASTE_TYPES } from "@/lib/catalog";
-import type { PriceEstimate, WasteTypeId } from "@/lib/types";
+import type { PriceEstimate } from "@/lib/types";
 
 const EXPRES_SURCHARGE = 900;
 const NAKLADKA_SURCHARGE = 1200;
@@ -7,7 +6,7 @@ const OPAKOVANY_ODVOZ_SURCHARGE = 700;
 const TRANSPORT_BASE = 1200;
 
 export function estimatePrice(input: {
-  wasteType: WasteTypeId;
+  basePriceCzk: number;
   containerCount: number;
   rentalDays: number;
   extras: {
@@ -16,14 +15,9 @@ export function estimatePrice(input: {
     opakovanyOdvoz: boolean;
   };
 }): PriceEstimate {
-  const wasteType = WASTE_TYPES.find((w) => w.id === input.wasteType);
-
-  if (!wasteType) {
-    throw new Error("Neznámý typ odpadu");
-  }
-
   const rentalDays = Math.max(1, input.rentalDays);
-  const base = wasteType.basePriceCzk * input.containerCount * rentalDays;
+  const basePriceCzk = Math.max(0, Math.round(input.basePriceCzk));
+  const base = basePriceCzk * input.containerCount * rentalDays;
   const transport = TRANSPORT_BASE * input.containerCount;
 
   let surchargePerDay = 0;

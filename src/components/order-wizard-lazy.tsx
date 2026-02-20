@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 
+import type { ContainerOrderWasteType } from "@/lib/container-order-catalog";
+
 const OrderWizard = dynamic(
   () => import("@/components/order-wizard").then((module) => module.OrderWizard),
   {
@@ -15,11 +17,11 @@ const OrderWizard = dynamic(
   },
 );
 
-export function OrderWizardLazy() {
+export function OrderWizardLazy(props: { wasteTypes: ContainerOrderWasteType[] }) {
   const searchParams = useSearchParams();
   const initialPostalCode = String(searchParams.get("psc") ?? "")
     .replace(/\D/g, "")
     .slice(0, 5);
 
-  return <OrderWizard initialPostalCode={initialPostalCode} />;
+  return <OrderWizard initialPostalCode={initialPostalCode} wasteTypes={props.wasteTypes} />;
 }
