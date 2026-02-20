@@ -160,7 +160,13 @@ const pricingPageDoc = {
   mobileRecyclingPricing: MOBILE_RECYCLING_PRICING.map((row, index) => ({ _key: `mobile-${index + 1}`, ...row })),
   machineSectionTitle: "Pronájem strojů",
   machineSectionSubtitle: "Fotky strojů jsou pro náhled kombinované z aktuálního webu a veřejně dostupných ilustračních zdrojů.",
-  machinePricing: MACHINE_RENTAL_PRICING.map((row, index) => ({ _key: `machine-${index + 1}`, ...row })),
+  machinePricing: MACHINE_RENTAL_PRICING.map((row, index) => ({
+    _key: `machine-${index + 1}`,
+    machine: row.machine,
+    specification: row.specification,
+    price: row.price,
+    note: row.note,
+  })),
   footerNote:
     "Poznámky k ceníku: ceny jsou uvedené bez DPH 21 %, materiály musí být bez příměsí a při ukládce odpadu je nutné doložit požadované podklady (ZPO, případně atesty). U nejasností kontaktujte dispečink.",
 };

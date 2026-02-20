@@ -69,6 +69,12 @@ Seed globálních nastavení a marketing stránek:
 npm run cms:seed:phase2
 ```
 
+Oprava historicky nevalidních image hodnot v ceníku (pokud Studio hlásí `Invalid property value`):
+
+```bash
+npm run cms:fix:pricing-images
+```
+
 ### Webhook revalidace v Sanity
 V Sanity projektu vytvořte webhook:
 - URL:

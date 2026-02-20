@@ -11,7 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "cms:seed:phase1": "node scripts/sanity-seed-phase1.mts",
-    "cms:seed:phase2": "node scripts/sanity-seed-phase2.mts"
+    "cms:seed:phase2": "node scripts/sanity-seed-phase2.mts",
+    "cms:fix:pricing-images": "node scripts/sanity-fix-pricing-images.mts"
   },
   "dependencies": {
     "@sanity/image-url": "^2.0.3",
