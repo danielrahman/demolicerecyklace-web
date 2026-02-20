@@ -8,22 +8,21 @@ function getPricingLabel(price: string) {
 
 export function MachineRentalGrid(props: { machines: MachineRentalRow[] }) {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
       {props.machines.map((machine) => (
         <article
           key={machine.machine}
-          className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/70 transition hover:border-zinc-700"
+          className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/70 transition hover:border-zinc-700"
         >
-          <div className="relative h-48 overflow-hidden">
+          <div className="relative flex h-48 items-center justify-center bg-white p-4">
             <Image
               src={machine.image}
               alt={machine.machine}
               width={1280}
               height={800}
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              className="h-full w-full object-contain object-center"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-            <p className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#F2C400]">
+            <p className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#F2C400]">
               {getPricingLabel(machine.price)}
             </p>
           </div>

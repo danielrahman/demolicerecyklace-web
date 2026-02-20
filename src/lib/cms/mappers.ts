@@ -367,10 +367,10 @@ export const fallbackPricingPageContent: PricingPageContent = {
   sourcePdfUrl: "/documents/cenik-2026.pdf",
   containerSectionTitle: "Ceník kontejnerů 3m³",
   containerSectionDescription: "Ceny podle typu odpadu. Po odeslání objednávky vždy potvrzujeme termín operátorem.",
-  containerLimitNote: "Limit cca 4 t, finální kontrola při převzetí.",
+  containerLimitNote: "Max 4 t, finální kontrola při převzetí.",
   containerPricing: CONTAINER_3M3_PRICING.map((item) => ({ ...item })),
   inertMaterialsTitle: "Ukládka inertních materiálů",
-  inertMaterialsSubtitle: "U položek je nutné doložit požadované dokumenty dle legislativy.",
+  inertMaterialsSubtitle: "Dle vyhlášky č. 273/2021 Sb. je u položek 1-14 povinné doložit atesty nebo ZPO.",
   inertMaterialsPricing: INERT_MATERIALS_PRICING.map((item) => ({ ...item })),
   materialSalesTitle: "Prodej materiálu",
   materialSalesPricing: MATERIAL_SALES_PRICING.map((item) => ({ ...item })),
@@ -380,7 +380,7 @@ export const fallbackPricingPageContent: PricingPageContent = {
   machineSectionSubtitle: "Fotky strojů jsou pro náhled kombinované z aktuálního webu a veřejně dostupných ilustračních zdrojů.",
   machinePricing: MACHINE_RENTAL_PRICING.map((item) => ({ ...item })),
   footerNote:
-    "Poznámky k ceníku: ceny jsou uvedené bez DPH 21 %, materiály musí být bez příměsí a při ukládce odpadu je nutné doložit požadované podklady (ZPO, případně atesty). U nejasností kontaktujte dispečink.",
+    "Poznámky k ceníku: ceny jsou uvedené bez DPH 21 %. U nejasností nebo atypických dodávek kontaktujte dispečink.",
 };
 
 export const fallbackFaqContent: FaqContentMap = {

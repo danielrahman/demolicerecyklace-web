@@ -22,6 +22,17 @@ export function OrderWizardLazy(props: { wasteTypes: ContainerOrderWasteType[] }
   const initialPostalCode = String(searchParams.get("psc") ?? "")
     .replace(/\D/g, "")
     .slice(0, 5);
+  const initialWasteTypeId = String(searchParams.get("waste") ?? searchParams.get("wasteType") ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "");
 
-  return <OrderWizard initialPostalCode={initialPostalCode} wasteTypes={props.wasteTypes} />;
+  return (
+    <OrderWizard
+      key={`${initialPostalCode}:${initialWasteTypeId}`}
+      initialPostalCode={initialPostalCode}
+      initialWasteTypeId={initialWasteTypeId}
+      wasteTypes={props.wasteTypes}
+    />
+  );
 }

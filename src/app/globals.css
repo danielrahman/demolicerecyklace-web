@@ -73,6 +73,23 @@ a {
   background: linear-gradient(90deg, rgb(3 7 18 / 80%) 0%, rgb(3 7 18 / 65%) 58%, rgb(3 7 18 / 42%) 100%);
 }
 
+.pricing-preview-row {
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.pricing-preview-row:hover {
+  background-color: rgb(39 39 42 / 0.4);
+}
+
+.pricing-preview-chip {
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.pricing-preview-chip:hover {
+  border-color: rgb(113 113 122 / 0.9);
+  background-color: rgb(39 39 42 / 0.45);
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
@@ -253,5 +270,14 @@ a {
 
   .containers-hero-overlay {
     background: linear-gradient(90deg, rgb(15 23 42 / 82%) 0%, rgb(15 23 42 / 66%) 58%, rgb(15 23 42 / 40%) 100%);
+  }
+
+  .pricing-preview-row:hover {
+    background-color: rgb(241 245 249 / 0.92);
+  }
+
+  .pricing-preview-chip:hover {
+    border-color: #b7c4d4;
+    background-color: rgb(242 246 251 / 0.96);
   }
 }

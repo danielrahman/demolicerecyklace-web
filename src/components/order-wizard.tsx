@@ -812,19 +812,25 @@ function buildWasteHoverPreview(waste: ContainerOrderWasteType, event: ReactMous
 
 export function OrderWizard({
   initialPostalCode = "",
+  initialWasteTypeId = "",
   wasteTypes,
 }: {
   initialPostalCode?: string;
+  initialWasteTypeId?: string;
   wasteTypes: ContainerOrderWasteType[];
 }) {
   const availableWasteTypes = wasteTypes.length > 0 ? wasteTypes : FALLBACK_CONTAINER_ORDER_WASTE_TYPES;
   const defaultWasteTypeId = availableWasteTypes[0]?.id ?? "";
   const normalizedInitialPostalCode = initialPostalCode.replace(/\D/g, "").slice(0, 5);
+  const normalizedInitialWasteTypeId = initialWasteTypeId.trim().toLowerCase();
+  const resolvedInitialWasteTypeId = availableWasteTypes.some((wasteType) => wasteType.id === normalizedInitialWasteTypeId)
+    ? normalizedInitialWasteTypeId
+    : defaultWasteTypeId;
 
   const [step, setStep] = useState(0);
   const [furthestStep, setFurthestStep] = useState(0);
   const [data, setData] = useState<WizardData>(() => ({
-    ...buildDefaultData(defaultWasteTypeId),
+    ...buildDefaultData(resolvedInitialWasteTypeId),
     postalCode: normalizedInitialPostalCode,
   }));
   const [showManualAddress, setShowManualAddress] = useState(false);
@@ -1606,6 +1612,7 @@ export function OrderWizard({
         setData({
           ...buildDefaultData(defaultWasteTypeId),
           ...draft.data,
+          wasteType: resolvedInitialWasteTypeId || draft.data.wasteType || defaultWasteTypeId,
           rentalDays: normalizeRentalDays(draft.data.rentalDays),
           deliveryDateRequested:
             typeof draft.data.deliveryDateRequested === "string" ? draft.data.deliveryDateRequested : "",
@@ -1630,7 +1637,7 @@ export function OrderWizard({
         clearDraft();
       }
     }
-  }, []);
+  }, [defaultWasteTypeId, resolvedInitialWasteTypeId]);
 
   useEffect(() => {
     if (!draftHydratedRef.current || orderId) return;
