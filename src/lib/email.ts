@@ -19,6 +19,13 @@ function orderAddressLine(order: ContainerOrder) {
   return `${order.street} ${order.houseNumber}, ${order.city}, ${order.postalCode}`;
 }
 
+function requestedTermLine(order: ContainerOrder) {
+  const dateRange = order.deliveryDateEndRequested
+    ? `${order.deliveryDateRequested} - ${order.deliveryDateEndRequested}`
+    : order.deliveryDateRequested;
+  return `${dateRange} (${order.timeWindowRequested})`;
+}
+
 function confirmedTermLine(order: ContainerOrder) {
   if (!order.deliveryDateConfirmed || !order.timeWindowConfirmed) {
     return "Termín zatím není potvrzen.";
@@ -45,6 +52,8 @@ function snapshotLine(snapshot?: Record<string, unknown>) {
     typeof snapshot.deliveryFlexibilityDays === "number" ? snapshot.deliveryFlexibilityDays : null;
   const deliveryDateRequested =
     typeof snapshot.deliveryDateRequested === "string" ? snapshot.deliveryDateRequested : "";
+  const deliveryDateEndRequested =
+    typeof snapshot.deliveryDateEndRequested === "string" ? snapshot.deliveryDateEndRequested : "";
   const timeWindowRequested =
     typeof snapshot.timeWindowRequested === "string" ? snapshot.timeWindowRequested : "";
 
@@ -54,7 +63,9 @@ function snapshotLine(snapshot?: Record<string, unknown>) {
     containerCount ? `Počet kontejnerů: ${containerCount}` : "",
     rentalDays ? `Doba pronájmu: ${formatCzechDayCount(rentalDays)}` : "",
     deliveryFlexibilityDays ? `Flexibilita termínu: ±${formatCzechDayCount(deliveryFlexibilityDays)}` : "",
-    deliveryDateRequested ? `Termín: ${deliveryDateRequested} (${timeWindowRequested || "bez okna"})` : "",
+    deliveryDateRequested
+      ? `Termín: ${deliveryDateRequested}${deliveryDateEndRequested ? ` - ${deliveryDateEndRequested}` : ""} (${timeWindowRequested || "bez okna"})`
+      : "",
   ]
     .filter(Boolean)
     .join(" | ");
@@ -71,7 +82,7 @@ export async function sendCustomerReceivedEmail(order: ContainerOrder) {
       `Děkujeme, objednávku ${order.id} jsme přijali.\n` +
       `Termín vám potvrdí operátor ručně.\n` +
       `Adresa přistavení: ${orderAddressLine(order)}\n` +
-      `Požadovaný termín: ${order.deliveryDateRequested} (${order.timeWindowRequested})\n` +
+      `Požadovaný termín: ${requestedTermLine(order)}\n` +
       `Doba pronájmu: ${formatCzechDayCount(order.rentalDays)}` +
       (order.deliveryFlexibilityDays ? `\nFlexibilita termínu: ±${formatCzechDayCount(order.deliveryFlexibilityDays)}` : ""),
   });
@@ -96,7 +107,7 @@ export async function sendInternalNewOrderEmail(order: ContainerOrder) {
       `Kontejner: ${order.containerSizeM3}m³, počet ${order.containerCount}\n` +
       `Doba pronájmu: ${formatCzechDayCount(order.rentalDays)}\n` +
       (order.deliveryFlexibilityDays ? `Flexibilita termínu: ±${formatCzechDayCount(order.deliveryFlexibilityDays)}\n` : "") +
-      `Požadovaný termín: ${order.deliveryDateRequested} (${order.timeWindowRequested})\n` +
+      `Požadovaný termín: ${requestedTermLine(order)}\n` +
       `Orientační cena: ${formatCurrency(order.priceEstimate.total)}\n` +
       (order.callbackNote ? `Callback poznámka: ${order.callbackNote}\n` : ""),
   });

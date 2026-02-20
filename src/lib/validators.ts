@@ -7,7 +7,7 @@ import { TIME_WINDOW_VALUES } from "@/lib/time-windows";
 const phoneRegex = /^(\+420|\+421|0)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}$/;
 const icoRegex = /^\d{8}$/;
 const deliveryFlexibilityDaysSchema = z
-  .union([z.literal(1), z.literal(2), z.literal(3), z.literal(7), z.literal(14)])
+  .union([z.literal(1), z.literal(2), z.literal(3)])
   .optional();
 
 export const pricingPreviewSchema = z.object({
@@ -17,7 +17,7 @@ export const pricingPreviewSchema = z.object({
     .refine(isSupportedPostalCode, "PSČ zatím online nepodporujeme"),
   wasteType: z.string().trim().min(1, "Vyberte typ odpadu"),
   containerCount: z.number().int().min(1).max(3),
-  rentalDays: z.number().int().min(1).max(14).default(1),
+  rentalDays: z.number().int().min(1).max(10).default(1),
   extras: z.object({
     nakladkaOdNas: z.boolean(),
     expresniPristaveni: z.boolean(),
@@ -44,8 +44,9 @@ export const createOrderSchema = z
     wasteType: z.string().trim().min(1, "Vyberte typ odpadu"),
     containerSizeM3: z.literal(3),
     containerCount: z.number().int().min(1).max(3),
-    rentalDays: z.number().int().min(1).max(14).default(1),
+    rentalDays: z.number().int().min(1).max(10).default(1),
     deliveryDateRequested: z.string().min(1),
+    deliveryDateEndRequested: z.string().min(1),
     deliveryFlexibilityDays: deliveryFlexibilityDaysSchema,
     timeWindowRequested: z.enum(TIME_WINDOW_VALUES),
     placementType: z.enum(["soukromy", "verejny"]),
@@ -74,6 +75,27 @@ export const createOrderSchema = z
         message: dateError,
         path: ["deliveryDateRequested"],
       });
+    }
+
+    const dateEndError = validateDeliveryDateRequested(value.deliveryDateEndRequested);
+    if (dateEndError) {
+      context.addIssue({
+        code: "custom",
+        message: dateEndError,
+        path: ["deliveryDateEndRequested"],
+      });
+    }
+
+    const start = value.deliveryDateRequested;
+    const end = value.deliveryDateEndRequested;
+    if (start && end) {
+      if (end < start) {
+        context.addIssue({
+          code: "custom",
+          message: "Datum odvozu musí být stejné nebo pozdější než datum přistavení",
+          path: ["deliveryDateEndRequested"],
+        });
+      }
     }
 
     if (value.placementType === "verejny" && !value.permitConfirmed) {

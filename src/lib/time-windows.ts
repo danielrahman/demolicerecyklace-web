@@ -11,7 +11,6 @@ export const TIME_WINDOW_VALUES = [
   "15:00-16:00",
   "16:00-17:00",
   "17:00-18:00",
-  "18:00-19:00",
 ] as const;
 
 export type TimeWindowValue = (typeof TIME_WINDOW_VALUES)[number];
@@ -29,7 +28,6 @@ export const TIME_WINDOW_LABELS: Record<TimeWindowValue, string> = {
   "15:00-16:00": "15:00-16:00",
   "16:00-17:00": "16:00-17:00",
   "17:00-18:00": "17:00-18:00",
-  "18:00-19:00": "18:00-19:00",
 };
 
 export function isTimeWindow(value: string): value is TimeWindowValue {

@@ -80,7 +80,11 @@ export default async function AdminOrdersPage({
                 {order.street} {order.houseNumber}, {order.city}, {order.postalCode}
               </p>
               <p className="mt-1 text-sm text-zinc-400">
-                Požadovaný termín: {order.deliveryDateRequested} ({order.timeWindowRequested})
+                Požadovaný termín:{" "}
+                {order.deliveryDateEndRequested
+                  ? `${order.deliveryDateRequested} - ${order.deliveryDateEndRequested}`
+                  : order.deliveryDateRequested}{" "}
+                ({order.timeWindowRequested})
               </p>
               {order.deliveryFlexibilityDays ? (
                 <p className="mt-1 text-xs text-zinc-400">Flexibilita: ±{formatCzechDayCount(order.deliveryFlexibilityDays)}</p>

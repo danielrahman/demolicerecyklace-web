@@ -78,7 +78,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div>
             <dt className="text-zinc-400">Požadovaný termín</dt>
             <dd>
-              {order.deliveryDateRequested} ({order.timeWindowRequested})
+              {order.deliveryDateEndRequested
+                ? `${order.deliveryDateRequested} - ${order.deliveryDateEndRequested}`
+                : order.deliveryDateRequested}{" "}
+              ({order.timeWindowRequested})
             </dd>
             {order.deliveryFlexibilityDays ? (
               <dd className="mt-1 text-xs text-zinc-400">Flexibilita: ±{formatCzechDayCount(order.deliveryFlexibilityDays)}</dd>

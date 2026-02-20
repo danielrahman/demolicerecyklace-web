@@ -38,7 +38,7 @@ type WizardData = {
   containerCount: number;
   rentalDays: number;
   deliveryDateRequested: string;
-  deliveryFlexibilityDays?: 1 | 2 | 3 | 7 | 14;
+  deliveryDateEndRequested: string;
   timeWindowRequested: (typeof TIME_WINDOW_VALUES)[number];
   placementType: "soukromy" | "verejny";
   permitConfirmed: boolean;
@@ -50,8 +50,6 @@ type WizardData = {
   gdprConsent: boolean;
   marketingConsent: boolean;
 };
-
-type DateMode = "exact" | "flex";
 
 type CompanyLookupMatch = {
   ico: string;
@@ -228,6 +226,7 @@ type StepFieldKey =
   | "wasteType"
   | "containerCount"
   | "deliveryDateRequested"
+  | "deliveryDateEndRequested"
   | "rentalDays"
   | "timeWindowRequested"
   | "permitConfirmed"
@@ -244,7 +243,6 @@ type WizardDraft = {
   version: 1;
   updatedAt: number;
   data: WizardData;
-  dateMode: DateMode;
   addressInput: string;
   pinLocation: PinLocation | null;
   addressEditedByUser: boolean;
@@ -256,21 +254,13 @@ const phoneRegex = /^(\+420|\+421|0)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const icoRegex = /^\d{8}$/;
 const postalCodeRegex = /^\d{5}$/;
-const weekDayLabels = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"] as const;
-const rentalDayOptions = Array.from({ length: 14 }, (_, index) => index + 1);
-const flexibilityDayOptions = [1, 2, 3, 7, 14] as const;
+const rentalDayOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 const callbackEtaFallbackMinutes = 15;
 const draftStorageKey = "order-wizard-draft-v3";
 const draftTtlMs = 30 * 24 * 60 * 60 * 1000;
 const wastePreviewWidth = 320;
 const wastePreviewAspectRatio = 1.7;
 const wastePreviewHeight = Math.round(wastePreviewWidth / wastePreviewAspectRatio);
-
-const extrasDescriptions = {
-  nakladkaOdNas: "Posádka pomůže s naložením odpadu přímo na místě.",
-  expresniPristaveni: "Upřednostníme nejbližší dostupný termín přistavení.",
-  opakovanyOdvoz: "Po naplnění zajistíme další odvoz bez nové objednávky.",
-} as const;
 
 function buildDefaultData(initialWasteType: WasteTypeId): WizardData {
   return {
@@ -289,7 +279,7 @@ function buildDefaultData(initialWasteType: WasteTypeId): WizardData {
     containerCount: 1,
     rentalDays: 1,
     deliveryDateRequested: "",
-    deliveryFlexibilityDays: undefined,
+    deliveryDateEndRequested: "",
     timeWindowRequested: "08:00-09:00",
     placementType: "soukromy",
     permitConfirmed: false,
@@ -323,6 +313,7 @@ const stepFieldLabels: Record<StepFieldKey, string> = {
   wasteType: "Typ odpadu",
   containerCount: "Počet kontejnerů",
   deliveryDateRequested: "Datum přistavení",
+  deliveryDateEndRequested: "Datum odvozu",
   rentalDays: "Počet dní pronájmu",
   timeWindowRequested: "Časové okno",
   permitConfirmed: "Povolení k záboru",
@@ -343,6 +334,7 @@ const stepFieldInputIds: Record<StepFieldKey, string> = {
   wasteType: "order-waste-type",
   containerCount: "order-container-count",
   deliveryDateRequested: "order-delivery-date",
+  deliveryDateEndRequested: "order-delivery-date-end",
   rentalDays: "order-rental-days",
   timeWindowRequested: "order-time-window",
   permitConfirmed: "order-permit-confirmed",
@@ -360,12 +352,10 @@ function formatPrice(amount: number) {
   return `${new Intl.NumberFormat("cs-CZ").format(amount)} Kč`;
 }
 
-function startOfMonth(value: Date) {
-  return new Date(value.getFullYear(), value.getMonth(), 1);
-}
-
-function addMonths(value: Date, monthDelta: number) {
-  return new Date(value.getFullYear(), value.getMonth() + monthDelta, 1);
+function addDays(value: Date, dayDelta: number) {
+  const next = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  next.setDate(next.getDate() + dayDelta);
+  return next;
 }
 
 function formatDisplayDate(value: string) {
@@ -376,6 +366,72 @@ function formatDisplayDate(value: string) {
     month: "long",
     year: "numeric",
   }).format(parsed);
+}
+
+function formatDisplayDateWithoutYear(value: string) {
+  const parsed = parseIsoLocalDate(value);
+  if (!parsed) return value;
+  return new Intl.DateTimeFormat("cs-CZ", {
+    day: "2-digit",
+    month: "long",
+  }).format(parsed);
+}
+
+function calculateRentalDays(startIso: string, endIso: string) {
+  const start = parseIsoLocalDate(startIso);
+  const end = parseIsoLocalDate(endIso);
+  if (!start || !end) return null;
+  if (end < start) return null;
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  return Math.floor((end.getTime() - start.getTime()) / dayMs) + 1;
+}
+
+function normalizeRentalDays(value: unknown) {
+  if (typeof value !== "number" || !Number.isInteger(value)) return rentalDayOptions[0];
+  const minimumRentalDays = rentalDayOptions[0];
+  const maximumRentalDays = rentalDayOptions[rentalDayOptions.length - 1];
+  if (value < minimumRentalDays) return minimumRentalDays;
+  if (value > maximumRentalDays) return maximumRentalDays;
+  return value;
+}
+
+function calculateDeliveryEndDate(startIso: string, rentalDays: number) {
+  const startDate = parseIsoLocalDate(startIso);
+  if (!startDate) return "";
+
+  const normalizedDays = normalizeRentalDays(rentalDays);
+  return formatIsoLocalDate(addDays(startDate, normalizedDays - 1));
+}
+
+function formatAvailableDayLabel(value: Date) {
+  const day = new Intl.DateTimeFormat("cs-CZ", { day: "numeric" }).format(value).replace(/\.$/, "");
+  const month = new Intl.DateTimeFormat("cs-CZ", { month: "long" }).format(value);
+  const weekDayRaw = new Intl.DateTimeFormat("cs-CZ", { weekday: "long" }).format(value);
+  const weekDay = weekDayRaw.charAt(0).toUpperCase() + weekDayRaw.slice(1);
+  return `${day}. ${month} • ${weekDay}`;
+}
+
+function buildAvailableDeliveryDayOptions(todayDate: Date, limit = 120) {
+  const options: Array<{ iso: string; label: string }> = [];
+  let dayOffset = 0;
+
+  while (options.length < limit) {
+    const candidate = addDays(todayDate, dayOffset);
+    const candidateIso = formatIsoLocalDate(candidate);
+    const candidateError = validateDeliveryDateRequested(candidateIso, todayDate);
+
+    if (!candidateError) {
+      options.push({
+        iso: candidateIso,
+        label: formatAvailableDayLabel(candidate),
+      });
+    }
+
+    dayOffset += 1;
+  }
+
+  return options;
 }
 
 function hasGooglePlacesLoaded() {
@@ -542,196 +598,119 @@ function clearDraft() {
 
 type DeliveryDatePickerProps = {
   value: string;
+  rentalDays: number;
   onChange: (nextValue: string) => void;
-  mode: DateMode;
-  onModeChange: (mode: DateMode) => void;
-  flexibilityDays?: 1 | 2 | 3 | 7 | 14;
-  onFlexibilityDaysChange: (nextValue: 1 | 2 | 3 | 7 | 14) => void;
   error?: string;
   todayIso: string;
 };
 
 function DeliveryDatePicker({
   value,
+  rentalDays,
   onChange,
-  mode,
-  onModeChange,
-  flexibilityDays,
-  onFlexibilityDaysChange,
   error,
   todayIso,
 }: DeliveryDatePickerProps) {
+  const pageSize = 10;
   const todayDate = useMemo(() => parseIsoLocalDate(todayIso) ?? new Date(), [todayIso]);
-  const minimumMonth = useMemo(() => startOfMonth(todayDate), [todayDate]);
-  const parsedValue = parseIsoLocalDate(value);
-
-  const [visibleStartMonth, setVisibleStartMonth] = useState(() =>
-    startOfMonth(parsedValue && parsedValue >= minimumMonth ? parsedValue : minimumMonth),
-  );
-
-  const maxStartMonth = useMemo(() => addMonths(minimumMonth, 11), [minimumMonth]);
-
-  const monthLabels = useMemo(
-    () =>
-      [visibleStartMonth, addMonths(visibleStartMonth, 1)].map((month) =>
-        new Intl.DateTimeFormat("cs-CZ", { month: "long", year: "numeric" }).format(month),
-      ),
-    [visibleStartMonth],
-  );
-
-  const canGoPrev = visibleStartMonth > minimumMonth;
-  const canGoNext = visibleStartMonth < maxStartMonth;
-
-  function monthCells(monthDate: Date) {
-    const year = monthDate.getFullYear();
-    const month = monthDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const firstOffset = (firstDay.getDay() + 6) % 7;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const cells: Array<null | { iso: string; day: number; disabled: boolean; active: boolean }> = [];
-
-    for (let index = 0; index < firstOffset; index += 1) {
-      cells.push(null);
-    }
-
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const date = new Date(year, month, day);
-      const iso = formatIsoLocalDate(date);
-      const disabled = Boolean(validateDeliveryDateRequested(iso, todayDate));
-
-      cells.push({
-        iso,
-        day,
-        disabled,
-        active: value === iso,
-      });
-    }
-
-    while (cells.length % 7 !== 0) {
-      cells.push(null);
-    }
-
-    return cells;
-  }
-
-  const firstMonthCells = monthCells(visibleStartMonth);
-  const secondMonthCells = monthCells(addMonths(visibleStartMonth, 1));
-
-  function renderMonth(cells: Array<null | { iso: string; day: number; disabled: boolean; active: boolean }>, title: string, key: string, hiddenOnMobile = false) {
-    return (
-      <div key={key} className={hiddenOnMobile ? "hidden lg:block" : "block"}>
-        <h4 className="mb-2 text-lg font-semibold capitalize">{title}</h4>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-zinc-400">
-          {weekDayLabels.map((label) => (
-            <span key={`${key}-${label}`} className="py-1">
-              {label}
-            </span>
-          ))}
-        </div>
-        <div className="mt-1 grid grid-cols-7 gap-1">
-          {cells.map((cell, index) => {
-            if (!cell) {
-              return <span key={`${key}-empty-${index}`} className="block h-8 rounded-lg sm:h-9" />;
-            }
-
-            return (
-              <button
-                key={`${key}-${cell.iso}`}
-                type="button"
-                disabled={cell.disabled}
-                onClick={() => onChange(cell.iso)}
-                className={cx(
-                  "h-8 rounded-lg text-xs transition sm:h-9 sm:text-sm",
-                  cell.active
-                    ? "bg-[var(--color-accent)] font-semibold text-black"
-                    : "border border-zinc-800 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
-                  cell.disabled ? "cursor-not-allowed border-zinc-900 bg-zinc-950 text-zinc-600 hover:border-zinc-900" : "",
-                )}
-              >
-                {cell.day}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
+  const availableDays = useMemo(() => buildAvailableDeliveryDayOptions(todayDate), [todayDate]);
+  const initialPageIndex = useMemo(() => {
+    if (!value) return 0;
+    const selectedIndex = availableDays.findIndex((option) => option.iso === value);
+    return selectedIndex >= 0 ? Math.floor(selectedIndex / pageSize) : 0;
+  }, [availableDays, pageSize, value]);
+  const [pageIndex, setPageIndex] = useState(initialPageIndex);
+  const maxPageIndex = Math.max(0, Math.ceil(availableDays.length / pageSize) - 1);
+  const safePageIndex = Math.min(pageIndex, maxPageIndex);
+  const canGoPrev = safePageIndex > 0;
+  const canGoNext = safePageIndex < maxPageIndex;
+  const visibleDayOptions = availableDays.slice(safePageIndex * pageSize, safePageIndex * pageSize + pageSize);
+  const splitIndex = Math.ceil(visibleDayOptions.length / 2);
+  const leftColumnOptions = visibleDayOptions.slice(0, splitIndex);
+  const rightColumnOptions = visibleDayOptions.slice(splitIndex);
+  const firstVisibleDay = visibleDayOptions[0]?.iso;
+  const lastVisibleDay = visibleDayOptions[visibleDayOptions.length - 1]?.iso;
+  const selectedEndValue = calculateDeliveryEndDate(value, rentalDays);
+  const selectedRentalDays = calculateRentalDays(value, selectedEndValue);
 
   return (
     <div className={cx("rounded-2xl border p-3 sm:p-4", error ? "border-red-500 bg-red-950/20" : "border-zinc-700 bg-zinc-950")}>
-      <div className="mb-4 inline-flex rounded-full border border-zinc-700 bg-zinc-900 p-1 text-sm">
+      <div className="flex items-center justify-between gap-2 px-1 py-1.5">
         <button
           type="button"
-          onClick={() => onModeChange("exact")}
-          className={cx(
-            "rounded-full px-3 py-1.5 text-sm font-semibold sm:px-4 sm:py-2",
-            mode === "exact" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:bg-zinc-800",
-          )}
-        >
-          Termín
-        </button>
-        <button
-          type="button"
-          onClick={() => onModeChange("flex")}
-          className={cx(
-            "rounded-full px-3 py-1.5 text-sm font-semibold sm:px-4 sm:py-2",
-            mode === "flex" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:bg-zinc-800",
-          )}
-        >
-          Flexibilní
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => setVisibleStartMonth((previous) => addMonths(previous, -1))}
+          onClick={() => setPageIndex((previous) => Math.max(0, previous - 1))}
           disabled={!canGoPrev}
-          className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+          className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
         >
           ←
         </button>
+        <p className="text-center text-xs text-zinc-300 sm:text-sm">
+          {firstVisibleDay && lastVisibleDay
+            ? `${formatDisplayDateWithoutYear(firstVisibleDay)} - ${formatDisplayDateWithoutYear(lastVisibleDay)}`
+            : "Vyberte datum"}
+        </p>
         <button
           type="button"
-          onClick={() => setVisibleStartMonth((previous) => addMonths(previous, 1))}
+          onClick={() => setPageIndex((previous) => Math.min(maxPageIndex, previous + 1))}
           disabled={!canGoNext}
-          className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+          className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
         >
           →
         </button>
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-2 sm:mt-4 sm:gap-4">
-        {renderMonth(firstMonthCells, monthLabels[0], "month-0")}
-        {renderMonth(secondMonthCells, monthLabels[1], "month-1", true)}
-      </div>
-
-      <p className="mt-3 text-xs text-zinc-400">Online objednávka nepodporuje víkendy. Vyberte pracovní den.</p>
-
-      {mode === "flex" ? (
-        <div className="mt-4 space-y-2">
-          <p className="text-sm font-semibold">Flexibilita termínu</p>
-          <div className="flex flex-wrap gap-2">
-            {flexibilityDayOptions.map((days) => (
+      <div className="max-h-72 overflow-y-auto px-1 pb-1 pt-1">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="space-y-2">
+            {leftColumnOptions.map((option) => (
               <button
-                key={days}
+                key={option.iso}
                 type="button"
-                onClick={() => onFlexibilityDaysChange(days)}
+                onClick={() => onChange(option.iso)}
                 className={cx(
-                  "rounded-full border px-3 py-1.5 text-sm",
-                  flexibilityDays === days
-                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
-                    : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
+                  "w-full rounded-full border px-3 py-2 text-left text-sm transition sm:text-base",
+                  value === option.iso
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] font-semibold text-black"
+                    : "border-zinc-700 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
                 )}
               >
-                ± {formatCzechDayCount(days)}
+                {option.label}
               </button>
             ))}
           </div>
-          <p className="text-xs text-zinc-500">Operátor může termín posunout v rámci zvolené tolerance.</p>
+          <div className="space-y-2">
+            {rightColumnOptions.map((option) => (
+              <button
+                key={option.iso}
+                type="button"
+                onClick={() => onChange(option.iso)}
+                className={cx(
+                  "w-full rounded-full border px-3 py-2 text-left text-sm transition sm:text-base",
+                  value === option.iso
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] font-semibold text-black"
+                    : "border-zinc-700 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
-      ) : null}
+      </div>
+
+      <div className="mt-3 rounded-xl border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-sm text-zinc-300">
+        {value && selectedEndValue ? (
+          <p>
+            Termín: <strong className="text-zinc-100">{formatDisplayDate(value)}</strong> -{" "}
+            <strong className="text-zinc-100">{formatDisplayDate(selectedEndValue)}</strong>
+            {selectedRentalDays ? ` (${formatCzechDayCount(selectedRentalDays)})` : ""}
+          </p>
+        ) : (
+          <p>Vyberte datum přistavení.</p>
+        )}
+      </div>
+
+      <p className="mt-3 text-xs text-zinc-400">Online objednávka nepodporuje víkendy. Vyberte pracovní den.</p>
     </div>
   );
 }
@@ -783,7 +762,6 @@ export function OrderWizard({
     ...buildDefaultData(defaultWasteTypeId),
     postalCode: normalizedInitialPostalCode,
   }));
-  const [dateMode, setDateMode] = useState<DateMode>("exact");
   const [showManualAddress, setShowManualAddress] = useState(false);
   const [postalAreaStatusVisible, setPostalAreaStatusVisible] = useState(false);
 
@@ -931,6 +909,11 @@ export function OrderWizard({
     }
   }, [step]);
 
+  useEffect(() => {
+    const nextEndDate = calculateDeliveryEndDate(data.deliveryDateRequested, data.rentalDays);
+    setData((previous) => (previous.deliveryDateEndRequested === nextEndDate ? previous : { ...previous, deliveryDateEndRequested: nextEndDate }));
+  }, [data.deliveryDateRequested, data.rentalDays]);
+
   function goToStep(targetStep: number) {
     if (targetStep === step || targetStep < 0 || targetStep > furthestStep) return;
 
@@ -1003,7 +986,6 @@ export function OrderWizard({
         version: 1,
         updatedAt: Date.now(),
         data: nextData,
-        dateMode,
         addressInput: "",
         pinLocation: null,
         addressEditedByUser: true,
@@ -1279,12 +1261,19 @@ export function OrderWizard({
         nextErrors.deliveryDateRequested = `${deliveryDateError}.`;
       }
 
-      if (!TIME_WINDOW_VALUES.includes(data.timeWindowRequested)) {
-        nextErrors.timeWindowRequested = "Vyberte časové okno přistavení.";
+      const normalizedRentalDays = normalizeRentalDays(data.rentalDays);
+      if (!Number.isInteger(data.rentalDays) || normalizedRentalDays !== data.rentalDays) {
+        nextErrors.rentalDays = `Počet dní pronájmu musí být ${rentalDayOptions[0]} až ${rentalDayOptions[rentalDayOptions.length - 1]}.`;
       }
 
-      if (!Number.isInteger(data.rentalDays) || data.rentalDays < 1 || data.rentalDays > 14) {
-        nextErrors.rentalDays = "Počet dní pronájmu musí být 1 až 14.";
+      const deliveryDateEnd = calculateDeliveryEndDate(data.deliveryDateRequested, normalizedRentalDays);
+      const deliveryDateEndError = deliveryDateEnd ? validateDeliveryDateRequested(deliveryDateEnd) : null;
+      if (deliveryDateEndError) {
+        nextErrors.rentalDays = "Vybraný počet dní vychází na víkend. Zvolte kratší pronájem nebo jiné datum přistavení.";
+      }
+
+      if (!TIME_WINDOW_VALUES.includes(data.timeWindowRequested)) {
+        nextErrors.timeWindowRequested = "Vyberte časové okno přistavení.";
       }
 
       if (data.placementType === "verejny" && !data.permitConfirmed) {
@@ -1405,14 +1394,14 @@ export function OrderWizard({
           containerCount: data.containerCount,
           rentalDays: data.rentalDays,
           deliveryDateRequested: data.deliveryDateRequested,
-          deliveryFlexibilityDays: dateMode === "flex" ? data.deliveryFlexibilityDays ?? 1 : undefined,
+          deliveryDateEndRequested: data.deliveryDateEndRequested,
           timeWindowRequested: data.timeWindowRequested,
           placementType: data.placementType,
           permitConfirmed: data.permitConfirmed,
           extras: {
-            nakladkaOdNas: data.nakladkaOdNas,
-            expresniPristaveni: data.expresniPristaveni,
-            opakovanyOdvoz: data.opakovanyOdvoz,
+            nakladkaOdNas: false,
+            expresniPristaveni: false,
+            opakovanyOdvoz: false,
           },
           note: data.note.trim() || undefined,
           callbackNote: data.callbackNote || undefined,
@@ -1490,7 +1479,7 @@ export function OrderWizard({
             containerCount: data.containerCount,
             rentalDays: data.rentalDays,
             deliveryDateRequested: data.deliveryDateRequested,
-            deliveryFlexibilityDays: dateMode === "flex" ? data.deliveryFlexibilityDays ?? 1 : undefined,
+            deliveryDateEndRequested: data.deliveryDateEndRequested,
             timeWindowRequested: data.timeWindowRequested,
           },
         }),
@@ -1549,8 +1538,16 @@ export function OrderWizard({
         const draft = readDraft();
         if (!draft) return;
 
-        setData(draft.data);
-        setDateMode(draft.dateMode);
+        setData({
+          ...buildDefaultData(defaultWasteTypeId),
+          ...draft.data,
+          rentalDays: normalizeRentalDays(draft.data.rentalDays),
+          deliveryDateRequested:
+            typeof draft.data.deliveryDateRequested === "string" ? draft.data.deliveryDateRequested : "",
+          deliveryDateEndRequested:
+            typeof draft.data.deliveryDateEndRequested === "string" ? draft.data.deliveryDateEndRequested : "",
+          expresniPristaveni: false,
+        });
         setAddressInput(draft.addressInput);
         const shouldRestorePin = shouldRestorePinFromDraft(draft.data, draft.addressInput);
         const hasAddressData = Boolean(
@@ -1579,7 +1576,6 @@ export function OrderWizard({
           version: 1,
           updatedAt: Date.now(),
           data,
-          dateMode,
           addressInput,
           pinLocation,
           addressEditedByUser,
@@ -1592,7 +1588,7 @@ export function OrderWizard({
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [addressEditedByUser, addressInput, data, dateMode, orderId, pinLocation]);
+  }, [addressEditedByUser, addressInput, data, orderId, pinLocation]);
 
   useEffect(() => {
     if (errorSummaryItems.length === 0 && !submitError) return;
@@ -1846,6 +1842,28 @@ export function OrderWizard({
       return;
     }
 
+    const deliveryDateError = validateDeliveryDateRequested(data.deliveryDateRequested);
+    if (deliveryDateError) {
+      setPricePreview(null);
+      setPricingError(null);
+      return;
+    }
+
+    const normalizedRentalDays = normalizeRentalDays(data.rentalDays);
+    if (!Number.isInteger(data.rentalDays) || normalizedRentalDays !== data.rentalDays) {
+      setPricePreview(null);
+      setPricingError(`Počet dní pronájmu musí být ${rentalDayOptions[0]} až ${rentalDayOptions[rentalDayOptions.length - 1]}.`);
+      return;
+    }
+
+    const deliveryDateEnd = calculateDeliveryEndDate(data.deliveryDateRequested, normalizedRentalDays);
+    const deliveryDateEndError = deliveryDateEnd ? validateDeliveryDateRequested(deliveryDateEnd) : null;
+    if (deliveryDateEndError) {
+      setPricePreview(null);
+      setPricingError("Vybraný počet dní vychází na víkend. Zvolte kratší pronájem nebo jiné datum přistavení.");
+      return;
+    }
+
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       setPricingLoading(true);
@@ -1860,11 +1878,11 @@ export function OrderWizard({
             postalCode: data.postalCode,
             wasteType: data.wasteType,
             containerCount: data.containerCount,
-            rentalDays: data.rentalDays,
+            rentalDays: normalizedRentalDays,
             extras: {
-              nakladkaOdNas: data.nakladkaOdNas,
-              expresniPristaveni: data.expresniPristaveni,
-              opakovanyOdvoz: data.opakovanyOdvoz,
+              nakladkaOdNas: false,
+              expresniPristaveni: false,
+              opakovanyOdvoz: false,
             },
           }),
         });
@@ -1890,9 +1908,7 @@ export function OrderWizard({
     };
   }, [
     data.containerCount,
-    data.expresniPristaveni,
-    data.nakladkaOdNas,
-    data.opakovanyOdvoz,
+    data.deliveryDateRequested,
     data.postalCode,
     data.rentalDays,
     data.wasteType,
@@ -2402,70 +2418,58 @@ export function OrderWizard({
               </div>
             ) : null}
 
-            <div>
-              <p className="mb-1.5 text-sm font-semibold">Počet kontejnerů</p>
-              <div className="flex flex-wrap gap-2">
-                {Array.from({ length: CONTAINER_PRODUCT.maxContainerCountPerOrder }, (_, index) => index + 1).map((count) => (
+            <article className="grid gap-3 rounded-xl border border-zinc-700 bg-zinc-900/70 p-3 sm:grid-cols-[132px_auto_1fr] sm:items-center">
+              <div className="relative h-28 overflow-hidden rounded-lg border border-zinc-700 sm:h-24">
+                <Image
+                  src="/photos/kontejnery/kontejner-zluty-01.png"
+                  alt={`Kontejner ${CONTAINER_PRODUCT.availableNow} připravený k přistavení`}
+                  width={700}
+                  height={420}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Počet kontejnerů</p>
+                <div className="mt-1.5 inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 p-1">
                   <button
-                    key={count}
                     type="button"
                     onClick={() => {
-                      update("containerCount", count);
+                      update("containerCount", Math.max(1, data.containerCount - 1));
                       clearFieldError("containerCount");
                     }}
-                    className={cx(
-                      "rounded-full border px-3 py-1.5 text-sm font-semibold",
-                      data.containerCount === count
-                        ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
-                        : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
-                    )}
+                    disabled={data.containerCount <= 1}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-lg font-semibold text-zinc-100 transition hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Snížit počet kontejnerů"
                   >
-                    {count}
+                    -
                   </button>
-                ))}
+                  <span className="min-w-11 px-3 text-center text-base font-bold text-zinc-100">{data.containerCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      update("containerCount", Math.min(CONTAINER_PRODUCT.maxContainerCountPerOrder, data.containerCount + 1));
+                      clearFieldError("containerCount");
+                    }}
+                    disabled={data.containerCount >= CONTAINER_PRODUCT.maxContainerCountPerOrder}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-lg font-semibold text-zinc-100 transition hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Zvýšit počet kontejnerů"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
+              <div>
+                <p className="text-base font-bold text-zinc-100">
+                  Aktuálně objednáváte kontejner {CONTAINER_PRODUCT.availableNow}
+                </p>
+                <p className="mt-1 text-sm text-zinc-300">
+                  V této online objednávce je dostupná velikost 3 metry krychlové.
+                </p>
+              </div>
+            </article>
+
+            <div>
               {renderFieldError("containerCount")}
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm sm:col-span-1">
-                <input
-                  type="checkbox"
-                  checked={data.nakladkaOdNas}
-                  onChange={(event) => update("nakladkaOdNas", event.target.checked)}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="font-semibold">Nakládka od nás</span>
-                  <span className="mt-1 block text-xs text-zinc-400">{extrasDescriptions.nakladkaOdNas}</span>
-                </span>
-              </label>
-
-              <label className="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm sm:col-span-1">
-                <input
-                  type="checkbox"
-                  checked={data.expresniPristaveni}
-                  onChange={(event) => update("expresniPristaveni", event.target.checked)}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="font-semibold">Expresní přistavení</span>
-                  <span className="mt-1 block text-xs text-zinc-400">{extrasDescriptions.expresniPristaveni}</span>
-                </span>
-              </label>
-
-              <label className="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm sm:col-span-2">
-                <input
-                  type="checkbox"
-                  checked={data.opakovanyOdvoz}
-                  onChange={(event) => update("opakovanyOdvoz", event.target.checked)}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="font-semibold">Opakovaný odvoz</span>
-                  <span className="mt-1 block text-xs text-zinc-400">{extrasDescriptions.opakovanyOdvoz}</span>
-                </span>
-              </label>
             </div>
           </div>
         ) : null}
@@ -2474,30 +2478,58 @@ export function OrderWizard({
           <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
             <DeliveryDatePicker
               value={data.deliveryDateRequested}
+              rentalDays={data.rentalDays}
               onChange={(nextDate) => {
                 update("deliveryDateRequested", nextDate);
                 clearFieldError("deliveryDateRequested");
+                clearFieldError("rentalDays");
                 setSubmitError(null);
               }}
-              mode={dateMode}
-              onModeChange={(nextMode) => {
-                setDateMode(nextMode);
-                if (nextMode === "exact") {
-                  update("deliveryFlexibilityDays", undefined);
-                } else if (!data.deliveryFlexibilityDays) {
-                  update("deliveryFlexibilityDays", 1);
-                }
-              }}
-              flexibilityDays={data.deliveryFlexibilityDays}
-              onFlexibilityDaysChange={(nextDays) => update("deliveryFlexibilityDays", nextDays)}
-              error={fieldErrors.deliveryDateRequested}
+              error={fieldErrors.deliveryDateRequested || fieldErrors.rentalDays}
               todayIso={todayIso}
             />
             {renderFieldError("deliveryDateRequested")}
 
             <div>
-              <p className="mb-1.5 text-sm font-semibold">Časové okno (1 hodina)</p>
-              <div id={stepFieldInputIds.timeWindowRequested} className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-300">Počet dní pronájmu</p>
+              <div id={stepFieldInputIds.rentalDays} className="inline-flex flex-wrap items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 p-1">
+                {rentalDayOptions.map((days) => {
+                  const optionEndDate = calculateDeliveryEndDate(data.deliveryDateRequested, days);
+                  const optionDisabled = Boolean(
+                    data.deliveryDateRequested
+                    && optionEndDate
+                    && validateDeliveryDateRequested(optionEndDate),
+                  );
+
+                  return (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => {
+                        update("rentalDays", days);
+                        clearFieldError("rentalDays");
+                        setSubmitError(null);
+                      }}
+                      disabled={optionDisabled}
+                      className={cx(
+                        "rounded-full border px-3 py-1 text-xs font-semibold transition sm:text-sm",
+                        data.rentalDays === days
+                          ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
+                          : "border-zinc-700 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
+                        optionDisabled ? "cursor-not-allowed opacity-40 hover:border-zinc-700" : "",
+                      )}
+                    >
+                      {formatCzechDayCount(days)}
+                    </button>
+                  );
+                })}
+              </div>
+              {renderFieldError("rentalDays")}
+            </div>
+
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-300">Časové okno (1 hodina)</p>
+              <div id={stepFieldInputIds.timeWindowRequested} className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7">
                 {TIME_WINDOW_VALUES.map((windowValue) => (
                   <button
                     key={windowValue}
@@ -2507,7 +2539,7 @@ export function OrderWizard({
                       clearFieldError("timeWindowRequested");
                     }}
                     className={cx(
-                      "rounded-xl border px-2.5 py-1.5 text-sm",
+                      "rounded-lg border px-2 py-1 text-xs font-medium leading-none sm:px-2.5 sm:py-1.5",
                       data.timeWindowRequested === windowValue
                         ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
                         : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
@@ -2518,31 +2550,6 @@ export function OrderWizard({
                 ))}
               </div>
               {renderFieldError("timeWindowRequested")}
-            </div>
-
-            <div>
-              <p className="mb-1.5 text-sm font-semibold">Počet dní pronájmu (1-14)</p>
-              <div id={stepFieldInputIds.rentalDays} className="flex flex-wrap gap-2">
-                {rentalDayOptions.map((days) => (
-                  <button
-                    key={days}
-                    type="button"
-                    onClick={() => {
-                      update("rentalDays", days);
-                      clearFieldError("rentalDays");
-                    }}
-                    className={cx(
-                      "rounded-full border px-3 py-1.5 text-sm",
-                      data.rentalDays === days
-                        ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
-                        : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
-                    )}
-                  >
-                    {days}
-                  </button>
-                ))}
-              </div>
-              {renderFieldError("rentalDays")}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -2561,47 +2568,47 @@ export function OrderWizard({
                 </select>
               </label>
 
-              <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm">
+              <div className="text-sm">
                 <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">Orientační kalkulace</p>
-                {pricingLoading ? <p className="mt-2 text-zinc-400">Přepočítávám cenu...</p> : null}
-                {pricingError ? <p className="mt-2 text-amber-300">{pricingError}</p> : null}
-
+                {pricingLoading ? <p className="mt-1 text-zinc-400">Přepočítávám cenu...</p> : null}
+                {pricingError ? <p className="mt-1 text-amber-300">{pricingError}</p> : null}
                 {pricePreview ? (
-                  <div className="mt-2 space-y-1">
-                    <p className="text-xl font-bold text-[var(--color-accent)]">{formatPrice(pricePreview.total)}</p>
-                    <p className="text-zinc-300">Doba pronájmu: {formatCzechDayCount(pricePreview.rentalDays)}</p>
-                    <p className="text-xs text-zinc-400">Základ: {formatPrice(pricePreview.base)}</p>
-                    <p className="text-xs text-zinc-400">Doprava: {formatPrice(pricePreview.transport)}</p>
-                    <p className="text-xs text-zinc-400">Příplatky: {formatPrice(pricePreview.surcharge)}</p>
-                  </div>
+                  <p className="mt-1.5 text-zinc-200">
+                    Pro vybraný termín orientačně{" "}
+                    <strong className="font-semibold text-[var(--color-accent)]">{formatPrice(pricePreview.total)}</strong>.
+                  </p>
                 ) : (
-                  <p className="mt-2 text-zinc-400">Cena se zobrazí po vyplnění adresy.</p>
+                  <p className="mt-1.5 text-zinc-400">Cena se zobrazí po výběru data přistavení.</p>
                 )}
+                <p className="mt-1 text-xs text-zinc-500">Konečnou cenu vždy potvrzuje operátor podle místa přistavení.</p>
               </div>
             </div>
 
             {data.placementType === "verejny" ? (
-              <label
+              <div
                 className={cx(
-                  "flex items-start gap-3 rounded-xl border border-amber-700/60 bg-amber-950/30 p-3 text-sm",
-                  fieldErrors.permitConfirmed ? "border-red-500 bg-red-950/40" : "",
+                  "rounded-xl border p-3",
+                  fieldErrors.permitConfirmed ? "border-red-500 bg-red-950/35" : "border-zinc-600 bg-zinc-900/70",
                 )}
               >
-                <input
-                  {...fieldA11yProps("permitConfirmed")}
-                  type="checkbox"
-                  checked={data.permitConfirmed}
-                  onChange={(event) => {
-                    update("permitConfirmed", event.target.checked);
-                    clearFieldError("permitConfirmed");
-                  }}
-                  className="mt-1"
-                />
-                <span>
-                  Potvrzuji, že mám povolení k záboru veřejné komunikace.
-                  {renderFieldError("permitConfirmed")}
-                </span>
-              </label>
+                <label className="flex items-start gap-3 text-sm">
+                  <input
+                    {...fieldA11yProps("permitConfirmed")}
+                    type="checkbox"
+                    checked={data.permitConfirmed}
+                    onChange={(event) => {
+                      update("permitConfirmed", event.target.checked);
+                      clearFieldError("permitConfirmed");
+                    }}
+                    className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
+                  />
+                  <span>
+                    <span className="block font-semibold text-zinc-100">Veřejná komunikace vyžaduje povolení</span>
+                    <span className="mt-1 block text-zinc-300">Potvrzuji, že mám povolení k záboru veřejné komunikace.</span>
+                  </span>
+                </label>
+                <div className="mt-2">{renderFieldError("permitConfirmed")}</div>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -2798,13 +2805,12 @@ export function OrderWizard({
                   <span className="text-zinc-400">Kontejner:</span> {CONTAINER_PRODUCT.availableNow}, počet {data.containerCount}
                 </p>
                 <p>
-                  <span className="text-zinc-400">Termín:</span> {data.deliveryDateRequested ? formatDisplayDate(data.deliveryDateRequested) : "nezadán"} ({data.timeWindowRequested})
+                  <span className="text-zinc-400">Termín:</span>{" "}
+                  {data.deliveryDateRequested && data.deliveryDateEndRequested
+                    ? `${formatDisplayDate(data.deliveryDateRequested)} - ${formatDisplayDate(data.deliveryDateEndRequested)}`
+                    : "nezadán"}{" "}
+                  ({data.timeWindowRequested})
                 </p>
-                {dateMode === "flex" && data.deliveryFlexibilityDays ? (
-                  <p>
-                    <span className="text-zinc-400">Flexibilita:</span> ±{formatCzechDayCount(data.deliveryFlexibilityDays)}
-                  </p>
-                ) : null}
                 <p>
                   <span className="text-zinc-400">Pronájem:</span> {formatCzechDayCount(data.rentalDays)}
                 </p>

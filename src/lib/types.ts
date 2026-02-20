@@ -43,7 +43,8 @@ export type ContainerOrder = {
   containerCount: number;
   rentalDays: number;
   deliveryDateRequested: string;
-  deliveryFlexibilityDays?: 1 | 2 | 3 | 7 | 14;
+  deliveryDateEndRequested?: string;
+  deliveryFlexibilityDays?: 1 | 2 | 3;
   timeWindowRequested: TimeWindow;
   deliveryDateConfirmed?: string;
   timeWindowConfirmed?: TimeWindow;
