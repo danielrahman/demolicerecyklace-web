@@ -16,10 +16,10 @@ const statusLabels: Record<OrderStatus, string> = {
 };
 
 const statusBadgeClass: Record<OrderStatus, string> = {
-  new: "border-amber-500/60 bg-amber-950/50 text-amber-200",
-  confirmed: "border-emerald-500/60 bg-emerald-950/50 text-emerald-200",
-  done: "border-zinc-500/60 bg-zinc-900 text-zinc-200",
-  cancelled: "border-red-500/60 bg-red-950/50 text-red-200",
+  new: "admin-order-status admin-order-status--new",
+  confirmed: "admin-order-status admin-order-status--confirmed",
+  done: "admin-order-status admin-order-status--done",
+  cancelled: "admin-order-status admin-order-status--cancelled",
 };
 
 function formatAdminDate(value: string) {
@@ -102,7 +102,7 @@ export default async function AdminOrdersPage({
               <li key={order.id}>
                 <Link
                   href={`/admin/objednavky/${order.id}`}
-                  className="block px-4 py-3 transition hover:bg-zinc-800/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                  className="admin-order-row block px-4 py-3 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
                 >
                   <div className="space-y-1 md:hidden">
                     <div className="flex items-center justify-between gap-2">

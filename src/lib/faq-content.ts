@@ -22,7 +22,7 @@ export const CONTAINER_FAQ: FaqItem[] = [
   {
     question: "Co když mám odpad, který si nejsem jistý kam zařadit?",
     answer:
-      "Použijte stránku Co patří a nepatří. Pokud je materiál hraniční, napište poznámku do objednávky nebo zavolejte dispečink.",
+      "Pokud je materiál hraniční, napište poznámku do objednávky nebo zavolejte dispečink. Pomůžeme s přesným zařazením ještě před přistavením.",
   },
   {
     question: "Mohu dát kontejner na veřejnou komunikaci?",

@@ -1,8 +1,23 @@
 import { PRAHA_POSTAL_CODES, STREDOCESKY_POSTAL_CODES } from "@/lib/service-area";
 
-const siteUrlFromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+const DEFAULT_SITE_URL = "https://www.demolicerecyklace.cz";
 
-export const SITE_URL = (siteUrlFromEnv || "https://www.demolicerecyklace.cz").replace(/\/+$/, "");
+function normalizeSiteUrl(rawValue?: string) {
+  const trimmed = rawValue?.trim();
+  if (!trimmed) return null;
+
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    return new URL(withProtocol).toString().replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+const normalizedFromEnv = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+
+export const SITE_URL = normalizedFromEnv ?? DEFAULT_SITE_URL;
 
 export const SITE_META = {
   brandName: "Demolice Recyklace",
@@ -59,7 +74,6 @@ export const FOOTER_SERVICE_LINKS = [
 ] as const;
 
 export const FOOTER_INFO_LINKS = [
-  { href: "/lokality", label: "Lokality obsluhy" },
   { href: "/kontakt", label: "Kontakt" },
   { href: "/dokumenty", label: "Dokumenty ke stažení" },
   { href: "/faq", label: "FAQ" },

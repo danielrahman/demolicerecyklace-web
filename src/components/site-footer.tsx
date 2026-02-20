@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import type { SiteSettingsContent } from "@/lib/cms/mappers";
 import { CONTAINER_PRODUCT } from "@/lib/site-config";
@@ -27,27 +28,115 @@ type SiteFooterProps = {
   >;
 };
 
+type CheckoutLegalDoc = "terms" | "gdpr" | "cookies";
+
+const CHECKOUT_LEGAL_DOCS: Record<CheckoutLegalDoc, { href: string; title: string }> = {
+  terms: { href: "/obchodni-podminky", title: "Obchodní podmínky" },
+  gdpr: { href: "/gdpr", title: "Ochrana osobních údajů" },
+  cookies: { href: "/cookies", title: "Cookies" },
+};
+
 export function SiteFooter({ settings }: SiteFooterProps) {
   const pathname = usePathname();
   const isCheckoutRoute = pathname?.startsWith("/kontejnery/objednat");
+  const [legalModalDoc, setLegalModalDoc] = useState<CheckoutLegalDoc | null>(null);
+
+  useEffect(() => {
+    if (!legalModalDoc) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLegalModalDoc(null);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [legalModalDoc]);
 
   if (isCheckoutRoute) {
+    const activeLegalDoc = legalModalDoc ? CHECKOUT_LEGAL_DOCS[legalModalDoc] : null;
+
     return (
-      <footer className="mt-8 border-t border-zinc-800">
-        <div className="mx-auto flex max-w-6xl flex-wrap gap-3 px-4 py-4 text-xs text-zinc-400 sm:px-6 lg:px-8">
-          <a className="underline decoration-zinc-500 underline-offset-2 hover:text-zinc-200" href="/obchodni-podminky">
-            Obchodní podmínky
-          </a>
-          <span className="text-zinc-600">|</span>
-          <a className="underline decoration-zinc-500 underline-offset-2 hover:text-zinc-200" href="/gdpr">
-            Ochrana osobních údajů
-          </a>
-          <span className="text-zinc-600">|</span>
-          <a className="underline decoration-zinc-500 underline-offset-2 hover:text-zinc-200" href="/cookies">
-            Cookies
-          </a>
-        </div>
-      </footer>
+      <>
+        <footer className="mt-8 border-t border-zinc-800">
+          <div className="mx-auto flex max-w-6xl flex-wrap gap-3 px-4 py-4 text-xs text-zinc-400 sm:px-6 lg:px-8">
+            <button
+              type="button"
+              className="underline decoration-zinc-500 underline-offset-2 hover:text-zinc-200"
+              onClick={() => setLegalModalDoc("terms")}
+            >
+              Obchodní podmínky
+            </button>
+            <span className="text-zinc-600">|</span>
+            <button
+              type="button"
+              className="underline decoration-zinc-500 underline-offset-2 hover:text-zinc-200"
+              onClick={() => setLegalModalDoc("gdpr")}
+            >
+              Ochrana osobních údajů
+            </button>
+            <span className="text-zinc-600">|</span>
+            <button
+              type="button"
+              className="underline decoration-zinc-500 underline-offset-2 hover:text-zinc-200"
+              onClick={() => setLegalModalDoc("cookies")}
+            >
+              Cookies
+            </button>
+          </div>
+        </footer>
+
+        {activeLegalDoc ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-4"
+            role="presentation"
+            onClick={() => setLegalModalDoc(null)}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="checkout-legal-modal-title"
+              className="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
+                <h2 id="checkout-legal-modal-title" className="font-heading text-base font-bold text-zinc-100 sm:text-lg">
+                  {activeLegalDoc.title}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={activeLegalDoc.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-200 hover:border-zinc-500 sm:text-sm"
+                  >
+                    Otevřít v nové kartě
+                  </a>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-200 hover:border-zinc-500 sm:text-sm"
+                    onClick={() => setLegalModalDoc(null)}
+                  >
+                    Zavřít
+                  </button>
+                </div>
+              </div>
+
+              <iframe
+                title={activeLegalDoc.title}
+                src={activeLegalDoc.href}
+                className="h-full w-full border-0 bg-zinc-950"
+              />
+            </section>
+          </div>
+        ) : null}
+      </>
     );
   }
 
@@ -56,9 +145,7 @@ export function SiteFooter({ settings }: SiteFooterProps) {
     { href: "/kontejnery/objednat", label: "Objednat kontejner" },
     { href: "/cenik#kontejnery", label: "Ceník kontejnerů" },
   ] as const;
-  const infoLinks = settings.footerInfoLinks.some((link) => link.href === "/lokality")
-    ? settings.footerInfoLinks
-    : [{ href: "/lokality", label: "Lokality obsluhy" }, ...settings.footerInfoLinks];
+  const infoLinks = settings.footerInfoLinks.filter((link) => link.href !== "/lokality");
 
   return (
     <footer className="mt-16 border-t border-zinc-800 bg-zinc-950/70">
@@ -122,9 +209,6 @@ export function SiteFooter({ settings }: SiteFooterProps) {
 
           <section>
             <h3 className="font-bold text-zinc-100">Kontejnery</h3>
-            <p className="mt-3 text-sm text-zinc-300">
-              Nejdůležitější odkazy pro objednávku a ceník kontejnerů.
-            </p>
             <ul className="mt-3 space-y-2 text-sm text-zinc-300">
               {containerQuickLinks.map((link) => (
                 <li key={link.href}>

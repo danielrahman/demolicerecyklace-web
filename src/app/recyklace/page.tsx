@@ -156,7 +156,7 @@ export default async function RecyklacePage() {
 
       <section className="space-y-4 border-t border-zinc-800 pt-8">
         <h2 className="text-3xl font-bold">Související služby a ceník</h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Link href="/cenik#inertni-materialy" className={ui.buttonSecondary}>
             Ceník recyklace
           </Link>
@@ -165,9 +165,6 @@ export default async function RecyklacePage() {
           </Link>
           <Link href="/kontejnery/objednat" className={ui.buttonSecondary}>
             Objednat kontejner
-          </Link>
-          <Link href="/lokality" className={ui.buttonSecondary}>
-            Lokality obsluhy
           </Link>
         </div>
       </section>

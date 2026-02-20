@@ -6,6 +6,11 @@ import { PricingHoverTable } from "@/components/pricing-hover-table";
 import { buildContainerOrderWasteTypes } from "@/lib/container-order-catalog";
 import { getPricingPageContent } from "@/lib/cms/getters";
 import type { CmsPricingRow } from "@/lib/cms/mappers";
+import {
+  MATERIAL_SALES_MARKER_INFO_TEXT,
+  MATERIAL_SALES_NOTES,
+  withMaterialSalesMarkers,
+} from "@/lib/material-sales-pricing";
 import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTAINER_PRODUCT } from "@/lib/site-config";
 import { ui } from "@/lib/ui";
@@ -14,11 +19,6 @@ const inertSectionNotes = [
   "Dle vyhlášky č. 273/2021 Sb. je u položek 1-14 povinné doložit atesty o nezávadnosti materiálu, případně základní popis odpadu (ZPO).",
   "V případě různých druhů odpadů v jedné dodávce se účtuje cena dražšího odpadu.",
   "U ukládky většího množství inertního odpadu je nutné doložit atesty o nezávadnosti materiálu (výluhový test, tab. 10.1 a 10.2).",
-];
-
-const materialSectionNotes = [
-  "Položky označené ikonou info je nutné předem ověřit telefonicky.",
-  "Materiály označené A/B/C jsou v cenovém rozpětí dle kvality vstupního materiálu.",
 ];
 
 const mobileRecyclingNotes = [
@@ -89,30 +89,6 @@ function buildContainerRows(rows: CmsPricingRow[]) {
   });
 }
 
-function normalizeForMatch(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function withPdfStarMarkers(rows: CmsPricingRow[]) {
-  return rows.map((row) => {
-    const normalizedItem = normalizeForMatch(row.item);
-    const shouldHaveStar =
-      normalizedItem.includes("pisek zasypovy trideny 0/4")
-      || normalizedItem.includes("betonovy recyklat 8-32 mm / 32-90 mm");
-
-    if (!shouldHaveStar) return row;
-    if (row.item.trim().endsWith("*")) return row;
-
-    return {
-      ...row,
-      item: `${row.item} *`,
-    };
-  });
-}
-
 function pricingRowKey(item: string, code: string | undefined, price: string) {
   const normalizedCode = (code ?? "-").trim() || "-";
   return `${item.trim()}::${normalizedCode}::${price.trim()}`;
@@ -152,7 +128,7 @@ export default async function KompletníCeníkPage() {
   const content = await getPricingPageContent();
   const containerRows = buildContainerRows(content.containerPricing);
   const containerRowActions = buildContainerRowActions(containerRows);
-  const materialSalesRows = withPdfStarMarkers(content.materialSalesPricing);
+  const materialSalesRows = withMaterialSalesMarkers(content.materialSalesPricing);
   const containerLimitNote = "Max 4 t, finální kontrola při převzetí.";
   const inertSubtitle =
     content.inertMaterialsSubtitle
@@ -200,10 +176,10 @@ export default async function KompletníCeníkPage() {
         <PricingHoverTable
           title={content.materialSalesTitle}
           rows={materialSalesRows}
-          markerInfoText="Tento materiál je nutné předem ověřit telefonicky."
+          markerInfoText={MATERIAL_SALES_MARKER_INFO_TEXT}
         />
         <ul className="mt-3 space-y-1 text-xs text-zinc-400">
-          {materialSectionNotes.map((note) => (
+          {MATERIAL_SALES_NOTES.map((note) => (
             <li key={note}>{note}</li>
           ))}
         </ul>
@@ -226,7 +202,7 @@ export default async function KompletníCeníkPage() {
 
       <section className="space-y-4 border-t border-zinc-800 pt-8">
         <h2 className="text-2xl font-bold">Související služby</h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Link href="/kontejnery" className={ui.buttonSecondary}>
             Kontejnery
           </Link>
@@ -235,9 +211,6 @@ export default async function KompletníCeníkPage() {
           </Link>
           <Link href="/recyklace" className={ui.buttonSecondary}>
             Recyklace
-          </Link>
-          <Link href="/lokality" className={ui.buttonSecondary}>
-            Lokality obsluhy
           </Link>
         </div>
       </section>

@@ -7,6 +7,14 @@ type PinLocation = {
   lng: number;
 };
 
+type ParsedAddress = {
+  formattedAddress: string;
+  postalCode: string;
+  city: string;
+  street: string;
+  houseNumber: string;
+};
+
 type MapsStatus = "idle" | "loading" | "ready" | "missing-key" | "error";
 
 type GoogleLatLng = {
@@ -58,7 +66,14 @@ type GoogleMarkerConstructor = new (options: {
   draggable?: boolean;
 }) => GoogleMarker;
 
+type GoogleAddressComponent = {
+  long_name: string;
+  types: string[];
+};
+
 type GoogleGeocoderResult = {
+  address_components?: GoogleAddressComponent[];
+  formatted_address?: string;
   geometry?: {
     location?: GoogleLatLng;
   };
@@ -67,7 +82,8 @@ type GoogleGeocoderResult = {
 type GoogleGeocoder = {
   geocode: (
     request: {
-      address: string;
+      address?: string;
+      location?: PinLocation;
       componentRestrictions?: { country: string };
     },
     callback: (results: GoogleGeocoderResult[] | null, status: string) => void,
@@ -99,6 +115,7 @@ type AdminOrderPinMapProps = {
   }>;
   editable?: boolean;
   heightClassName?: string;
+  onPinAddressResolved?: (payload: { pinLocation: PinLocation; parsedAddress: ParsedAddress | null }) => void;
 };
 
 const fallbackCenter: PinLocation = { lat: 50.0755, lng: 14.4378 };
@@ -110,11 +127,6 @@ function hasGoogleMapsLoaded() {
 }
 
 async function resolveGoogleMapsApiKey() {
-  const directGoogleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
-  if (directGoogleMapsApiKey) {
-    return directGoogleMapsApiKey;
-  }
-
   try {
     const response = await fetch("/api/maps/config", { cache: "no-store" });
     if (!response.ok) return "";
@@ -190,6 +202,31 @@ function latLngToPin(value?: GoogleLatLng | PinLocation | null): PinLocation | n
   return { lat, lng };
 }
 
+function componentValue(components: GoogleAddressComponent[], types: string[]) {
+  const found = components.find((component) => types.some((type) => component.types.includes(type)));
+  return found?.long_name ?? "";
+}
+
+function parseAddress(result?: GoogleGeocoderResult): ParsedAddress | null {
+  const components = result?.address_components;
+  if (!components || components.length === 0) return null;
+
+  const postalCode = componentValue(components, ["postal_code"]).replace(/\D/g, "").slice(0, 5);
+  const city = componentValue(components, ["locality", "postal_town", "administrative_area_level_2", "sublocality"]);
+  const street = componentValue(components, ["route"]);
+  const houseNumber = componentValue(components, ["street_number", "premise", "subpremise"]);
+
+  if (!postalCode || !city || !street || !houseNumber) return null;
+
+  return {
+    formattedAddress: result?.formatted_address || `${street} ${houseNumber}, ${city}, ${postalCode}`,
+    postalCode,
+    city,
+    street,
+    houseNumber,
+  };
+}
+
 export function AdminOrderPinMap({
   title,
   address,
@@ -197,6 +234,7 @@ export function AdminOrderPinMap({
   inputTargets = [],
   editable = true,
   heightClassName = "h-56",
+  onPinAddressResolved,
 }: AdminOrderPinMapProps) {
   const [mapsStatus, setMapsStatus] = useState<MapsStatus>("idle");
   const [mapsErrorDetail, setMapsErrorDetail] = useState<string | null>(null);
@@ -209,6 +247,8 @@ export function AdminOrderPinMap({
   const mapClickListenerRef = useRef<GoogleMapsListener | null>(null);
   const markerDragListenerRef = useRef<GoogleMapsListener | null>(null);
   const geocodedAddressRef = useRef<string | null>(null);
+  const pinChangedByUserRef = useRef(false);
+  const reverseLookupRequestRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -275,6 +315,7 @@ export function AdminOrderPinMap({
       mapClickListenerRef.current = map.addListener("click", (event) => {
         const next = latLngToPin(event?.latLng);
         if (!next) return;
+        pinChangedByUserRef.current = true;
         setPinLocation(next);
       });
     }
@@ -336,6 +377,7 @@ export function AdminOrderPinMap({
         markerDragListenerRef.current = marker.addListener("dragend", (event) => {
           const next = latLngToPin(event?.latLng);
           if (!next) return;
+          pinChangedByUserRef.current = true;
           setPinLocation(next);
         });
       }
@@ -352,6 +394,7 @@ export function AdminOrderPinMap({
         markerDragListenerRef.current = markerRef.current.addListener("dragend", (event) => {
           const next = latLngToPin(event?.latLng);
           if (!next) return;
+          pinChangedByUserRef.current = true;
           setPinLocation(next);
         });
       }
@@ -364,14 +407,46 @@ export function AdminOrderPinMap({
     }
   }, [editable, mapsStatus, pinLocation]);
 
+  useEffect(() => {
+    const googleMaps = window.google as GoogleMapsApi | undefined;
+    if (!editable || mapsStatus !== "ready" || !pinLocation || !onPinAddressResolved) return;
+    if (!pinChangedByUserRef.current) return;
+    pinChangedByUserRef.current = false;
+
+    if (!googleMaps?.maps?.Geocoder) {
+      onPinAddressResolved({ pinLocation, parsedAddress: null });
+      return;
+    }
+
+    if (!geocoderRef.current) {
+      geocoderRef.current = new googleMaps.maps.Geocoder();
+    }
+
+    reverseLookupRequestRef.current += 1;
+    const requestId = reverseLookupRequestRef.current;
+
+    geocoderRef.current.geocode({ location: pinLocation }, (results, status) => {
+      if (requestId !== reverseLookupRequestRef.current) return;
+      if (status !== "OK" || !results?.[0]) {
+        onPinAddressResolved({ pinLocation, parsedAddress: null });
+        return;
+      }
+
+      onPinAddressResolved({
+        pinLocation,
+        parsedAddress: parseAddress(results[0]),
+      });
+    });
+  }, [editable, mapsStatus, onPinAddressResolved, pinLocation]);
+
   const pinLatValue = pinLocation ? pinLocation.lat.toFixed(7) : "";
   const pinLngValue = pinLocation ? pinLocation.lng.toFixed(7) : "";
 
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-950/60 p-3">
+    <div className="admin-order-map-card rounded-lg border p-3">
       <p className="text-sm font-semibold text-zinc-200">{title}</p>
       <div className="mt-3 space-y-2">
-        <div className={`${heightClassName} overflow-hidden rounded-md border border-zinc-700 bg-zinc-950`}>
+        <div className={`admin-order-map-frame ${heightClassName} overflow-hidden rounded-md border`}>
           {mapsStatus === "ready" ? (
             <div ref={mapContainerRef} className="h-full w-full" />
           ) : (

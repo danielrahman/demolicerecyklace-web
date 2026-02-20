@@ -15,6 +15,8 @@ export type OrderEventType =
   | "status_cancelled"
   | "price_estimate_updated"
   | "internal_note_updated"
+  | "customer_updated"
+  | "order_params_updated"
   | "rate_limited_rejected"
   | "honeypot_rejected";
 

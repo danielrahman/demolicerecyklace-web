@@ -14,7 +14,7 @@
 
 | URL | HTTP | title | canonical |
 |---|---:|---|---|
-| `/` | 200 | Demolice Recyklace - Praha 6 | https://www.demolicerecyklace.cz |
+| `/` | 200 | Demolice Recyklace - Praha a Středočeský kraj | https://www.demolicerecyklace.cz |
 | `/demolice` | 200 | Demolice \| Demolice Recyklace | https://www.demolicerecyklace.cz/demolice |
 | `/kontejnery` | 200 | Kontejnery na odpad \| Demolice Recyklace | https://www.demolicerecyklace.cz/kontejnery |
 | `/recyklace` | 200 | Recyklace \| Demolice Recyklace | https://www.demolicerecyklace.cz/recyklace |

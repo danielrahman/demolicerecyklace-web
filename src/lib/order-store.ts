@@ -10,18 +10,31 @@ import {
   rescheduleOrderInDb,
   setInternalNoteInDb,
   setOrderPriceEstimateInDb,
+  updateOrderCustomerContactInDb,
   updateOrderLocationInDb,
+  updateOrderParamsInDb,
   updateOrderStatusInDb,
 } from "@/server/db/repositories/orders";
 
 const ORDER_ID_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 const ORDER_ID_DIGITS = "0123456789";
+const ORDER_ID_LETTER_COUNT = 3;
+const ORDER_ID_DIGIT_COUNT = 4;
+
+function randomFromCharset(charset: string, length: number) {
+  const bytes = randomBytes(length);
+  let value = "";
+
+  for (let index = 0; index < length; index += 1) {
+    value += charset[bytes[index] % charset.length];
+  }
+
+  return value;
+}
 
 function generateOrderId() {
-  const letterBytes = randomBytes(2);
-  const digitBytes = randomBytes(2);
-  const letters = `${ORDER_ID_LETTERS[letterBytes[0] % ORDER_ID_LETTERS.length]}${ORDER_ID_LETTERS[letterBytes[1] % ORDER_ID_LETTERS.length]}`;
-  const digits = `${ORDER_ID_DIGITS[digitBytes[0] % ORDER_ID_DIGITS.length]}${ORDER_ID_DIGITS[digitBytes[1] % ORDER_ID_DIGITS.length]}`;
+  const letters = randomFromCharset(ORDER_ID_LETTERS, ORDER_ID_LETTER_COUNT);
+  const digits = randomFromCharset(ORDER_ID_DIGITS, ORDER_ID_DIGIT_COUNT);
   return `OBJ-${letters}${digits}`;
 }
 
@@ -101,6 +114,20 @@ export async function updateOrderLocation(
   },
 ) {
   return updateOrderLocationInDb(id, location);
+}
+
+export async function updateOrderCustomerContact(
+  id: string,
+  customer: Pick<ContainerOrder, "name" | "companyName" | "ico" | "dic" | "email" | "phone">,
+) {
+  return updateOrderCustomerContactInDb(id, customer);
+}
+
+export async function updateOrderParams(
+  id: string,
+  params: Pick<ContainerOrder, "wasteType" | "containerCount" | "placementType" | "permitConfirmed" | "extras" | "priceEstimate">,
+) {
+  return updateOrderParamsInDb(id, params);
 }
 
 export async function cancelOrder(id: string, reason: string) {

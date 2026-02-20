@@ -81,8 +81,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Objednávka nenalezena" }, { status: 404 });
   }
 
-  if (existingOrder.status === "cancelled") {
-    return NextResponse.json({ error: "Stornovanou objednávku nelze přeplánovat." }, { status: 409 });
+  if (existingOrder.status !== "new" && existingOrder.status !== "confirmed") {
+    return NextResponse.json({ error: "Přeplánovat lze jen přijatou nebo potvrzenou objednávku." }, { status: 409 });
   }
 
   const deliveryDateEndRequested = calculateDeliveryDateEndRequested(date, rentalDays);
@@ -120,9 +120,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
 
   const customerResult = notifyCustomer
-    ? (await Promise.allSettled([sendCustomerConfirmedEmail(order, "rescheduled")]))[0]
+    ? await sendCustomerConfirmedEmail(order, "rescheduled")
     : null;
-  const internalResult = (await Promise.allSettled([sendInternalStatusEmail(order, "rescheduled")]))[0];
+  const internalResult = await sendInternalStatusEmail(order, "rescheduled");
 
   await appendOrderEvent({
     orderId: order.id,
@@ -143,7 +143,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     payload: {
       template: "rescheduled",
       skipped: !notifyCustomer,
-      success: customerResult ? customerResult.status === "fulfilled" : null,
+      success: customerResult ? customerResult.success : null,
+      attempted: customerResult ? customerResult.attempted : null,
+      reason: customerResult?.reason ?? null,
+      providerMessageId: customerResult?.providerMessageId ?? null,
+      error: customerResult?.error ?? null,
     },
   });
   await appendOrderEvent({
@@ -151,7 +155,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     eventType: "emailed_internal_new",
     payload: {
       template: "rescheduled",
-      success: internalResult.status === "fulfilled",
+      success: internalResult.success,
+      attempted: internalResult.attempted,
+      reason: internalResult.reason,
+      providerMessageId: internalResult.providerMessageId,
+      error: internalResult.error,
     },
   });
 

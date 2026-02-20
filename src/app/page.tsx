@@ -10,7 +10,7 @@ import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Demolice Recyklace - Praha 6",
+  title: "Demolice Recyklace - Praha a Středočeský kraj",
   description: "Demolice, recyklace a online objednávka kontejneru pro Prahu a Středočeský kraj.",
   canonicalPath: "/",
 });

@@ -273,6 +273,46 @@ export async function updateOrderLocationInDb(
   return row ? mapRowToOrder(row) : null;
 }
 
+export async function updateOrderCustomerContactInDb(
+  id: string,
+  customer: Pick<ContainerOrder, "name" | "companyName" | "ico" | "dic" | "email" | "phone">,
+) {
+  const [row] = await db
+    .update(containerOrders)
+    .set({
+      name: customer.name,
+      companyName: customer.companyName ?? null,
+      ico: customer.ico ?? null,
+      dic: customer.dic ?? null,
+      email: customer.email,
+      phone: customer.phone,
+    })
+    .where(eq(containerOrders.id, id))
+    .returning();
+
+  return row ? mapRowToOrder(row) : null;
+}
+
+export async function updateOrderParamsInDb(
+  id: string,
+  params: Pick<ContainerOrder, "wasteType" | "containerCount" | "placementType" | "permitConfirmed" | "extras" | "priceEstimate">,
+) {
+  const [row] = await db
+    .update(containerOrders)
+    .set({
+      wasteType: params.wasteType,
+      containerCount: params.containerCount,
+      placementType: params.placementType,
+      permitConfirmed: params.permitConfirmed,
+      extras: JSON.stringify(params.extras),
+      priceEstimate: JSON.stringify(params.priceEstimate),
+    })
+    .where(eq(containerOrders.id, id))
+    .returning();
+
+  return row ? mapRowToOrder(row) : null;
+}
+
 export async function cancelOrderInDb(id: string, reason: string) {
   const existing = await getOrderFromDb(id);
   if (!existing) return null;

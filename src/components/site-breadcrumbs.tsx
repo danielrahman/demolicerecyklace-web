@@ -19,7 +19,6 @@ const segmentLabels: Record<string, string> = {
   gdpr: "Zásady osobních údajů",
   kontakt: "Kontakt",
   kontejnery: "Kontejnery",
-  "co-patri-nepatri": "Co patří a nepatří",
   lokality: "Lokality",
   praha: "Praha",
   "stredocesky-kraj": "Středočeský kraj",

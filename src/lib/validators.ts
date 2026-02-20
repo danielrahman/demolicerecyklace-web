@@ -134,4 +134,5 @@ export const callbackRequestSchema = z.object({
   preferredCallTime: z.string().trim().max(120).optional(),
   note: z.string().trim().max(1500).optional(),
   wizardSnapshot: z.record(z.string(), z.unknown()).optional(),
+  website: z.string().trim().max(0).optional(),
 });

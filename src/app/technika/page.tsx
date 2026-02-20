@@ -3,8 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { MachineRentalGrid } from "@/components/machine-rental-grid";
-import { getMarketingPageContent } from "@/lib/cms/getters";
-import { MACHINE_RENTAL_PRICING } from "@/lib/full-pricing";
+import { getMarketingPageContent, getPricingPageContent } from "@/lib/cms/getters";
 import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT, SERVICE_AREA } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
@@ -37,7 +36,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TechnikaPage() {
-  const marketing = await getMarketingPageContent("technika");
+  const [marketing, pricing] = await Promise.all([
+    getMarketingPageContent("technika"),
+    getPricingPageContent(),
+  ]);
 
   return (
     <div className="space-y-10 pb-8">
@@ -121,7 +123,7 @@ export default async function TechnikaPage() {
           </Link>
         </div>
 
-        <MachineRentalGrid machines={MACHINE_RENTAL_PRICING} />
+        <MachineRentalGrid machines={pricing.machinePricing} />
       </section>
     </div>
   );

@@ -62,3 +62,14 @@ export const rateLimitBuckets = pgTable("rate_limit_buckets", {
   count: integer("count").notNull(),
   windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
 });
+
+export const callbackRequests = pgTable("callback_requests", {
+  id: text("id").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  phone: text("phone").notNull(),
+  name: text("name"),
+  email: text("email"),
+  preferredCallTime: text("preferred_call_time"),
+  note: text("note"),
+  wizardSnapshot: text("wizard_snapshot"),
+});

@@ -41,8 +41,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Objednávka nenalezena" }, { status: 404 });
   }
 
-  if (existingOrder.status === "cancelled") {
-    return NextResponse.json({ error: "Stornovanou objednávku nelze upravovat." }, { status: 409 });
+  if (existingOrder.status !== "new" && existingOrder.status !== "confirmed") {
+    return NextResponse.json({ error: "Lokalitu lze upravovat jen u přijaté nebo potvrzené objednávky." }, { status: 409 });
   }
 
   const formData = await request.formData();

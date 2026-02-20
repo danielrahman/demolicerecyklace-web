@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type MouseEvent, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import type { ContainerOrder } from "@/lib/types";
 
@@ -15,7 +15,7 @@ type CopyOrderLinkProps = {
 const copyOrderStorageKey = "order-wizard-copy-order-v1";
 
 export function CopyOrderLink({ href, className, children, order }: CopyOrderLinkProps) {
-  function handleClick(_event: MouseEvent<HTMLAnchorElement>) {
+  function handleClick() {
     try {
       localStorage.setItem(
         copyOrderStorageKey,

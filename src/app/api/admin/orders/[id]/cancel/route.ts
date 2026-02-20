@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminApiSession } from "@/lib/auth/guards";
 import { sendCustomerCancelledEmail, sendInternalStatusEmail } from "@/lib/email";
-import { cancelOrder } from "@/lib/order-store";
+import { cancelOrder, getOrder } from "@/lib/order-store";
 import { appendOrderEvent } from "@/server/db/repositories/order-events";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -20,6 +20,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Vyplňte důvod storna" }, { status: 400 });
   }
 
+  const existingOrder = await getOrder(id);
+  if (!existingOrder) {
+    return NextResponse.json({ error: "Objednávka nenalezena" }, { status: 404 });
+  }
+
+  if (existingOrder.status !== "new" && existingOrder.status !== "confirmed") {
+    return NextResponse.json({ error: "Stornovat lze jen přijatou nebo potvrzenou objednávku." }, { status: 409 });
+  }
+
   const order = await cancelOrder(id, reason);
 
   if (!order) {
@@ -27,9 +36,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
 
   const customerResult = notifyCustomer
-    ? (await Promise.allSettled([sendCustomerCancelledEmail(order)]))[0]
+    ? await sendCustomerCancelledEmail(order)
     : null;
-  const internalResult = (await Promise.allSettled([sendInternalStatusEmail(order, "cancelled")]))[0];
+  const internalResult = await sendInternalStatusEmail(order, "cancelled");
 
   await appendOrderEvent({
     orderId: order.id,
@@ -46,7 +55,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     payload: {
       template: "cancelled",
       skipped: !notifyCustomer,
-      success: customerResult ? customerResult.status === "fulfilled" : null,
+      success: customerResult ? customerResult.success : null,
+      attempted: customerResult ? customerResult.attempted : null,
+      reason: customerResult?.reason ?? null,
+      providerMessageId: customerResult?.providerMessageId ?? null,
+      error: customerResult?.error ?? null,
     },
   });
   await appendOrderEvent({
@@ -54,7 +67,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     eventType: "emailed_internal_new",
     payload: {
       template: "cancelled",
-      success: internalResult.status === "fulfilled",
+      success: internalResult.success,
+      attempted: internalResult.attempted,
+      reason: internalResult.reason,
+      providerMessageId: internalResult.providerMessageId,
+      error: internalResult.error,
     },
   });
 

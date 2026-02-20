@@ -8,11 +8,26 @@ const IMAGE_WIDTH = 1200;
 const IMAGE_HEIGHT = 630;
 const MAX_TITLE_LENGTH = 80;
 const MAX_SUBTITLE_LENGTH = 140;
+const LOGO_WIDTH = 290;
+const LOGO_HEIGHT = 78;
 
 function trimValue(value: string | null, maxLength: number, fallback: string) {
   const normalized = value?.trim().replace(/\s+/g, " ") ?? "";
   if (!normalized) return fallback;
   return normalized.slice(0, maxLength);
+}
+
+function toBase64(buffer: ArrayBuffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
 }
 
 export async function GET(request: Request) {
@@ -27,6 +42,18 @@ export async function GET(request: Request) {
     MAX_SUBTITLE_LENGTH,
     "Demolice, kontejnery, odvoz suti a recyklace",
   );
+  let logoDataUrl: string | null = null;
+
+  try {
+    const logoUrl = new URL("/brand/logo-original.png", request.url);
+    const logoResponse = await fetch(logoUrl.toString(), { cache: "force-cache" });
+    if (logoResponse.ok) {
+      const logoBuffer = await logoResponse.arrayBuffer();
+      logoDataUrl = `data:image/png;base64,${toBase64(logoBuffer)}`;
+    }
+  } catch {
+    logoDataUrl = null;
+  }
 
   return new ImageResponse(
     (
@@ -60,23 +87,38 @@ export async function GET(request: Request) {
         />
 
         <div style={{ display: "flex", flexDirection: "column", gap: "18px", zIndex: 1 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              borderRadius: "999px",
-              border: "1px solid rgba(242,196,0,0.65)",
-              color: "#f2c400",
-              fontSize: 30,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              padding: "8px 18px",
-              alignSelf: "flex-start",
-            }}
-          >
-            {SITE_META.brandName}
-          </div>
+          {logoDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- ImageResponse renderer does not support next/image.
+            <img
+              src={logoDataUrl}
+              alt={`${SITE_META.brandName} logo`}
+              width={LOGO_WIDTH}
+              height={LOGO_HEIGHT}
+              style={{
+                width: `${LOGO_WIDTH}px`,
+                height: `${LOGO_HEIGHT}px`,
+                objectFit: "contain",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "999px",
+                border: "1px solid rgba(242,196,0,0.65)",
+                color: "#f2c400",
+                fontSize: 30,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                padding: "8px 18px",
+                alignSelf: "flex-start",
+              }}
+            >
+              {SITE_META.brandName}
+            </div>
+          )}
           <div
             style={{
               fontSize: 74,
@@ -117,7 +159,7 @@ export async function GET(request: Request) {
               color: "#f2c400",
             }}
           >
-            demolicierecyklace.cz
+            demolicerecyklace.cz
           </div>
         </div>
       </div>

@@ -67,6 +67,7 @@ type CallbackForm = {
   phone: string;
   name: string;
   note: string;
+  website: string;
 };
 
 type PricingPreviewResponse = {
@@ -302,7 +303,9 @@ const copyOrderStorageKey = "order-wizard-copy-order-v1";
 const copyOrderTtlMs = 30 * 24 * 60 * 60 * 1000;
 const wastePreviewWidth = 320;
 const wastePreviewAspectRatio = 1.7;
-const wastePreviewHeight = Math.round(wastePreviewWidth / wastePreviewAspectRatio);
+const wastePreviewImageHeight = Math.round(wastePreviewWidth / wastePreviewAspectRatio);
+const wastePreviewCaptionHeight = 64;
+const wastePreviewTotalHeight = wastePreviewImageHeight + wastePreviewCaptionHeight;
 
 function buildDefaultData(initialWasteType: WasteTypeId): WizardData {
   return {
@@ -543,11 +546,6 @@ function loadGoogleMapsApi(apiKey: string) {
 }
 
 async function resolveGoogleMapsApiKey() {
-  const directGoogleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
-  if (directGoogleMapsApiKey) {
-    return directGoogleMapsApiKey;
-  }
-
   try {
     const response = await fetch("/api/maps/config", { cache: "no-store" });
     if (!response.ok) return "";
@@ -885,9 +883,29 @@ function clampPreviewPosition(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function shortenWastePreviewLabel(label: string) {
+  const normalized = label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const isYtongMix = normalized.includes("porobeton") && normalized.includes("ytong");
+  const isConcreteBrickMix =
+    normalized.includes("smesi")
+    && normalized.includes("frakce")
+    && normalized.includes("betonu")
+    && normalized.includes("cihel");
+
+  if (isYtongMix && isConcreteBrickMix) {
+    return "Směsi betonu/cihel + Ytong";
+  }
+
+  return label;
+}
+
 function buildWasteHoverPreview(waste: ContainerOrderWasteType, event: ReactMouseEvent<HTMLElement>): WasteHoverPreview {
   const x = clampPreviewPosition(event.clientX + 16, 16, window.innerWidth - wastePreviewWidth - 16);
-  const y = clampPreviewPosition(event.clientY + 16, 16, window.innerHeight - wastePreviewHeight - 16);
+  const y = clampPreviewPosition(event.clientY + 16, 16, window.innerHeight - wastePreviewTotalHeight - 16);
   return { waste, x, y };
 }
 
@@ -905,6 +923,11 @@ export function OrderWizard({
   wasteTypes: ContainerOrderWasteType[];
 }) {
   const availableWasteTypes = wasteTypes.length > 0 ? wasteTypes : FALLBACK_CONTAINER_ORDER_WASTE_TYPES;
+  const wasteTypeColumnSplitIndex = Math.ceil(availableWasteTypes.length / 2);
+  const wasteTypeColumns = [
+    availableWasteTypes.slice(0, wasteTypeColumnSplitIndex),
+    availableWasteTypes.slice(wasteTypeColumnSplitIndex),
+  ].filter((column) => column.length > 0);
   const defaultWasteTypeId = availableWasteTypes[0]?.id ?? "";
   const normalizedInitialPostalCode = initialPostalCode.replace(/\D/g, "").slice(0, 5);
   const normalizedInitialWasteTypeId = initialWasteTypeId.trim().toLowerCase();
@@ -942,6 +965,8 @@ export function OrderWizard({
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricePreview, setPricePreview] = useState<PriceEstimate | null>(null);
   const [wasteHoverPreview, setWasteHoverPreview] = useState<WasteHoverPreview | null>(null);
+  const wasteHoverPreviewBaseLabel = wasteHoverPreview ? wasteHoverPreview.waste.label : "";
+  const wasteHoverPreviewLabel = wasteHoverPreview ? shortenWastePreviewLabel(wasteHoverPreviewBaseLabel) : "";
 
   const [callbackModalOpen, setCallbackModalOpen] = useState(false);
   const [callbackSubmitting, setCallbackSubmitting] = useState(false);
@@ -951,6 +976,7 @@ export function OrderWizard({
     phone: "",
     name: "",
     note: "",
+    website: "",
   });
 
   const [companySuggestions, setCompanySuggestions] = useState<CompanyLookupMatch[]>([]);
@@ -1640,6 +1666,7 @@ export function OrderWizard({
           phone: callbackForm.phone.trim(),
           name: callbackForm.name.trim() || undefined,
           note: callbackForm.note.trim() || undefined,
+          website: callbackForm.website,
           wizardSnapshot: {
             postalCode: data.postalCode,
             city: data.city,
@@ -2520,7 +2547,7 @@ export function OrderWizard({
                 {locationHelperText && <p className="text-xs text-zinc-400">{locationHelperText}</p>}
                 {mapsStatus === "missing-key" ? (
                   <p className="text-xs text-amber-300">
-                    Chybí Google API klíč. Nastavte `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` nebo `GOOGLE_MAPS_API_KEY`.
+                    Chybí Google API klíč. Nastavte `GOOGLE_MAPS_API_KEY`.
                   </p>
                 ) : null}
                 {mapsStatus === "error" ? (
@@ -2665,32 +2692,36 @@ export function OrderWizard({
             <p className="text-sm text-zinc-300">Vyberte typ odpadu, počet kontejnerů a doplňkové služby.</p>
 
             <div id="order-waste-type" className="grid gap-1.5 sm:grid-cols-2 sm:gap-2">
-              {availableWasteTypes.map((waste) => (
-                <button
-                  key={waste.id}
-                  type="button"
-                  onClick={() => update("wasteType", waste.id)}
-                  onMouseEnter={(event) => {
-                    setWasteHoverPreview(buildWasteHoverPreview(waste, event));
-                  }}
-                  onMouseMove={(event) => {
-                    setWasteHoverPreview(buildWasteHoverPreview(waste, event));
-                  }}
-                  onMouseLeave={() => {
-                    setWasteHoverPreview(null);
-                  }}
-                  className={cx(
-                    "rounded-lg border px-3 py-2 text-left sm:rounded-xl sm:p-3",
-                    waste.id === data.wasteType
-                      ? "border-[var(--color-accent)] bg-[var(--color-accent)]/20"
-                      : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold leading-tight sm:text-base">{waste.label}</p>
-                    <p className="shrink-0 text-sm font-semibold text-[var(--color-accent)] sm:text-base">{waste.priceLabel}</p>
-                  </div>
-                </button>
+              {wasteTypeColumns.map((column, columnIndex) => (
+                <div key={`waste-column-${columnIndex}`} className="grid gap-1.5 sm:gap-2">
+                  {column.map((waste) => (
+                    <button
+                      key={waste.id}
+                      type="button"
+                      onClick={() => update("wasteType", waste.id)}
+                      onMouseEnter={(event) => {
+                        setWasteHoverPreview(buildWasteHoverPreview(waste, event));
+                      }}
+                      onMouseMove={(event) => {
+                        setWasteHoverPreview(buildWasteHoverPreview(waste, event));
+                      }}
+                      onMouseLeave={() => {
+                        setWasteHoverPreview(null);
+                      }}
+                      className={cx(
+                        "rounded-lg border px-3 py-2 text-left sm:rounded-xl sm:p-3",
+                        waste.id === data.wasteType
+                          ? "border-[var(--color-accent)] bg-[var(--color-accent)]/20"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold leading-tight sm:text-base">{waste.label}</p>
+                        <p className="shrink-0 text-sm font-semibold text-[var(--color-accent)] sm:text-base">{waste.priceLabel}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
             {renderFieldError("wasteType")}
@@ -2711,7 +2742,9 @@ export function OrderWizard({
                   <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
                 </div>
                 <div className="px-3 py-2">
-                  <p className="text-sm font-semibold text-zinc-100">{wasteHoverPreview.waste.label}</p>
+                  <p className="line-clamp-2 text-sm font-semibold text-zinc-100" title={wasteHoverPreviewBaseLabel}>
+                    {wasteHoverPreviewLabel}
+                  </p>
                   <p className="text-xs text-zinc-300">{wasteHoverPreview.waste.priceLabel}</p>
                 </div>
               </div>
@@ -2881,7 +2914,7 @@ export function OrderWizard({
                 {pricingLoading ? <p className="mt-1 text-zinc-400">Přepočítávám cenu...</p> : null}
                 {pricingError ? <p className="mt-1 text-amber-300">{pricingError}</p> : null}
                 {pricePreview ? (
-                  <p className="mt-1.5 text-zinc-200">
+                  <p className="mt-1.5 text-base text-zinc-200">
                     Pro vybraný termín orientačně{" "}
                     <strong className="font-semibold text-[var(--color-accent)]">{formatPrice(pricePreview.total)}</strong>.
                   </p>
@@ -3189,9 +3222,11 @@ export function OrderWizard({
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" onClick={prev} disabled={step === 0 || submitting} className={ui.buttonSecondary}>
-              Zpět
-            </button>
+            {step > 0 ? (
+              <button type="button" onClick={prev} disabled={submitting} className={ui.buttonSecondary}>
+                Zpět
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => {
@@ -3201,6 +3236,7 @@ export function OrderWizard({
                   ...previous,
                   phone: previous.phone || data.phone,
                   name: previous.name || data.name,
+                  website: "",
                 }));
                 setCallbackModalOpen(true);
               }}
@@ -3290,6 +3326,17 @@ export function OrderWizard({
                   rows={3}
                 />
               </label>
+
+              <input
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={callbackForm.website}
+                onChange={(event) => setCallbackForm((previous) => ({ ...previous, website: event.target.value }))}
+                className="sr-only"
+                aria-hidden="true"
+              />
 
               {callbackError ? <p className="text-sm text-red-300">{callbackError}</p> : null}
 

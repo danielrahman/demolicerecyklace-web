@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const [customerResult, internalResult] = await Promise.allSettled([
+    const [customerResult, internalResult] = await Promise.all([
       sendCustomerReceivedEmail(order),
       sendInternalNewOrderEmail(order),
     ]);
@@ -97,14 +97,22 @@ export async function POST(request: Request) {
       orderId: order.id,
       eventType: "emailed_customer_received",
       payload: {
-        success: customerResult.status === "fulfilled",
+        success: customerResult.success,
+        attempted: customerResult.attempted,
+        reason: customerResult.reason,
+        providerMessageId: customerResult.providerMessageId,
+        error: customerResult.error,
       },
     });
     await appendOrderEvent({
       orderId: order.id,
       eventType: "emailed_internal_new",
       payload: {
-        success: internalResult.status === "fulfilled",
+        success: internalResult.success,
+        attempted: internalResult.attempted,
+        reason: internalResult.reason,
+        providerMessageId: internalResult.providerMessageId,
+        error: internalResult.error,
       },
     });
 

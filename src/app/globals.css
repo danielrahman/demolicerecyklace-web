@@ -90,6 +90,309 @@ a {
   background-color: rgb(39 39 42 / 0.45);
 }
 
+.admin-order-row {
+  transition: background-color 180ms ease;
+}
+
+.admin-order-row:hover {
+  background-color: rgb(39 39 42 / 0.4);
+}
+
+.admin-order-status {
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.admin-order-status--new {
+  border-color: rgb(245 158 11 / 0.58);
+  background-color: rgb(120 53 15 / 0.44);
+  color: #fde68a;
+}
+
+.admin-order-status--confirmed {
+  border-color: rgb(16 185 129 / 0.58);
+  background-color: rgb(6 78 59 / 0.38);
+  color: #a7f3d0;
+}
+
+.admin-order-status--done {
+  border-color: rgb(148 163 184 / 0.62);
+  background-color: rgb(24 24 27 / 0.78);
+  color: #e2e8f0;
+}
+
+.admin-order-status--cancelled {
+  border-color: rgb(248 113 113 / 0.58);
+  background-color: rgb(127 29 29 / 0.42);
+  color: #fecaca;
+}
+
+.admin-order-detail-panel {
+  border-color: rgb(63 63 70 / 0.95);
+  background-color: rgb(9 9 11 / 0.58);
+}
+
+.admin-workflow-pill {
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.admin-workflow-pill--active {
+  border-color: rgb(242 196 0 / 0.62);
+  background-color: rgb(242 196 0 / 0.16);
+  color: #fef3c7;
+}
+
+.admin-workflow-pill--done {
+  border-color: rgb(16 185 129 / 0.52);
+  background-color: rgb(6 78 59 / 0.3);
+  color: #d1fae5;
+}
+
+.admin-workflow-pill--upcoming {
+  border-color: #3f3f46;
+  background-color: rgb(9 9 11 / 0.58);
+  color: #a1a1aa;
+}
+
+.admin-order-location-summary,
+.admin-order-location-edit {
+  border-color: rgb(63 63 70 / 0.8);
+  background: linear-gradient(180deg, rgb(24 24 27 / 0.9) 0%, rgb(9 9 11 / 0.8) 100%);
+}
+
+.admin-order-location-fields {
+  border-color: rgb(63 63 70 / 0.8);
+  background-color: rgb(9 9 11 / 0.8);
+}
+
+.admin-order-map-card {
+  border-color: #3f3f46;
+  background-color: rgb(9 9 11 / 0.58);
+}
+
+.admin-order-map-frame {
+  border-color: #3f3f46;
+  background-color: #09090b;
+}
+
+.admin-order-summary {
+  border-color: rgb(63 63 70 / 0.92);
+}
+
+.admin-operator-panel {
+  border-color: rgb(63 63 70 / 0.92);
+  background-color: rgb(9 9 11 / 0.66);
+}
+
+.admin-operator-card {
+  border-color: rgb(82 82 91 / 0.9);
+  background-color: rgb(24 24 27 / 0.74);
+}
+
+.admin-operator-card--success {
+  border-color: rgb(16 185 129 / 0.45);
+  background-color: rgb(6 78 59 / 0.32);
+}
+
+.admin-operator-card--danger {
+  border-color: rgb(248 113 113 / 0.5);
+  background-color: rgb(127 29 29 / 0.34);
+}
+
+.admin-order-map-link {
+  color: #bfdbfe;
+  text-decoration-color: rgb(191 219 254 / 0.72);
+}
+
+.admin-order-map-link:hover {
+  color: #dbeafe;
+  text-decoration-color: #dbeafe;
+}
+
+.admin-section-edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 9999px;
+  border: 1px solid rgb(82 82 91 / 0.9);
+  padding: 0.35rem 0.65rem 0.35rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  background-color: rgb(24 24 27 / 0.65);
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.admin-section-edit-toggle:hover {
+  border-color: rgb(148 163 184 / 0.85);
+  background-color: rgb(39 39 42 / 0.74);
+  color: #e2e8f0;
+}
+
+.admin-section-edit-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 9999px;
+  border: 1px solid rgb(82 82 91 / 0.9);
+  background-color: rgb(9 9 11 / 0.55);
+}
+
+.admin-order-location-lock {
+  color: #a1a1aa;
+}
+
+.admin-operator-hint {
+  color: #d4d4d8;
+}
+
+.admin-order-edit-card {
+  border-color: rgb(82 82 91 / 0.9);
+  background-color: rgb(24 24 27 / 0.6);
+}
+
+.admin-order-timeline {
+  position: relative;
+  margin: 0;
+  list-style: none;
+  padding: 0;
+}
+
+.admin-order-timeline::before {
+  content: "";
+  position: absolute;
+  left: 0.26rem;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 1px;
+  background: rgb(82 82 91 / 0.65);
+}
+
+.admin-order-timeline-item {
+  position: relative;
+  padding-bottom: 0.6rem;
+  padding-left: 1.35rem;
+}
+
+.admin-order-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.admin-order-timeline-dot {
+  position: absolute;
+  left: 0;
+  top: 0.95rem;
+  height: 0.55rem;
+  width: 0.55rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 3px rgb(11 11 11 / 1);
+}
+
+.admin-order-timeline-card {
+  border-color: rgb(63 63 70 / 0.8);
+  background-color: rgb(9 9 11 / 0.54);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
+}
+
+.admin-order-event-card--neutral {
+  border-color: rgb(82 82 91 / 0.9);
+  background-color: rgb(24 24 27 / 0.72);
+}
+
+.admin-order-event-card--success {
+  border-color: rgb(16 185 129 / 0.45);
+  background-color: rgb(6 78 59 / 0.24);
+}
+
+.admin-order-event-card--warning {
+  border-color: rgb(245 158 11 / 0.48);
+  background-color: rgb(120 53 15 / 0.26);
+}
+
+.admin-order-event-card--danger {
+  border-color: rgb(239 68 68 / 0.45);
+  background-color: rgb(127 29 29 / 0.28);
+}
+
+.admin-order-event-json {
+  border-color: rgb(63 63 70 / 0.9);
+  background-color: rgb(9 9 11 / 0.72);
+  color: #e2e8f0;
+}
+
+.admin-inline-disclosure-summary {
+  list-style: none;
+}
+
+.admin-inline-disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-inline-disclosure-chevron {
+  transition: transform 160ms ease;
+}
+
+.admin-inline-disclosure[open] .admin-inline-disclosure-chevron {
+  transform: rotate(180deg);
+}
+
+.admin-inline-disclosure[open] .admin-inline-disclosure-summary {
+  color: #e2e8f0;
+}
+
+.admin-operator-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.admin-operator-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-operator-disclosure-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.admin-operator-disclosure-edit-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-operator-disclosure-pencil {
+  display: inline-flex;
+  height: 1.65rem;
+  width: 1.65rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgb(82 82 91 / 0.9);
+  background-color: rgb(24 24 27 / 0.7);
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.admin-operator-disclosure-chevron {
+  transition: transform 160ms ease;
+}
+
+.admin-operator-disclosure[open] .admin-operator-disclosure-chevron {
+  transform: rotate(180deg);
+}
+
+.admin-operator-disclosure[open] .admin-operator-disclosure-pencil {
+  border-color: rgb(242 196 0 / 0.5);
+  background-color: rgb(242 196 0 / 0.14);
+  color: #fde68a;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
@@ -279,5 +582,207 @@ a {
   .pricing-preview-chip:hover {
     border-color: #b7c4d4;
     background-color: rgb(242 246 251 / 0.96);
+  }
+
+  .admin-order-row:hover {
+    background-color: #f1f5f9;
+  }
+
+  .admin-order-status--new {
+    border-color: rgb(245 158 11 / 0.45);
+    background-color: #fffbeb;
+    color: #92400e;
+  }
+
+  .admin-order-status--confirmed {
+    border-color: rgb(16 185 129 / 0.45);
+    background-color: #ecfdf3;
+    color: #166534;
+  }
+
+  .admin-order-status--done {
+    border-color: rgb(148 163 184 / 0.56);
+    background-color: #f8fafc;
+    color: #334155;
+  }
+
+  .admin-order-status--cancelled {
+    border-color: rgb(248 113 113 / 0.46);
+    background-color: #fef2f2;
+    color: #991b1b;
+  }
+
+  .admin-order-detail-panel {
+    border-color: #d5deea;
+    background-color: #f8fafc;
+  }
+
+  .admin-workflow-pill--active {
+    border-color: rgb(245 158 11 / 0.48);
+    background-color: #fff7dd;
+    color: #92400e;
+  }
+
+  .admin-workflow-pill--done {
+    border-color: #86efac;
+    background-color: #ecfdf3;
+    color: #166534;
+  }
+
+  .admin-workflow-pill--upcoming {
+    border-color: #d2dcea;
+    background-color: #f8fafc;
+    color: #64748b;
+  }
+
+  .admin-order-location-summary,
+  .admin-order-location-edit {
+    border-color: #d2dcea;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef4fb 100%);
+  }
+
+  .admin-order-location-fields {
+    border-color: #d2dcea;
+    background-color: #f8fafc;
+  }
+
+  .admin-order-map-card {
+    border-color: #d2dcea;
+    background-color: #f8fafc;
+  }
+
+  .admin-order-map-frame {
+    border-color: #d2dcea;
+    background-color: #eef2f7;
+  }
+
+  .admin-order-summary {
+    border-color: #d2dcea;
+    background-color: #ffffff;
+  }
+
+  .admin-operator-panel {
+    border-color: #d2dcea;
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+  }
+
+  .admin-operator-card {
+    border-color: #d5deea;
+    background-color: #f8fafc;
+  }
+
+  .admin-operator-card--success {
+    border-color: #a7f3d0;
+    background-color: #ecfdf3;
+  }
+
+  .admin-operator-card--danger {
+    border-color: #fecaca;
+    background-color: #fef2f2;
+  }
+
+  .admin-order-map-link {
+    color: #2563eb;
+    text-decoration-color: #93c5fd;
+  }
+
+  .admin-order-map-link:hover {
+    color: #1d4ed8;
+    text-decoration-color: #1d4ed8;
+  }
+
+  .admin-section-edit-toggle {
+    border-color: #d2dcea;
+    background-color: #f8fafc;
+    color: #475569;
+  }
+
+  .admin-section-edit-toggle:hover {
+    border-color: #94a3b8;
+    background-color: #eef2f7;
+    color: #1e293b;
+  }
+
+  .admin-section-edit-toggle-icon {
+    border-color: #d2dcea;
+    background-color: #eef2f7;
+  }
+
+  .admin-order-location-lock {
+    color: #64748b;
+  }
+
+  .admin-operator-hint {
+    color: #475569;
+  }
+
+  .admin-order-edit-card {
+    border-color: #d5deea;
+    background-color: #f8fafc;
+  }
+
+  .admin-order-timeline::before {
+    background: #d5deea;
+  }
+
+  .admin-order-timeline-dot {
+    box-shadow: 0 0 0 3px #fff;
+  }
+
+  .admin-order-timeline-card {
+    border-color: #d2dcea;
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+  }
+
+  .admin-order-event-card--neutral {
+    border-color: #d2dcea;
+    background-color: #f8fafc;
+  }
+
+  .admin-order-event-card--success {
+    border-color: #99e8ca;
+    background-color: #ecfdf3;
+  }
+
+  .admin-order-event-card--warning {
+    border-color: #f8cd82;
+    background-color: #fff7e8;
+  }
+
+  .admin-order-event-card--danger {
+    border-color: #f8c3c3;
+    background-color: #fef2f2;
+  }
+
+  .admin-order-event-json {
+    border-color: #d5deea;
+    background-color: #f8fafc;
+    color: #334155;
+  }
+
+  .admin-inline-disclosure[open] .admin-inline-disclosure-summary {
+    color: #1d4ed8;
+  }
+
+  .admin-operator-disclosure-icons {
+    color: #64748b;
+  }
+
+  .admin-operator-disclosure-edit-label {
+    color: #475569;
+  }
+
+  .admin-operator-disclosure-pencil {
+    border-color: #d2dcea;
+    background-color: #eef2f7;
+    color: #334155;
+  }
+
+  .admin-operator-disclosure[open] .admin-operator-disclosure-pencil {
+    border-color: #93c5fd;
+    background-color: #dbeafe;
+    color: #1d4ed8;
   }
 }

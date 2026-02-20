@@ -36,6 +36,12 @@ npm run dev
 
 Web poběží na `http://localhost:3000`.
 
+Pro mapové našeptávání adres nastavte také:
+
+```bash
+GOOGLE_MAPS_API_KEY=
+```
+
 ## Poznámky k MVP
 - Objednávky a admin akce používají PostgreSQL přes Drizzle.
 - Pro lokální test je nutný běžící PostgreSQL server na `DATABASE_URL`.
@@ -104,3 +110,17 @@ V Sanity projektu vytvořte webhook:
   - stejná hodnota jako `SANITY_REVALIDATE_SECRET`
 
 Poznámka: objednávky kontejnerů zůstávají mimo Sanity (v API/DB vrstvě).
+
+## Kontroly před merge
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Nebo jedním příkazem:
+
+```bash
+npm run ci:check
+```

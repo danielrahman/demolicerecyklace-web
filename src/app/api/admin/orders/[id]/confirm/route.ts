@@ -17,15 +17,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const { id } = await context.params;
 
-  const formData = await request.formData();
-  const date = String(formData.get("date") ?? "");
-  const window = String(formData.get("window") ?? "") as TimeWindow;
-  const notifyCustomer = formData.get("notifyCustomer") === "on";
-
-  if (!date || !validWindows.has(window)) {
-    return NextResponse.json({ error: "Neplatný termín" }, { status: 400 });
-  }
-
   const existingOrder = await getOrder(id);
   if (!existingOrder) {
     return NextResponse.json({ error: "Objednávka nenalezena" }, { status: 404 });
@@ -39,6 +30,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Potvrdit lze jen novou objednávku." }, { status: 409 });
   }
 
+  const formData = await request.formData();
+  const dateRaw = String(formData.get("date") ?? "").trim();
+  const windowRaw = String(formData.get("window") ?? "").trim();
+  const notifyCustomer = formData.get("notifyCustomer") === "on";
+
+  const date = dateRaw || existingOrder.deliveryDateRequested;
+  const window = (windowRaw || existingOrder.timeWindowRequested) as TimeWindow;
+
+  if (!date || !validWindows.has(window)) {
+    return NextResponse.json({ error: "Neplatný termín" }, { status: 400 });
+  }
+
   const order = await confirmOrder(id, date, window);
 
   if (!order) {
@@ -46,9 +49,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
 
   const customerResult = notifyCustomer
-    ? (await Promise.allSettled([sendCustomerConfirmedEmail(order, "confirmed")]))[0]
+    ? await sendCustomerConfirmedEmail(order, "confirmed")
     : null;
-  const internalResult = (await Promise.allSettled([sendInternalStatusEmail(order, "confirmed")]))[0];
+  const internalResult = await sendInternalStatusEmail(order, "confirmed");
 
   await appendOrderEvent({
     orderId: order.id,
@@ -66,7 +69,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     payload: {
       template: "confirmed",
       skipped: !notifyCustomer,
-      success: customerResult ? customerResult.status === "fulfilled" : null,
+      success: customerResult ? customerResult.success : null,
+      attempted: customerResult ? customerResult.attempted : null,
+      reason: customerResult?.reason ?? null,
+      providerMessageId: customerResult?.providerMessageId ?? null,
+      error: customerResult?.error ?? null,
     },
   });
   await appendOrderEvent({
@@ -74,7 +81,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     eventType: "emailed_internal_new",
     payload: {
       template: "confirmed",
-      success: internalResult.status === "fulfilled",
+      success: internalResult.success,
+      attempted: internalResult.attempted,
+      reason: internalResult.reason,
+      providerMessageId: internalResult.providerMessageId,
+      error: internalResult.error,
     },
   });
 

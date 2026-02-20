@@ -1,8 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getMarketingPageContent } from "@/lib/cms/getters";
-import { MATERIAL_SALES_PRICING } from "@/lib/full-pricing";
+import { PricingHoverTable } from "@/components/pricing-hover-table";
+import { PricingMarkerInfo } from "@/components/pricing-marker-info";
+import { getMarketingPageContent, getPricingPageContent } from "@/lib/cms/getters";
+import type { CmsPricingRow } from "@/lib/cms/mappers";
+import {
+  MATERIAL_SALES_MARKER_INFO_TEXT,
+  MATERIAL_SALES_NOTES,
+  parsePricingItemLabel,
+  withMaterialSalesMarkers,
+} from "@/lib/material-sales-pricing";
 import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
@@ -31,8 +39,8 @@ const categories: MaterialCategory[] = [
   },
 ];
 
-function rowsForCategory(category: MaterialCategory) {
-  return MATERIAL_SALES_PRICING.filter((row) =>
+function rowsForCategory(category: MaterialCategory, rows: CmsPricingRow[]) {
+  return rows.filter((row) =>
     category.keywords.some((keyword) => row.item.toLowerCase().includes(keyword.toLowerCase())),
   );
 }
@@ -52,7 +60,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ProdejMaterialuPage() {
-  const marketing = await getMarketingPageContent("prodej-materialu");
+  const [marketing, pricing] = await Promise.all([
+    getMarketingPageContent("prodej-materialu"),
+    getPricingPageContent(),
+  ]);
+  const materialRows = withMaterialSalesMarkers(pricing.materialSalesPricing);
 
   return (
     <div className="space-y-10 pb-8">
@@ -74,48 +86,50 @@ export default async function ProdejMaterialuPage() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         {categories.map((category) => {
-          const rows = rowsForCategory(category).slice(0, 5);
+          const rows = rowsForCategory(category, materialRows).slice(0, 5);
 
           return (
             <article key={category.title} className={cx(ui.card, "p-5")}>
               <h2 className="text-2xl font-bold">{category.title}</h2>
               <p className="mt-2 text-sm text-zinc-400">{category.description}</p>
               <ul className="mt-4 space-y-2 text-sm text-zinc-300">
-                {rows.map((row) => (
-                  <li key={`${category.title}-${row.item}`} className="flex items-start justify-between gap-3">
-                    <span>{row.item}</span>
-                    <span className="shrink-0 font-semibold text-[var(--color-accent)]">{row.price}</span>
-                  </li>
-                ))}
+                {rows.map((row) => {
+                  const parsedItem = parsePricingItemLabel(row.item);
+
+                  return (
+                    <li key={`${category.title}-${row.item}`} className="flex items-start justify-between gap-3">
+                      <span className="inline-flex items-start">
+                        {parsedItem.label}
+                        {parsedItem.hasMarker ? (
+                          <PricingMarkerInfo
+                            text={MATERIAL_SALES_MARKER_INFO_TEXT}
+                            align="right"
+                            className="ml-1 mt-0.5 shrink-0"
+                          />
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 font-semibold text-[var(--color-accent)]">{row.price}</span>
+                    </li>
+                  );
+                })}
               </ul>
             </article>
           );
         })}
       </section>
 
-      <section className={cx(ui.card, "overflow-hidden") }>
-        <div className="border-b border-zinc-800 px-5 py-4">
-          <h2 className="text-2xl font-bold">Přehled položek</h2>
-          <p className="text-sm text-zinc-400">Výběr z kompletního ceníku. Pro větší odběry připravíme individuální nabídku.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-zinc-800 text-zinc-200">
-              <tr>
-                <th className="px-4 py-3">Materiál</th>
-                <th className="px-4 py-3">Cena</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MATERIAL_SALES_PRICING.map((row) => (
-                <tr key={`${row.item}-${row.price}`} className="border-t border-zinc-800">
-                  <td className="px-4 py-3">{row.item}</td>
-                  <td className="px-4 py-3 font-semibold">{row.price}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <section>
+        <PricingHoverTable
+          title="Přehled položek"
+          subtitle="Výběr z kompletního ceníku. Pro větší odběry připravíme individuální nabídku."
+          rows={materialRows}
+          markerInfoText={MATERIAL_SALES_MARKER_INFO_TEXT}
+        />
+        <ul className="mt-3 space-y-1 text-xs text-zinc-400">
+          {MATERIAL_SALES_NOTES.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
       </section>
 
       <section className={cx(ui.cardSoft, "p-6")}>

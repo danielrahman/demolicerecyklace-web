@@ -168,7 +168,7 @@ export default async function DemolicePage() {
 
       <section className="space-y-4 border-t border-zinc-800 pt-8">
         <h2 className="text-3xl font-bold">Související služby a ceník</h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Link href="/cenik#pronajem-stroju" className={ui.buttonSecondary}>
             Ceník techniky
           </Link>
@@ -177,9 +177,6 @@ export default async function DemolicePage() {
           </Link>
           <Link href="/kontejnery" className={ui.buttonSecondary}>
             Kontejnery na odpad
-          </Link>
-          <Link href="/lokality" className={ui.buttonSecondary}>
-            Lokality obsluhy
           </Link>
         </div>
       </section>
