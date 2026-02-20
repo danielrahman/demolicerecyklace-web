@@ -36,11 +36,6 @@ const containerVisualRules = [
 
 const containerCategoryOrder = ["Beton", "Cihly a keramika", "Asfalt", "Zemina a kámen", "Stavební odpad", "Ostatní materiály"] as const;
 
-type ContainerCategory = {
-  label: string;
-  rows: CmsPricingRow[];
-};
-
 function containerVisualFor(item: string) {
   const matchedRule = containerVisualRules.find((rule) => rule.pattern.test(item));
   if (matchedRule) return matchedRule;
@@ -56,35 +51,30 @@ function normalizeCategoryLabel(label: string) {
   return label.trim().toLowerCase();
 }
 
-function buildContainerGroups(rows: CmsPricingRow[]) {
-  const grouped = new Map<string, ContainerCategory>();
+function containerCategoryIndex(label: string) {
+  const key = normalizeCategoryLabel(label);
+  const index = containerCategoryOrder.findIndex((ordered) => normalizeCategoryLabel(ordered) === key);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
 
-  rows.forEach((row) => {
-    const visual = containerVisualFor(row.item);
-    const label = row.tag?.trim() || visual.tag;
-    const key = normalizeCategoryLabel(label);
-    const existing = grouped.get(key);
+function buildContainerCards(rows: CmsPricingRow[]) {
+  return rows
+    .map((row) => {
+      const visual = containerVisualFor(row.item);
+      const category = row.tag?.trim() || visual.tag;
 
-    if (existing) {
-      existing.rows.push(row);
-      return;
-    }
-
-    grouped.set(key, {
-      label,
-      rows: [row],
+      return {
+        ...row,
+        category,
+        imageUrl: row.imageUrl || visual.image,
+        imageAlt: row.imageAlt || visual.alt,
+      };
+    })
+    .sort((a, b) => {
+      const categoryDiff = containerCategoryIndex(a.category) - containerCategoryIndex(b.category);
+      if (categoryDiff !== 0) return categoryDiff;
+      return a.item.localeCompare(b.item, "cs-CZ");
     });
-  });
-
-  const ordered = containerCategoryOrder
-    .map((label) => grouped.get(label.toLowerCase()))
-    .filter((group): group is ContainerCategory => Boolean(group));
-
-  const rest = Array.from(grouped.values()).filter(
-    (group) => !containerCategoryOrder.map((label) => label.toLowerCase()).includes(normalizeCategoryLabel(group.label)),
-  );
-
-  return [...ordered, ...rest];
 }
 
 function PricingTable(props: { title: string; rows: CmsPricingRow[]; subtitle?: string }) {
@@ -154,47 +144,34 @@ export default async function KompletníCeníkPage() {
           </div>
         </div>
 
-        <div className="columns-1 gap-4 lg:columns-2">
-          {buildContainerGroups(content.containerPricing).map((group) => (
-            <section
-              key={group.label}
-              className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/45"
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {buildContainerCards(content.containerPricing).map((item) => (
+            <article
+              key={`${item.category}-${item.item}-${item.code}`}
+              className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/70 transition hover:border-zinc-700"
             >
-              <div className="border-b border-zinc-800 px-4 py-3">
-                <h3 className="text-base font-semibold">{group.label}</h3>
-                <p className="mt-1 text-xs text-zinc-400">{group.rows.length} položek</p>
+              <div className="relative h-48 overflow-hidden">
+                <Image
+                  src={item.imageUrl}
+                  alt={item.imageAlt}
+                  width={1280}
+                  height={800}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                <p className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#F2C400]">
+                  {item.category}
+                </p>
               </div>
-
-              <div className="grid gap-3 p-3 sm:grid-cols-2">
-                {group.rows.map((item) => {
-                  const rowVisual = containerVisualFor(item.item);
-
-                  return (
-                    <article
-                      key={`${group.label}-${item.item}-${item.code}`}
-                      className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-950/30"
-                    >
-                      <div className="relative h-32 w-full">
-                        <Image
-                          src={item.imageUrl || rowVisual.image}
-                          alt={item.imageAlt || rowVisual.alt}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-
-                      <div className="min-w-0 space-y-1 px-3 py-2.5">
-                        <p className="text-sm font-semibold leading-snug">{item.item}</p>
-                        <p className="text-xs text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
-                        <p className="pt-0.5 text-base font-semibold text-[var(--color-accent)]">{item.price}</p>
-                      </div>
-                    </article>
-                  );
-                })}
+              <div className="space-y-2 p-4">
+                <h3 className="text-xl font-bold leading-snug">{item.item}</h3>
+                <p className="text-sm text-zinc-300">Kód odpadu: {item.code ?? "-"}</p>
+                <p className="font-semibold text-[#F2C400]">{item.price}</p>
               </div>
-            </section>
+            </article>
           ))}
         </div>
+        <p className="text-xs text-zinc-400">{content.containerLimitNote}</p>
       </section>
 
       <PricingTable
