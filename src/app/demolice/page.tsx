@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { FaqSection } from "@/components/faq-section";
 import { MachineRentalGrid } from "@/components/machine-rental-grid";
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { DEMOLITION_FAQ } from "@/lib/faq-content";
 import { MACHINE_RENTAL_PRICING } from "@/lib/full-pricing";
 import { CONTACT, SERVICE_AREA } from "@/lib/site-config";
@@ -48,21 +49,23 @@ const requirements = [
   "V husté zástavbě řešíme individuálně hlukový režim a časové okno prací.",
 ] as const;
 
-export default function DemolicePage() {
+export default async function DemolicePage() {
+  const marketing = await getMarketingPageContent("demolice");
+
   return (
     <div className="space-y-10 pb-8">
       <section className="space-y-6">
         <header className="space-y-3">
           <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-accent)]">
-            Demolice Praha + Středočeský kraj
+            {marketing?.eyebrow || "Demolice Praha + Středočeský kraj"}
           </p>
-          <h1 className="text-4xl font-bold">Demolice s jasným postupem a navazující recyklací</h1>
+          <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Demolice s jasným postupem a navazující recyklací"}</h1>
         </header>
         <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <article className="space-y-4">
             <p className="max-w-3xl text-zinc-300">
-              Zajišťujeme demoliční práce od menších objektů po technicky náročnější realizace. Zakázku vedeme od
-              prvního zadání přes obhlídku až po odvoz a zpracování materiálu.
+              {marketing?.heroDescription ||
+                "Zajišťujeme demoliční práce od menších objektů po technicky náročnější realizace. Zakázku vedeme od prvního zadání přes obhlídku až po odvoz a zpracování materiálu."}
             </p>
             <p className="max-w-3xl text-zinc-300">
               Primárně obsluhujeme {SERVICE_AREA.regionsLabel}. Vzdálenější lokality řešíme individuálně podle typu

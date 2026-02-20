@@ -1,21 +1,29 @@
 import type { Metadata } from "next";
 
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { CONTACT, SERVICE_AREA, SITE_META } from "@/lib/site-config";
 
-export const metadata: Metadata = {
-  title: "Obchodní podmínky | Demolice Recyklace",
-  description:
-    "Obchodní podmínky služby pronájmu a odvozu kontejneru 3m³ společnosti MINUTY a.s. pro Prahu a Středočeský kraj.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("obchodni-podminky");
 
-export default function ObchodniPodminkyPage() {
+  return {
+    title: marketing?.seoTitle || "Obchodní podmínky | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Obchodní podmínky služby pronájmu a odvozu kontejneru 3m³ společnosti MINUTY a.s. pro Prahu a Středočeský kraj.",
+  };
+}
+
+export default async function ObchodniPodminkyPage() {
+  const marketing = await getMarketingPageContent("obchodni-podminky");
+
   return (
     <div className="space-y-8 pb-8">
       <section className="space-y-4">
-        <h1 className="text-4xl font-bold">Obchodní podmínky</h1>
+        <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Obchodní podmínky"}</h1>
         <p className="max-w-4xl text-zinc-300">
-          Tyto obchodní podmínky upravují pronájem a odvoz kontejneru 3m³ poskytovaný společností {SITE_META.companyName}{" "}
-          pro oblast {SERVICE_AREA.regionsLabel}. Podmínky platí pro spotřebitele i podnikatele.
+          {marketing?.heroDescription ||
+            `Tyto obchodní podmínky upravují pronájem a odvoz kontejneru 3m³ poskytovaný společností ${SITE_META.companyName} pro oblast ${SERVICE_AREA.regionsLabel}. Podmínky platí pro spotřebitele i podnikatele.`}
         </p>
       </section>
 

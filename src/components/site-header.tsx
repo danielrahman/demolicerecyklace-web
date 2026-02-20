@@ -5,10 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { HEADER_LINKS } from "@/lib/site-config";
+import type { SiteSettingsContent } from "@/lib/cms/mappers";
 import { cx, ui } from "@/lib/ui";
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  settings: Pick<SiteSettingsContent, "headerLinks">;
+};
+
+export function SiteHeader({ settings }: SiteHeaderProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const isCheckoutRoute = pathname?.startsWith("/kontejnery/objednat");
@@ -51,7 +55,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <nav className="hidden items-center gap-1 lg:flex">
-            {HEADER_LINKS.map((link) => (
+            {settings.headerLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -85,7 +89,7 @@ export function SiteHeader() {
       {menuOpen ? (
         <div id="mobile-nav" className="border-t border-zinc-800 bg-zinc-950 lg:hidden">
           <div className="mx-auto grid max-w-6xl gap-1 px-4 py-3 sm:px-6">
-            {HEADER_LINKS.map((link) => (
+            {settings.headerLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

@@ -18,7 +18,14 @@ import {
   type MachineRentalRow,
   type PricingRow,
 } from "@/lib/full-pricing";
-import { SERVICE_AREA } from "@/lib/site-config";
+import {
+  CONTACT,
+  FOOTER_INFO_LINKS,
+  FOOTER_SERVICE_LINKS,
+  HEADER_LINKS,
+  SERVICE_AREA,
+  SITE_META,
+} from "@/lib/site-config";
 
 export type CmsHomePage = {
   heroEyebrow?: string | null;
@@ -178,6 +185,100 @@ export type FaqCategoryContent = {
 
 export type FaqContentMap = Record<FaqCategoryKey, FaqCategoryContent>;
 
+export type CmsNavLink = {
+  label?: string | null;
+  href?: string | null;
+};
+
+export type CmsContactHour = {
+  label?: string | null;
+  value?: string | null;
+};
+
+export type CmsSiteSettings = {
+  brandName?: string | null;
+  companyName?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  regionsLabel?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  operatorAddressLine?: string | null;
+  operationAddressLine?: string | null;
+  icz?: string | null;
+  mapUrl?: string | null;
+  hours?: Array<CmsContactHour | null> | null;
+  headerLinks?: Array<CmsNavLink | null> | null;
+  footerServiceLinks?: Array<CmsNavLink | null> | null;
+  footerInfoLinks?: Array<CmsNavLink | null> | null;
+};
+
+export type SiteSettingsContent = {
+  brandName: string;
+  companyName: string;
+  metaTitle: string;
+  metaDescription: string;
+  regionsLabel: string;
+  phone: string;
+  phoneHref: string;
+  email: string;
+  emailHref: string;
+  operatorAddressLine: string;
+  operationAddressLine: string;
+  icz: string;
+  mapUrl: string;
+  hours: Array<{
+    label: string;
+    value: string;
+  }>;
+  headerLinks: Array<{
+    label: string;
+    href: string;
+  }>;
+  footerServiceLinks: Array<{
+    label: string;
+    href: string;
+  }>;
+  footerInfoLinks: Array<{
+    label: string;
+    href: string;
+  }>;
+};
+
+export type CmsMarketingSection = {
+  heading?: string | null;
+  body?: string | null;
+  items?: Array<string | null> | null;
+};
+
+export type CmsMarketingPage = {
+  title?: string | null;
+  slug?: string | null;
+  eyebrow?: string | null;
+  heroTitle?: string | null;
+  heroDescription?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  sections?: Array<CmsMarketingSection | null> | null;
+};
+
+export type MarketingSectionContent = {
+  heading: string;
+  body: string;
+  items: string[];
+};
+
+export type MarketingPageContent = {
+  title: string;
+  slug: string;
+  eyebrow: string;
+  heroTitle: string;
+  heroDescription: string;
+  seoTitle: string;
+  seoDescription: string;
+  sections: MarketingSectionContent[];
+};
+
 export const fallbackHomePageContent: HomePageContent = {
   heroEyebrow: `Demolice Recyklace | ${SERVICE_AREA.regionsLabel}`,
   heroTitle: "Kontejnery, demolice i recyklace na jednom místě.",
@@ -305,6 +406,213 @@ export const fallbackFaqContent: FaqContentMap = {
     items: RECYCLING_FAQ,
   },
 };
+
+export const fallbackSiteSettingsContent: SiteSettingsContent = {
+  brandName: SITE_META.brandName,
+  companyName: SITE_META.companyName,
+  metaTitle: "Demolice Recyklace - Kontejnery 3m³",
+  metaDescription: "Demolice, recyklace a online objednávka kontejneru 3m³ pro Prahu a Středočeský kraj.",
+  regionsLabel: SERVICE_AREA.regionsLabel,
+  phone: CONTACT.phone,
+  phoneHref: CONTACT.phoneHref,
+  email: CONTACT.email,
+  emailHref: CONTACT.emailHref,
+  operatorAddressLine: CONTACT.operatorAddressLine,
+  operationAddressLine: CONTACT.operationAddressLine,
+  icz: CONTACT.icz,
+  mapUrl: CONTACT.mapUrl,
+  hours: CONTACT.hours.map((hour) => ({ ...hour })),
+  headerLinks: HEADER_LINKS.map((link) => ({ ...link })),
+  footerServiceLinks: FOOTER_SERVICE_LINKS.map((link) => ({ ...link })),
+  footerInfoLinks: FOOTER_INFO_LINKS.map((link) => ({ ...link })),
+};
+
+const defaultMarketingFallback: MarketingPageContent = {
+  title: "Marketing stránka",
+  slug: "",
+  eyebrow: "",
+  heroTitle: "",
+  heroDescription: "",
+  seoTitle: "",
+  seoDescription: "",
+  sections: [],
+};
+
+export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
+  demolice: {
+    ...defaultMarketingFallback,
+    title: "Demolice",
+    slug: "demolice",
+    heroTitle: "Demolice s jasným postupem a navazující recyklací",
+    heroDescription:
+      "Zajišťujeme demoliční práce od menších objektů po technicky náročnější realizace. Zakázku vedeme od prvního zadání přes obhlídku až po odvoz a zpracování materiálu.",
+    seoTitle: "Demolice | Demolice Recyklace",
+    seoDescription: "Demolice objektů a navazující recyklace materiálu pro Prahu a Středočeský kraj.",
+  },
+  recyklace: {
+    ...defaultMarketingFallback,
+    title: "Recyklace",
+    slug: "recyklace",
+    heroTitle: "Recyklace stavebních materiálů",
+    heroDescription:
+      "V recyklačním středisku řešíme příjem, třídění a další zpracování inertních materiálů. Před příjezdem doporučujeme ověřit složení materiálu.",
+    seoTitle: "Recyklace | Demolice Recyklace",
+    seoDescription: "Příjem, třídění a zpracování stavebních materiálů v recyklačním středisku.",
+  },
+  "prodej-materialu": {
+    ...defaultMarketingFallback,
+    title: "Prodej materiálu",
+    slug: "prodej-materialu",
+    heroTitle: "Prodej materiálu",
+    heroDescription: "Dodáváme písky, kamenivo i recykláty pro stavby a terénní úpravy.",
+    seoTitle: "Prodej materiálu | Demolice Recyklace",
+    seoDescription: "Přehled stavebních materiálů, recyklátů a cen pro dodání i odběr.",
+  },
+  technika: {
+    ...defaultMarketingFallback,
+    title: "Technika",
+    slug: "technika",
+    heroTitle: "Technika",
+    heroDescription: "Přehled techniky pro demolice, recyklaci i zemní práce.",
+    seoTitle: "Technika | Demolice Recyklace",
+    seoDescription: "Strojní technika pro demolice, recyklaci a návazné práce.",
+  },
+  realizace: {
+    ...defaultMarketingFallback,
+    title: "Realizace",
+    slug: "realizace",
+    heroTitle: "Realizace",
+    heroDescription: "Výběr referenčních zakázek z oblasti demolice, recyklace a kontejnerové dopravy.",
+    seoTitle: "Realizace | Demolice Recyklace",
+    seoDescription: "Ukázky realizovaných zakázek v oblasti demolice, recyklace a kontejnerů.",
+  },
+  "o-nas": {
+    ...defaultMarketingFallback,
+    title: "O nás",
+    slug: "o-nas",
+    heroTitle: "O nás",
+    heroDescription: "Prakticky zaměřený servis pro demolice, recyklaci, kontejnerovou dopravu a prodej materiálu.",
+    seoTitle: "O nás | Demolice Recyklace",
+    seoDescription: "Informace o společnosti, službách a způsobu spolupráce.",
+  },
+  kontakt: {
+    ...defaultMarketingFallback,
+    title: "Kontakt",
+    slug: "kontakt",
+    heroTitle: "Kontakt",
+    heroDescription:
+      "Nejrychlejší cesta je dispečink. Pomůžeme s objednávkou kontejneru, poptávkou demolice i recyklací.",
+    seoTitle: "Kontakt | Demolice Recyklace",
+    seoDescription: "Kontaktní údaje, provozní doba a dostupnost služeb.",
+  },
+  gdpr: {
+    ...defaultMarketingFallback,
+    title: "GDPR",
+    slug: "gdpr",
+    heroTitle: "Zásady zpracování osobních údajů",
+    heroDescription: "Informace o zpracování osobních údajů při objednávce služeb.",
+    seoTitle: "Zásady zpracování osobních údajů | Demolice Recyklace",
+    seoDescription: "Pravidla zpracování osobních údajů pro služby kontejnerů, demolice a recyklace.",
+  },
+  "obchodni-podminky": {
+    ...defaultMarketingFallback,
+    title: "Obchodní podmínky",
+    slug: "obchodni-podminky",
+    heroTitle: "Obchodní podmínky",
+    heroDescription: "Obchodní podmínky služby pronájmu a odvozu kontejneru 3m³.",
+    seoTitle: "Obchodní podmínky | Demolice Recyklace",
+    seoDescription: "Podmínky poskytování služeb společnosti MINUTY a.s.",
+  },
+  cookies: {
+    ...defaultMarketingFallback,
+    title: "Cookies",
+    slug: "cookies",
+    heroTitle: "Zásady používání cookies",
+    heroDescription: "Přehled používání cookies, analytiky a správy souhlasu.",
+    seoTitle: "Zásady používání cookies | Demolice Recyklace",
+    seoDescription: "Informace o používání cookies a analytických nástrojů na webu.",
+  },
+};
+
+function normalizeLinks(
+  value: Array<CmsNavLink | null> | null | undefined,
+  fallback: SiteSettingsContent["headerLinks"],
+) {
+  if (!value?.length) {
+    return fallback;
+  }
+
+  const next = value
+    .map((item) => {
+      const label = item?.label?.trim();
+      const href = item?.href?.trim();
+
+      if (!label || !href) {
+        return null;
+      }
+
+      return { label, href };
+    })
+    .filter((item): item is SiteSettingsContent["headerLinks"][number] => Boolean(item));
+
+  return next.length ? next : fallback;
+}
+
+function normalizeHours(
+  value: Array<CmsContactHour | null> | null | undefined,
+  fallback: SiteSettingsContent["hours"],
+) {
+  if (!value?.length) {
+    return fallback;
+  }
+
+  const next = value
+    .map((item) => {
+      const label = item?.label?.trim();
+      const hourValue = item?.value?.trim();
+
+      if (!label || !hourValue) {
+        return null;
+      }
+
+      return { label, value: hourValue };
+    })
+    .filter((item): item is SiteSettingsContent["hours"][number] => Boolean(item));
+
+  return next.length ? next : fallback;
+}
+
+function toPhoneHref(phone: string) {
+  const normalized = phone.replace(/\s+/g, "");
+  return normalized.startsWith("tel:") ? normalized : `tel:${normalized}`;
+}
+
+function toEmailHref(email: string) {
+  const normalized = email.trim();
+  return normalized.startsWith("mailto:") ? normalized : `mailto:${normalized}`;
+}
+
+function normalizeMarketingSections(value: Array<CmsMarketingSection | null> | null | undefined) {
+  if (!value?.length) {
+    return [];
+  }
+
+  return value
+    .map((section) => {
+      const heading = section?.heading?.trim();
+
+      if (!heading) {
+        return null;
+      }
+
+      return {
+        heading,
+        body: section?.body?.trim() ?? "",
+        items: normalizeStringList(section?.items, []),
+      };
+    })
+    .filter((section): section is MarketingSectionContent => Boolean(section));
+}
 
 function normalizeStringList(value: Array<string | null> | null | undefined, fallback: string[]) {
   if (!value?.length) {
@@ -532,4 +840,66 @@ export function mapFaqContent(categories: CmsFaqCategory[] | null): FaqContentMa
   }
 
   return mapped;
+}
+
+export function mapSiteSettingsContent(data: CmsSiteSettings | null): SiteSettingsContent {
+  if (!data) {
+    return fallbackSiteSettingsContent;
+  }
+
+  const brandName = data.brandName?.trim() || fallbackSiteSettingsContent.brandName;
+  const companyName = data.companyName?.trim() || fallbackSiteSettingsContent.companyName;
+  const metaTitle = data.metaTitle?.trim() || fallbackSiteSettingsContent.metaTitle;
+  const metaDescription = data.metaDescription?.trim() || fallbackSiteSettingsContent.metaDescription;
+  const regionsLabel = data.regionsLabel?.trim() || fallbackSiteSettingsContent.regionsLabel;
+  const phone = data.phone?.trim() || fallbackSiteSettingsContent.phone;
+  const email = data.email?.trim() || fallbackSiteSettingsContent.email;
+
+  return {
+    brandName,
+    companyName,
+    metaTitle,
+    metaDescription,
+    regionsLabel,
+    phone,
+    phoneHref: toPhoneHref(phone),
+    email,
+    emailHref: toEmailHref(email),
+    operatorAddressLine: data.operatorAddressLine?.trim() || fallbackSiteSettingsContent.operatorAddressLine,
+    operationAddressLine: data.operationAddressLine?.trim() || fallbackSiteSettingsContent.operationAddressLine,
+    icz: data.icz?.trim() || fallbackSiteSettingsContent.icz,
+    mapUrl: data.mapUrl?.trim() || fallbackSiteSettingsContent.mapUrl,
+    hours: normalizeHours(data.hours, fallbackSiteSettingsContent.hours),
+    headerLinks: normalizeLinks(data.headerLinks, fallbackSiteSettingsContent.headerLinks),
+    footerServiceLinks: normalizeLinks(data.footerServiceLinks, fallbackSiteSettingsContent.footerServiceLinks),
+    footerInfoLinks: normalizeLinks(data.footerInfoLinks, fallbackSiteSettingsContent.footerInfoLinks),
+  };
+}
+
+export function mapMarketingPageContent(slug: string, data: CmsMarketingPage | null): MarketingPageContent {
+  const fallback = fallbackMarketingPages[slug] || {
+    ...defaultMarketingFallback,
+    slug,
+    title: slug,
+  };
+
+  if (!data) {
+    return fallback;
+  }
+
+  const title = data.title?.trim() || fallback.title;
+  const normalizedSlug = data.slug?.trim() || fallback.slug || slug;
+  const heroTitle = data.heroTitle?.trim() || fallback.heroTitle || title;
+  const heroDescription = data.heroDescription?.trim() || fallback.heroDescription;
+
+  return {
+    title,
+    slug: normalizedSlug,
+    eyebrow: data.eyebrow?.trim() || fallback.eyebrow,
+    heroTitle,
+    heroDescription,
+    seoTitle: data.seoTitle?.trim() || fallback.seoTitle || heroTitle,
+    seoDescription: data.seoDescription?.trim() || fallback.seoDescription || heroDescription,
+    sections: normalizeMarketingSections(data.sections),
+  };
 }

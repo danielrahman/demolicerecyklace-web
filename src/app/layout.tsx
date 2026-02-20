@@ -5,6 +5,7 @@ import { CookieConsentManager } from "@/components/cookie-consent-manager";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { SiteHeader } from "@/components/site-header";
+import { getSiteSettings } from "@/lib/cms/getters";
 
 import "./globals.css";
 
@@ -28,27 +29,32 @@ const monoFont = IBM_Plex_Mono({
 
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
 
-export const metadata: Metadata = {
-  title: "Demolice Recyklace - Kontejnery 3m³",
-  description:
-    "Demolice, recyklace a online objednávka kontejneru 3m³ pro Prahu a Středočeský kraj.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
 
-export default function RootLayout({
+  return {
+    title: settings.metaTitle,
+    description: settings.metaDescription,
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await getSiteSettings();
+
   return (
     <html lang="cs">
       <body className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable} bg-[#0B0B0B] text-zinc-100`}>
         <CookieConsentManager gaMeasurementId={gaMeasurementId} />
-        <SiteHeader />
+        <SiteHeader settings={settings} />
         <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           <SiteBreadcrumbs />
           {children}
         </main>
-        <SiteFooter />
+        <SiteFooter settings={settings} />
       </body>
     </html>
   );

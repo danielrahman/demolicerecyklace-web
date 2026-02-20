@@ -1,21 +1,29 @@
 import type { Metadata } from "next";
 
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { CONTACT, SITE_META } from "@/lib/site-config";
 
-export const metadata: Metadata = {
-  title: "Zásady zpracování osobních údajů | Demolice Recyklace",
-  description:
-    "Informace o zpracování osobních údajů při online objednávce kontejneru a souvisejících službách společnosti MINUTY a.s.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("gdpr");
 
-export default function GdprPage() {
+  return {
+    title: marketing?.seoTitle || "Zásady zpracování osobních údajů | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Informace o zpracování osobních údajů při online objednávce kontejneru a souvisejících službách společnosti MINUTY a.s.",
+  };
+}
+
+export default async function GdprPage() {
+  const marketing = await getMarketingPageContent("gdpr");
+
   return (
     <div className="space-y-8 pb-8">
       <section className="space-y-4">
-        <h1 className="text-4xl font-bold">Zásady zpracování osobních údajů</h1>
+        <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Zásady zpracování osobních údajů"}</h1>
         <p className="max-w-4xl text-zinc-300">
-          Tyto zásady vysvětlují, jak společnost {SITE_META.companyName} zpracovává osobní údaje zákazníků při
-          objednávce kontejnerů, demoličních prací a recyklace v oblasti Prahy a Středočeského kraje.
+          {marketing?.heroDescription ||
+            `Tyto zásady vysvětlují, jak společnost ${SITE_META.companyName} zpracovává osobní údaje zákazníků při objednávce kontejnerů, demoličních prací a recyklace v oblasti Prahy a Středočeského kraje.`}
         </p>
       </section>
 

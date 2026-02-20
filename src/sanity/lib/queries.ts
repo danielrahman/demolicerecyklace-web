@@ -113,3 +113,52 @@ export const FAQ_CATEGORIES_QUERY = defineQuery(`
   }
 }
 `);
+
+export const SITE_SETTINGS_QUERY = defineQuery(`
+*[_type == "siteSettings" && _id == "siteSettings"][0]{
+  brandName,
+  companyName,
+  metaTitle,
+  metaDescription,
+  regionsLabel,
+  phone,
+  email,
+  operatorAddressLine,
+  operationAddressLine,
+  icz,
+  mapUrl,
+  hours[]{
+    label,
+    value
+  },
+  headerLinks[]{
+    label,
+    href
+  },
+  footerServiceLinks[]{
+    label,
+    href
+  },
+  footerInfoLinks[]{
+    label,
+    href
+  }
+}
+`);
+
+export const MARKETING_PAGE_QUERY = defineQuery(`
+*[_type == "marketingPage" && slug.current == $slug][0]{
+  title,
+  "slug": slug.current,
+  eyebrow,
+  heroTitle,
+  heroDescription,
+  seoTitle,
+  seoDescription,
+  sections[]{
+    heading,
+    body,
+    items
+  }
+}
+`);

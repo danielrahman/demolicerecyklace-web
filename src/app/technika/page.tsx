@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { MachineRentalGrid } from "@/components/machine-rental-grid";
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { MACHINE_RENTAL_PRICING } from "@/lib/full-pricing";
 import { CONTACT, SERVICE_AREA } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
@@ -19,18 +20,20 @@ const planningPoints = [
   "Požadovaná technika a případná obsluha",
 ] as const;
 
-export default function TechnikaPage() {
+export default async function TechnikaPage() {
+  const marketing = await getMarketingPageContent("technika");
+
   return (
     <div className="space-y-10 pb-8">
       <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <article className="space-y-4">
           <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-accent)]">
-            Technika pro demolice a recyklaci
+            {marketing?.eyebrow || "Technika pro demolice a recyklaci"}
           </p>
-          <h1 className="text-4xl font-bold">Technika</h1>
+          <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Technika"}</h1>
           <p className="max-w-3xl text-zinc-300">
-            Pro demolice, recyklaci i odvoz využíváme vlastní techniku. Přehled níže slouží jako rychlá orientace -
-            konkrétní nasazení vždy navrhujeme podle typu zakázky.
+            {marketing?.heroDescription ||
+              "Pro demolice, recyklaci i odvoz využíváme vlastní techniku. Přehled níže slouží jako rychlá orientace - konkrétní nasazení vždy navrhujeme podle typu zakázky."}
           </p>
           <p className="max-w-3xl text-zinc-300">
             Primární oblast nasazení je {SERVICE_AREA.regionsLabel}. Vzdálenější lokality řešíme podle rozsahu a

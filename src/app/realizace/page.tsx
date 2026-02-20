@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { CONTACT } from "@/lib/site-config";
 import { ui } from "@/lib/ui";
 
@@ -70,14 +71,16 @@ const serviceBadgeClasses: Record<Project["service"], string> = {
   Kontejnery: "bg-amber-900/60 text-amber-200 border-amber-700/60",
 };
 
-export default function RealizacePage() {
+export default async function RealizacePage() {
+  const marketing = await getMarketingPageContent("realizace");
+
   return (
     <div className="space-y-10 pb-8">
       <header className="space-y-3">
-        <h1 className="text-4xl font-bold">Realizace</h1>
+        <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Realizace"}</h1>
         <p className="max-w-4xl text-zinc-300">
-          Výběr referenčních zakázek z oblasti demolice, recyklace a kontejnerové dopravy. Cílem je ukázat typy projektů,
-          které běžně realizujeme, a výsledky, které klienti očekávají.
+          {marketing?.heroDescription ||
+            "Výběr referenčních zakázek z oblasti demolice, recyklace a kontejnerové dopravy. Cílem je ukázat typy projektů, které běžně realizujeme, a výsledky, které klienti očekávají."}
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>

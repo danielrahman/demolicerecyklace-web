@@ -3,17 +3,31 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
-import {
-  CONTACT,
-  CONTAINER_PRODUCT,
-  FOOTER_INFO_LINKS,
-  FOOTER_SERVICE_LINKS,
-  SERVICE_AREA,
-  SITE_META,
-} from "@/lib/site-config";
+import type { SiteSettingsContent } from "@/lib/cms/mappers";
+import { CONTAINER_PRODUCT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
-export function SiteFooter() {
+type SiteFooterProps = {
+  settings: Pick<
+    SiteSettingsContent,
+    | "brandName"
+    | "companyName"
+    | "regionsLabel"
+    | "phone"
+    | "phoneHref"
+    | "email"
+    | "emailHref"
+    | "operatorAddressLine"
+    | "operationAddressLine"
+    | "icz"
+    | "mapUrl"
+    | "hours"
+    | "footerServiceLinks"
+    | "footerInfoLinks"
+  >;
+};
+
+export function SiteFooter({ settings }: SiteFooterProps) {
   const pathname = usePathname();
   const isCheckoutRoute = pathname?.startsWith("/kontejnery/objednat");
 
@@ -49,24 +63,24 @@ export function SiteFooter() {
         <section className={cx(ui.card, "p-6")}>
           <div className="grid gap-6 xl:grid-cols-[1.3fr_auto] xl:items-start">
             <div>
-              <h2 className="text-xl font-bold text-zinc-100">{SITE_META.brandName}</h2>
+              <h2 className="text-xl font-bold text-zinc-100">{settings.brandName}</h2>
               <p className="mt-3 text-sm text-zinc-300">
-                Online objednávka kontejneru {CONTAINER_PRODUCT.availableNow} pro oblast {SERVICE_AREA.regionsLabel}.
+                Online objednávka kontejneru {CONTAINER_PRODUCT.availableNow} pro oblast {settings.regionsLabel}.
                 Termín vždy potvrzuje operátor ručně.
               </p>
             </div>
 
             <div className="space-y-2 xl:text-right">
               <p className="text-sm text-zinc-400">Rychlý kontakt</p>
-              <a className={cx(ui.buttonPrimary, "w-full xl:w-auto")} href={CONTACT.phoneHref}>
-                Zavolat {CONTACT.phone}
+              <a className={cx(ui.buttonPrimary, "w-full xl:w-auto")} href={settings.phoneHref}>
+                Zavolat {settings.phone}
               </a>
-              <a className={cx(ui.buttonSecondary, "w-full xl:w-auto")} href={CONTACT.emailHref}>
-                Napsat {CONTACT.email}
+              <a className={cx(ui.buttonSecondary, "w-full xl:w-auto")} href={settings.emailHref}>
+                Napsat {settings.email}
               </a>
               <a
                 className={cx(ui.buttonSecondary, "w-full xl:w-auto")}
-                href={CONTACT.mapUrl}
+                href={settings.mapUrl}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -77,13 +91,13 @@ export function SiteFooter() {
 
           <div className="mt-4 grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
             <p>
-              <span className="text-zinc-400">Provozovatel:</span> {SITE_META.companyName}, {CONTACT.operatorAddressLine}
+              <span className="text-zinc-400">Provozovatel:</span> {settings.companyName}, {settings.operatorAddressLine}
             </p>
             <p>
-              <span className="text-zinc-400">Provozovna:</span> {CONTACT.operationAddressLine}
+              <span className="text-zinc-400">Provozovna:</span> {settings.operationAddressLine}
             </p>
             <p>
-              <span className="text-zinc-400">IČZ:</span> {CONTACT.icz}
+              <span className="text-zinc-400">IČZ:</span> {settings.icz}
             </p>
           </div>
         </section>
@@ -92,7 +106,7 @@ export function SiteFooter() {
           <section>
             <h3 className="font-bold text-zinc-100">Služby</h3>
             <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-              {FOOTER_SERVICE_LINKS.map((link) => (
+              {settings.footerServiceLinks.map((link) => (
                 <li key={link.href}>
                   <Link className="transition hover:text-[var(--color-accent)]" href={link.href}>
                     {link.label}
@@ -121,7 +135,7 @@ export function SiteFooter() {
           <section>
             <h3 className="font-bold text-zinc-100">Informace</h3>
             <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-              {FOOTER_INFO_LINKS.map((link) => (
+              {settings.footerInfoLinks.map((link) => (
                 <li key={link.href}>
                   <Link className="transition hover:text-[var(--color-accent)]" href={link.href}>
                     {link.label}
@@ -134,12 +148,12 @@ export function SiteFooter() {
           <section>
             <h3 className="font-bold text-zinc-100">Provozní doba</h3>
             <div className="mt-3 space-y-2 text-sm text-zinc-300">
-              {CONTACT.hours.map((hour) => (
+              {settings.hours.map((hour) => (
                 <p key={hour.label}>
                   <span className="text-zinc-400">{hour.label}:</span> {hour.value}
                 </p>
               ))}
-              <p className="pt-2 text-zinc-400">{SERVICE_AREA.regionsLabel}</p>
+              <p className="pt-2 text-zinc-400">{settings.regionsLabel}</p>
             </div>
           </section>
         </div>
@@ -148,9 +162,9 @@ export function SiteFooter() {
       <div className="border-t border-zinc-800">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>
-            © {new Date().getFullYear()} {SITE_META.companyName}. Všechna práva vyhrazena.
+            © {new Date().getFullYear()} {settings.companyName}. Všechna práva vyhrazena.
           </p>
-          <p>{SERVICE_AREA.regionsLabel}</p>
+          <p>{settings.regionsLabel}</p>
         </div>
       </div>
     </footer>

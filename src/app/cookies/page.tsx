@@ -1,21 +1,29 @@
 import type { Metadata } from "next";
 
 import { CookieConsentSettings } from "@/components/cookie-consent-settings";
+import { getMarketingPageContent } from "@/lib/cms/getters";
 
-export const metadata: Metadata = {
-  title: "Zásady používání cookies | Demolice Recyklace",
-  description:
-    "Přehled používání cookies na webu služby pronájmu kontejnerů, včetně Google Analytics a možností správy souhlasu.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("cookies");
 
-export default function CookiesPage() {
+  return {
+    title: marketing?.seoTitle || "Zásady používání cookies | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Přehled používání cookies na webu služby pronájmu kontejnerů, včetně Google Analytics a možností správy souhlasu.",
+  };
+}
+
+export default async function CookiesPage() {
+  const marketing = await getMarketingPageContent("cookies");
+
   return (
     <div className="space-y-8 pb-8">
       <section className="space-y-4">
-        <h1 className="text-4xl font-bold">Zásady používání cookies</h1>
+        <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Zásady používání cookies"}</h1>
         <p className="max-w-4xl text-zinc-300">
-          Tyto zásady vysvětlují, jak na našem webu používáme cookies při poskytování služeb pronájmu kontejnerů,
-          demolice a recyklace.
+          {marketing?.heroDescription ||
+            "Tyto zásady vysvětlují, jak na našem webu používáme cookies při poskytování služeb pronájmu kontejnerů, demolice a recyklace."}
         </p>
       </section>
 

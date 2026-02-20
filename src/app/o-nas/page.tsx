@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { CONTACT, SERVICE_AREA, SITE_META } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -53,14 +54,16 @@ const cooperationSteps = [
 
 const audiences = ["Soukromé osoby", "Řemeslníci a menší stavební firmy", "Developerské a průmyslové projekty"] as const;
 
-export default function ONasPage() {
+export default async function ONasPage() {
+  const marketing = await getMarketingPageContent("o-nas");
+
   return (
     <div className="space-y-10 pb-8">
       <header className="space-y-3">
-        <h1 className="text-4xl font-bold">O nás</h1>
+        <h1 className="text-4xl font-bold">{marketing?.heroTitle || "O nás"}</h1>
         <p className="max-w-4xl text-zinc-300">
-          {SITE_META.brandName} je prakticky zaměřený servis pro demolice, recyklaci, kontejnerovou dopravu a prodej
-          materiálu. Stavíme na jednoduché komunikaci, transparentních podmínkách a provozní disciplíně.
+          {marketing?.heroDescription ||
+            `${SITE_META.brandName} je prakticky zaměřený servis pro demolice, recyklaci, kontejnerovou dopravu a prodej materiálu. Stavíme na jednoduché komunikaci, transparentních podmínkách a provozní disciplíně.`}
         </p>
       </header>
 

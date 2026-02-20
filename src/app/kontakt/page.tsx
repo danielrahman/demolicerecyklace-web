@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { CONTACT, SERVICE_AREA, SITE_META } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -45,14 +46,16 @@ const contactFlow = [
   },
 ] as const;
 
-export default function KontaktPage() {
+export default async function KontaktPage() {
+  const marketing = await getMarketingPageContent("kontakt");
+
   return (
     <div className="space-y-10 pb-8">
       <section className="space-y-4">
-        <h1 className="text-4xl font-bold">Kontakt</h1>
+        <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Kontakt"}</h1>
         <p className="max-w-4xl text-zinc-300">
-          Nejrychlejší cesta je dispečink. Pomůžeme s objednávkou kontejneru, poptávkou demolice i recyklací. Pro
-          online objednávky kontejneru termín vždy finálně potvrzuje operátor.
+          {marketing?.heroDescription ||
+            "Nejrychlejší cesta je dispečink. Pomůžeme s objednávkou kontejneru, poptávkou demolice i recyklací. Pro online objednávky kontejneru termín vždy finálně potvrzuje operátor."}
         </p>
         <div className="flex flex-wrap gap-3">
           <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>

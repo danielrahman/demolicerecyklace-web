@@ -4,17 +4,25 @@ import {
   CONTAINERS_PAGE_QUERY,
   FAQ_CATEGORIES_QUERY,
   HOME_PAGE_QUERY,
+  MARKETING_PAGE_QUERY,
   PRICING_PAGE_QUERY,
+  SITE_SETTINGS_QUERY,
 } from "@/sanity/lib/queries";
 import {
+  fallbackMarketingPages,
+  fallbackSiteSettingsContent,
   fallbackContainersPageContent,
   fallbackFaqContent,
   fallbackHomePageContent,
   fallbackPricingPageContent,
+  mapMarketingPageContent,
   mapContainersPageContent,
   mapFaqContent,
   mapHomePageContent,
   mapPricingPageContent,
+  mapSiteSettingsContent,
+  type CmsMarketingPage,
+  type CmsSiteSettings,
   type CmsContainersPage,
   type CmsFaqCategory,
   type CmsHomePage,
@@ -90,5 +98,42 @@ export async function getFaqContent() {
   } catch (error) {
     console.error("Failed to load faqCategory documents from Sanity", error);
     return fallbackFaqContent;
+  }
+}
+
+export async function getSiteSettings() {
+  if (!hasSanityConfig) {
+    return fallbackSiteSettingsContent;
+  }
+
+  try {
+    const data = await sanityFetch<CmsSiteSettings>({
+      query: SITE_SETTINGS_QUERY,
+      tags: ["siteSettings"],
+    });
+
+    return mapSiteSettingsContent(data);
+  } catch (error) {
+    console.error("Failed to load siteSettings from Sanity", error);
+    return fallbackSiteSettingsContent;
+  }
+}
+
+export async function getMarketingPageContent(slug: string) {
+  if (!hasSanityConfig) {
+    return fallbackMarketingPages[slug] ?? null;
+  }
+
+  try {
+    const data = await sanityFetch<CmsMarketingPage>({
+      query: MARKETING_PAGE_QUERY,
+      params: { slug },
+      tags: ["marketingPage"],
+    });
+
+    return mapMarketingPageContent(slug, data);
+  } catch (error) {
+    console.error(`Failed to load marketingPage (${slug}) from Sanity`, error);
+    return fallbackMarketingPages[slug] ?? null;
   }
 }

@@ -38,7 +38,7 @@ Web poběží na `http://localhost:3000`.
 - Pro produkci napojit API na PostgreSQL přes Drizzle.
 - Admin auth je připravená jako struktura, ale bez finální implementace session/role guardu.
 
-## CMS (Sanity) - Phase 1
+## CMS (Sanity)
 
 ### Co je napojené
 - Embedded studio route: `/studio`
@@ -63,6 +63,12 @@ Jednorázové naplnění singletonů a FAQ:
 npm run cms:seed:phase1
 ```
 
+Seed globálních nastavení a marketing stránek:
+
+```bash
+npm run cms:seed:phase2
+```
+
 ### Webhook revalidace v Sanity
 V Sanity projektu vytvořte webhook:
 - URL:
@@ -70,7 +76,7 @@ V Sanity projektu vytvořte webhook:
   - fallback: `https://<domena>/api/revalidate-tag?secret=<SANITY_REVALIDATE_SECRET>`
 - Trigger: `create`, `update`, `delete`
 - Filter (doporučeno):
-  - `_type in ["homePage","containersPage","pricingPage","faqCategory"]`
+  - `_type in ["homePage","containersPage","pricingPage","faqCategory","siteSettings","marketingPage"]`
 - Projection:
   - `{ "_type": _type }`
 - Secret:

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { MATERIAL_SALES_PRICING } from "@/lib/full-pricing";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
@@ -34,14 +35,16 @@ function rowsForCategory(category: MaterialCategory) {
   );
 }
 
-export default function ProdejMaterialuPage() {
+export default async function ProdejMaterialuPage() {
+  const marketing = await getMarketingPageContent("prodej-materialu");
+
   return (
     <div className="space-y-10 pb-8">
       <header className="space-y-3">
-        <h1 className="text-4xl font-bold">Prodej materiálu</h1>
+        <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Prodej materiálu"}</h1>
         <p className="max-w-4xl text-zinc-300">
-          Dodáváme písky, kamenivo i recykláty pro stavby a terénní úpravy. Ceník držíme přehledně přímo na webu a
-          dostupnost ověříme při objednávce telefonicky nebo e-mailem.
+          {marketing?.heroDescription ||
+            "Dodáváme písky, kamenivo i recykláty pro stavby a terénní úpravy. Ceník držíme přehledně přímo na webu a dostupnost ověříme při objednávce telefonicky nebo e-mailem."}
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>

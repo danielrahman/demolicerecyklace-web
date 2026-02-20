@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FaqSection } from "@/components/faq-section";
+import { getMarketingPageContent } from "@/lib/cms/getters";
 import { RECYCLING_FAQ } from "@/lib/faq-content";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
@@ -37,14 +38,16 @@ const intakeSteps = [
   },
 ] as const;
 
-export default function RecyklacePage() {
+export default async function RecyklacePage() {
+  const marketing = await getMarketingPageContent("recyklace");
+
   return (
     <div className="space-y-10 pb-8">
       <header className="space-y-3">
-        <h1 className="text-4xl font-bold">Recyklace stavebních materiálů</h1>
+        <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Recyklace stavebních materiálů"}</h1>
         <p className="max-w-4xl text-zinc-300">
-          V recyklačním středisku řešíme příjem, třídění a další zpracování inertních materiálů. Před příjezdem vždy
-          doporučujeme ověřit složení materiálu, aby nedošlo ke zdržení při přejímce.
+          {marketing?.heroDescription ||
+            "V recyklačním středisku řešíme příjem, třídění a další zpracování inertních materiálů. Před příjezdem vždy doporučujeme ověřit složení materiálu, aby nedošlo ke zdržení při přejímce."}
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>

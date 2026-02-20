@@ -6,7 +6,7 @@ import { schemaTypes } from "./src/sanity/schemaTypes";
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? "missing-project-id";
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET ?? "production";
 
-const singletonTypes = new Set(["homePage", "containersPage", "pricingPage"]);
+const singletonTypes = new Set(["homePage", "containersPage", "pricingPage", "siteSettings"]);
 
 export default defineConfig({
   name: "default",
@@ -21,6 +21,11 @@ export default defineConfig({
           .title("Obsah webu")
           .items([
             S.listItem()
+              .title("Nastavení webu")
+              .id("siteSettings")
+              .child(S.document().schemaType("siteSettings").documentId("siteSettings")),
+            S.divider(),
+            S.listItem()
               .title("Homepage")
               .id("homePage")
               .child(S.document().schemaType("homePage").documentId("homePage")),
@@ -33,9 +38,12 @@ export default defineConfig({
               .id("pricingPage")
               .child(S.document().schemaType("pricingPage").documentId("pricingPage")),
             S.divider(),
+            S.listItem().title("Marketing stránky").id("marketingPages").child(S.documentTypeList("marketingPage")),
+            S.listItem().title("FAQ kategorie").id("faqCategories").child(S.documentTypeList("faqCategory")),
+            S.divider(),
             ...S.documentTypeListItems().filter((listItem) => {
               const id = listItem.getId();
-              return !id || !singletonTypes.has(id);
+              return !id || (!singletonTypes.has(id) && id !== "marketingPage" && id !== "faqCategory");
             }),
           ]),
     }),

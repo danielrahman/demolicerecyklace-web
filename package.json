@@ -10,7 +10,8 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "cms:seed:phase1": "node scripts/sanity-seed-phase1.mts"
+    "cms:seed:phase1": "node scripts/sanity-seed-phase1.mts",
+    "cms:seed:phase2": "node scripts/sanity-seed-phase2.mts"
   },
   "dependencies": {
     "@sanity/image-url": "^2.0.3",
