@@ -165,47 +165,32 @@ export default async function KompletníCeníkPage() {
                 <p className="mt-1 text-xs text-zinc-400">{group.rows.length} položek</p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-zinc-950/70 text-zinc-400">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">Materiál</th>
-                      <th className="px-3 py-2 text-left font-medium">Kód</th>
-                      <th className="px-3 py-2 text-right font-medium">Cena</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.rows.map((item) => {
-                      const rowVisual = containerVisualFor(item.item);
+              <div>
+                {group.rows.map((item) => {
+                  const rowVisual = containerVisualFor(item.item);
 
-                      return (
-                        <tr
-                          key={`${group.label}-${item.item}-${item.code}`}
-                          className="border-t border-zinc-800/80"
-                        >
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-3">
-                              <div className="relative h-10 w-12 shrink-0 overflow-hidden rounded border border-zinc-700/80">
-                                <Image
-                                  src={item.imageUrl || rowVisual.image}
-                                  alt={item.imageAlt || rowVisual.alt}
-                                  fill
-                                  className="object-cover"
-                                />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium leading-snug">{item.item}</p>
-                                <p className="text-xs text-zinc-500">Kód: {item.code ?? "-"}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 font-mono text-xs text-zinc-400">{item.code ?? "-"}</td>
-                          <td className="px-3 py-2 text-right font-semibold text-[var(--color-accent)]">{item.price}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                  return (
+                    <article
+                      key={`${group.label}-${item.item}-${item.code}`}
+                      className="flex flex-wrap gap-4 border-t border-zinc-800/80 px-4 py-4 md:flex-nowrap"
+                    >
+                      <div className="relative h-40 w-full overflow-hidden rounded border border-zinc-700/80 md:h-28 md:w-56">
+                        <Image
+                          src={item.imageUrl || rowVisual.image}
+                          alt={item.imageAlt || rowVisual.alt}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-semibold leading-snug">{item.item}</p>
+                        <p className="mt-1 text-sm text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
+                        <p className="mt-2 text-lg font-semibold text-[var(--color-accent)]">{item.price}</p>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ))}
