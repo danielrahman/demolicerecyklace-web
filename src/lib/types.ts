@@ -1,6 +1,8 @@
+import type { TimeWindowValue } from "@/lib/time-windows";
+
 export type OrderStatus = "new" | "confirmed" | "done" | "cancelled";
 
-export type TimeWindow = "rano" | "dopoledne" | "odpoledne";
+export type TimeWindow = TimeWindowValue;
 
 export type PlacementType = "soukromy" | "verejny";
 
@@ -14,6 +16,7 @@ export type WasteTypeId =
   | "drevo";
 
 export type PriceEstimate = {
+  rentalDays: number;
   base: number;
   transport: number;
   surcharge: number;
@@ -43,7 +46,9 @@ export type ContainerOrder = {
   wasteType: WasteTypeId;
   containerSizeM3: 3;
   containerCount: number;
+  rentalDays: number;
   deliveryDateRequested: string;
+  deliveryFlexibilityDays?: 1 | 2 | 3 | 7 | 14;
   timeWindowRequested: TimeWindow;
   deliveryDateConfirmed?: string;
   timeWindowConfirmed?: TimeWindow;
@@ -56,6 +61,7 @@ export type ContainerOrder = {
   };
   priceEstimate: PriceEstimate;
   note?: string;
+  callbackNote?: string;
   internalNote?: string;
   cancelReason?: string;
   cancelledAt?: string;

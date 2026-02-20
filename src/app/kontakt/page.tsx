@@ -24,6 +24,27 @@ const reasons = [
   },
 ] as const;
 
+const contactFlow = [
+  {
+    title: "Kontejnery",
+    detail: "Nejrychlejší je online objednávka. Pro nejasnosti zavolejte dispečink.",
+    cta: "Otevřít objednávku",
+    href: "/kontejnery/objednat",
+  },
+  {
+    title: "Demolice",
+    detail: "Pošlete popis objektu a lokalitu. Ozveme se s návrhem dalšího postupu.",
+    cta: "Přejít na demolice",
+    href: "/demolice",
+  },
+  {
+    title: "Recyklace a materiál",
+    detail: "Před příjezdem doporučujeme ověřit typ materiálu a dostupnost termínu.",
+    cta: "Zjistit podmínky",
+    href: "/recyklace",
+  },
+] as const;
+
 export default function KontaktPage() {
   return (
     <div className="space-y-10 pb-8">
@@ -38,12 +59,15 @@ export default function KontaktPage() {
             Zavolat {CONTACT.phone}
           </a>
           <a href={CONTACT.emailHref} className={ui.buttonSecondary}>
-            Napsat e-mail
+            Napsat na {CONTACT.email}
           </a>
-          <Link href="/kontejnery/lokality" className={ui.buttonSecondary}>
-            Ověřit PSČ a rezervaci
+          <Link href="/kontejnery/objednat" className={ui.buttonSecondary}>
+            Otevřít objednávku
           </Link>
         </div>
+        <p className="text-sm text-zinc-400">
+          Na standardní dotazy reagujeme nejpozději do 1 pracovního dne. Urgentní situace řešíme primárně telefonicky.
+        </p>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -56,6 +80,21 @@ export default function KontaktPage() {
             </Link>
           </article>
         ))}
+      </section>
+
+      <section className="space-y-4 border-t border-zinc-800 pt-8">
+        <h2 className="text-3xl font-bold">Jak nás kontaktovat podle typu požadavku</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {contactFlow.map((item) => (
+            <article key={item.title} className={cx(ui.cardSoft, "p-5")}>
+              <h3 className="text-2xl font-bold">{item.title}</h3>
+              <p className="mt-2 text-zinc-300">{item.detail}</p>
+              <Link href={item.href} className={cx(ui.buttonSecondary, "mt-4")}>
+                {item.cta}
+              </Link>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
@@ -96,7 +135,9 @@ export default function KontaktPage() {
               </p>
             ))}
           </div>
-          <p className="mt-2 text-sm text-zinc-400">Mimo provozní dobu můžete poslat e-mail. Ozveme se následující pracovní den.</p>
+          <p className="mt-2 text-sm text-zinc-400">
+            Mimo provozní dobu pošlete e-mail. Ozveme se následující pracovní den.
+          </p>
         </article>
 
         <article className={cx(ui.card, "overflow-hidden") }>
@@ -122,12 +163,11 @@ export default function KontaktPage() {
       <section className={cx(ui.cardSoft, "p-6")}>
         <h2 className="text-2xl font-bold">Kde obsluhujeme</h2>
         <p className="mt-2 text-zinc-300">
-          Primární oblast je {SERVICE_AREA.regionsLabel}. U kontejnerů doporučujeme začít ověřením PSČ a přejít rovnou
-          do rezervace.
+          Primární oblast je {SERVICE_AREA.regionsLabel}. U kontejnerů ověříte PSČ přímo v prvním kroku objednávky.
         </p>
         <div className="mt-4">
-          <Link href="/kontejnery/lokality" className={ui.buttonSecondary}>
-            Ověřit PSČ a rezervaci
+          <Link href="/kontejnery/objednat" className={ui.buttonSecondary}>
+            Otevřít objednávku
           </Link>
         </div>
       </section>

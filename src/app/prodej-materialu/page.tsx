@@ -40,12 +40,12 @@ export default function ProdejMaterialuPage() {
       <header className="space-y-3">
         <h1 className="text-4xl font-bold">Prodej materiálu</h1>
         <p className="max-w-4xl text-zinc-300">
-          Dodáváme písky, kamenivo i recykláty pro stavby a terénní úpravy. Ceny jsou transparentní v HTML a dostupnost
-          ověříme při objednávce telefonicky nebo e-mailem.
+          Dodáváme písky, kamenivo i recykláty pro stavby a terénní úpravy. Ceník držíme přehledně přímo na webu a
+          dostupnost ověříme při objednávce telefonicky nebo e-mailem.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>
-            Zavolat pro dostupnost
+            Zavolat {CONTACT.phone}
           </a>
           <Link href="/cenik" className={ui.buttonSecondary}>
             Kompletní ceník služeb

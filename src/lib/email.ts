@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 
+import type { CallbackRequest } from "@/lib/callback-request-store";
+import { formatCzechDayCount } from "@/lib/czech";
 import type { ContainerOrder } from "@/lib/types";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -24,6 +26,39 @@ function confirmedTermLine(order: ContainerOrder) {
   return `Termín: ${order.deliveryDateConfirmed}, okno ${order.timeWindowConfirmed}`;
 }
 
+function formatCurrency(czk: number) {
+  return `${new Intl.NumberFormat("cs-CZ").format(czk)} Kč`;
+}
+
+function snapshotLine(snapshot?: Record<string, unknown>) {
+  if (!snapshot) return "Snapshot: neposkytnut";
+
+  const address = [snapshot.street, snapshot.houseNumber, snapshot.city, snapshot.postalCode]
+    .filter((part) => typeof part === "string" && part.length > 0)
+    .join(" ");
+
+  const wasteType = typeof snapshot.wasteType === "string" ? snapshot.wasteType : "";
+  const containerCount = typeof snapshot.containerCount === "number" ? snapshot.containerCount : null;
+  const rentalDays = typeof snapshot.rentalDays === "number" ? snapshot.rentalDays : null;
+  const deliveryFlexibilityDays =
+    typeof snapshot.deliveryFlexibilityDays === "number" ? snapshot.deliveryFlexibilityDays : null;
+  const deliveryDateRequested =
+    typeof snapshot.deliveryDateRequested === "string" ? snapshot.deliveryDateRequested : "";
+  const timeWindowRequested =
+    typeof snapshot.timeWindowRequested === "string" ? snapshot.timeWindowRequested : "";
+
+  return [
+    address ? `Adresa: ${address}` : "",
+    wasteType ? `Odpad: ${wasteType}` : "",
+    containerCount ? `Počet kontejnerů: ${containerCount}` : "",
+    rentalDays ? `Doba pronájmu: ${formatCzechDayCount(rentalDays)}` : "",
+    deliveryFlexibilityDays ? `Flexibilita termínu: ±${formatCzechDayCount(deliveryFlexibilityDays)}` : "",
+    deliveryDateRequested ? `Termín: ${deliveryDateRequested} (${timeWindowRequested || "bez okna"})` : "",
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
 export async function sendCustomerReceivedEmail(order: ContainerOrder) {
   if (!resend) return;
 
@@ -34,7 +69,10 @@ export async function sendCustomerReceivedEmail(order: ContainerOrder) {
     text:
       `Děkujeme, objednávku ${order.id} jsme přijali.\n` +
       `Termín vám potvrdí operátor ručně.\n` +
-      `Adresa přistavení: ${orderAddressLine(order)}`,
+      `Adresa přistavení: ${orderAddressLine(order)}\n` +
+      `Požadovaný termín: ${order.deliveryDateRequested} (${order.timeWindowRequested})\n` +
+      `Doba pronájmu: ${formatCzechDayCount(order.rentalDays)}` +
+      (order.deliveryFlexibilityDays ? `\nFlexibilita termínu: ±${formatCzechDayCount(order.deliveryFlexibilityDays)}` : ""),
   });
 }
 
@@ -52,8 +90,12 @@ export async function sendInternalNewOrderEmail(order: ContainerOrder) {
       `Adresa: ${orderAddressLine(order)}\n` +
       (order.pinLocation ? `Pin: ${order.pinLocation.lat.toFixed(6)}, ${order.pinLocation.lng.toFixed(6)}\n` : "") +
       `Typ odpadu: ${order.wasteType}\n` +
-      `Kontejner: ${order.containerSizeM3} m3, počet ${order.containerCount}\n` +
-      `Požadovaný termín: ${order.deliveryDateRequested} (${order.timeWindowRequested})`,
+      `Kontejner: ${order.containerSizeM3}m³, počet ${order.containerCount}\n` +
+      `Doba pronájmu: ${formatCzechDayCount(order.rentalDays)}\n` +
+      (order.deliveryFlexibilityDays ? `Flexibilita termínu: ±${formatCzechDayCount(order.deliveryFlexibilityDays)}\n` : "") +
+      `Požadovaný termín: ${order.deliveryDateRequested} (${order.timeWindowRequested})\n` +
+      `Orientační cena: ${formatCurrency(order.priceEstimate.total)}\n` +
+      (order.callbackNote ? `Callback poznámka: ${order.callbackNote}\n` : ""),
   });
 }
 
@@ -118,5 +160,24 @@ export async function sendInternalStatusEmail(
       `${detailByMode[mode]}\n` +
       `Zákazník: ${order.name}, ${order.phone}, ${order.email}\n` +
       `Adresa: ${orderAddressLine(order)}`,
+  });
+}
+
+export async function sendCallbackRequestEmail(callbackRequest: CallbackRequest) {
+  if (!resend) return;
+
+  await resend.emails.send({
+    from: fromAddress(),
+    to: internalAddress(),
+    subject: `Nový callback lead ${callbackRequest.id}`,
+    text:
+      `Callback lead: ${callbackRequest.id}\n` +
+      `Vytvořeno: ${callbackRequest.createdAt}\n` +
+      `Telefon: ${callbackRequest.phone}\n` +
+      `Jméno: ${callbackRequest.name ?? "neuvedeno"}\n` +
+      `E-mail: ${callbackRequest.email ?? "neuvedeno"}\n` +
+      `Preferovaný čas hovoru: ${callbackRequest.preferredCallTime ?? "neuvedeno"}\n` +
+      `Poznámka: ${callbackRequest.note ?? "bez poznámky"}\n` +
+      `${snapshotLine(callbackRequest.wizardSnapshot)}`,
   });
 }

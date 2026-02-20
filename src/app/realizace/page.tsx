@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { CONTACT } from "@/lib/site-config";
 import { ui } from "@/lib/ui";
 
 type Project = {
@@ -79,9 +80,9 @@ export default function RealizacePage() {
           které běžně realizujeme, a výsledky, které klienti očekávají.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
-          <Link href="/kontakt" className={ui.buttonPrimary}>
-            Poptat podobnou realizaci
-          </Link>
+          <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>
+            Zavolat {CONTACT.phone}
+          </a>
           <Link href="/demolice" className={ui.buttonSecondary}>
             Přehled služeb demolice
           </Link>

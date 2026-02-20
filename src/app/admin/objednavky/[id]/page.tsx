@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { formatCzechDayCount } from "@/lib/czech";
 import { getOrder } from "@/lib/order-store";
 import type { OrderStatus } from "@/lib/types";
+import { TIME_WINDOW_VALUES } from "@/lib/time-windows";
 import { cx, ui } from "@/lib/ui";
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -76,6 +78,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <dd>
               {order.deliveryDateRequested} ({order.timeWindowRequested})
             </dd>
+            {order.deliveryFlexibilityDays ? (
+              <dd className="mt-1 text-xs text-zinc-400">Flexibilita: ±{formatCzechDayCount(order.deliveryFlexibilityDays)}</dd>
+            ) : null}
+          </div>
+          <div>
+            <dt className="text-zinc-400">Doba pronájmu</dt>
+            <dd>{formatCzechDayCount(order.rentalDays)}</dd>
           </div>
           <div>
             <dt className="text-zinc-400">Potvrzený termín</dt>
@@ -85,6 +94,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 : "zatím nepotvrzen"}
             </dd>
           </div>
+          {order.callbackNote ? (
+            <div className="sm:col-span-2">
+              <dt className="text-zinc-400">Callback poznámka</dt>
+              <dd>{order.callbackNote}</dd>
+            </div>
+          ) : null}
         </dl>
       </div>
 
@@ -110,9 +125,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <label className="mt-3 flex flex-col gap-2 text-sm">
               Okno
               <select name="window" defaultValue={order.timeWindowRequested} className="rounded-md border border-zinc-700 bg-zinc-950 p-2" required>
-                <option value="rano">Ráno</option>
-                <option value="dopoledne">Dopoledne</option>
-                <option value="odpoledne">Odpoledne</option>
+                {TIME_WINDOW_VALUES.map((windowValue) => (
+                  <option value={windowValue} key={windowValue}>
+                    {windowValue}
+                  </option>
+                ))}
               </select>
             </label>
             <button className={cx(ui.buttonPrimary, "mt-4 w-full")} type="submit">
@@ -144,9 +161,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 className="rounded-md border border-zinc-700 bg-zinc-950 p-2"
                 required
               >
-                <option value="rano">Ráno</option>
-                <option value="dopoledne">Dopoledne</option>
-                <option value="odpoledne">Odpoledne</option>
+                {TIME_WINDOW_VALUES.map((windowValue) => (
+                  <option value={windowValue} key={windowValue}>
+                    {windowValue}
+                  </option>
+                ))}
               </select>
             </label>
             <button className={cx(ui.buttonSecondary, "mt-4 w-full")} type="submit">

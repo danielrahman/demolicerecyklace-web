@@ -24,12 +24,12 @@
 - Primary CTA: `Objednat kontejner`.
 - Section outline:
 1. Containers hero
-2. Available sizes (3 m3 active, others coming soon)
+2. Available sizes (3m³ active, others coming soon)
 3. How it works
 4. Waste categories + rules link
 5. FAQ preview
 - Required content blocks:
-- Explicit `3 m3` availability
+- Explicit `3m³` availability
 - Service area note
 - Rules link (`Co patří a nepatří`)
 - Mobile behavior:
@@ -37,9 +37,9 @@
 - FAQ cards collapsible if height grows
 - Sticky bottom CTA optional only if non-intrusive
 
-## 3. Container Pricing (`/kontejnery/cenik`)
+## 3. Container Pricing (`/cenik#kontejnery`)
 - Goal: Provide transparent HTML pricing before order start.
-- Primary CTA: `Objednat 3 m3 kontejner`.
+- Primary CTA: `Objednat kontejner`.
 - Section outline:
 1. Pricing intro
 2. Price table/cards by waste type

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { formatCzechDayCount } from "@/lib/czech";
 import { listOrders } from "@/lib/order-store";
 import type { OrderStatus } from "@/lib/types";
 import { cx, ui } from "@/lib/ui";
@@ -81,6 +82,13 @@ export default async function AdminOrdersPage({
               <p className="mt-1 text-sm text-zinc-400">
                 Požadovaný termín: {order.deliveryDateRequested} ({order.timeWindowRequested})
               </p>
+              {order.deliveryFlexibilityDays ? (
+                <p className="mt-1 text-xs text-zinc-400">Flexibilita: ±{formatCzechDayCount(order.deliveryFlexibilityDays)}</p>
+              ) : null}
+              <p className="mt-1 text-sm text-zinc-400">Pronájem: {formatCzechDayCount(order.rentalDays)}</p>
+              {order.callbackNote ? (
+                <p className="mt-1 text-sm text-amber-300">Callback: {order.callbackNote}</p>
+              ) : null}
               <Link href={`/admin/objednavky/${order.id}`} className={cx(ui.buttonPrimary, "mt-4")}>
                 Otevřít detail
               </Link>

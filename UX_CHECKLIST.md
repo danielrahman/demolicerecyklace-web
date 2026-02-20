@@ -2,11 +2,11 @@
 
 ## Clarity and Information Hierarchy
 - [ ] **Pass** if every page has exactly one visible `h1` that states the user goal in plain language; **Fail** if the headline is generic or multiple competing `h1` elements exist.
-- [ ] **Pass** if the first viewport communicates service area, offer (`3 m3`), and manual operator confirmation; **Fail** if any of these are missing above the fold.
+- [ ] **Pass** if the first viewport communicates service area, offer (`3m³`), and manual operator confirmation; **Fail** if any of these are missing above the fold.
 - [ ] **Pass** if each section starts with a user-oriented heading (task or question); **Fail** if headings are brand/internal language.
 - [ ] **Pass** if primary facts (price direction, service area, contact fallback) are visible without opening PDFs; **Fail** if users must download docs for critical decisions.
 - [ ] **Pass** if every page supports scanning (short paragraphs, bullets, labels); **Fail** if dense text blocks exceed ~5 lines without structure.
-- [ ] **Pass** if terms are consistent (`objednávka`, `termín potvrzuje operátor`, `kontejner 3 m3`); **Fail** if synonyms create ambiguity.
+- [ ] **Pass** if terms are consistent (`objednávka`, `termín potvrzuje operátor`, `kontejner 3m³`); **Fail** if synonyms create ambiguity.
 
 ## Navigation and CTAs
 - [ ] **Pass** if each page has one dominant CTA style and one primary action; **Fail** if multiple equal-weight CTAs compete.

@@ -1,9 +1,14 @@
 import { z } from "zod";
 
+import { validateDeliveryDateRequested } from "@/lib/delivery-date";
 import { isSupportedPostalCode } from "@/lib/service-area";
+import { TIME_WINDOW_VALUES } from "@/lib/time-windows";
 
 const phoneRegex = /^(\+420|\+421|0)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}$/;
 const icoRegex = /^\d{8}$/;
+const deliveryFlexibilityDaysSchema = z
+  .union([z.literal(1), z.literal(2), z.literal(3), z.literal(7), z.literal(14)])
+  .optional();
 
 export const pricingPreviewSchema = z.object({
   postalCode: z
@@ -12,6 +17,7 @@ export const pricingPreviewSchema = z.object({
     .refine(isSupportedPostalCode, "PSČ zatím online nepodporujeme"),
   wasteType: z.enum(["sut-cista", "sut-smesna", "objemny", "zemina", "drevo"]),
   containerCount: z.number().int().min(1).max(3),
+  rentalDays: z.number().int().min(1).max(14).default(1),
   extras: z.object({
     nakladkaOdNas: z.boolean(),
     expresniPristaveni: z.boolean(),
@@ -38,8 +44,10 @@ export const createOrderSchema = z
     wasteType: z.enum(["sut-cista", "sut-smesna", "objemny", "zemina", "drevo"]),
     containerSizeM3: z.literal(3),
     containerCount: z.number().int().min(1).max(3),
+    rentalDays: z.number().int().min(1).max(14).default(1),
     deliveryDateRequested: z.string().min(1),
-    timeWindowRequested: z.enum(["rano", "dopoledne", "odpoledne"]),
+    deliveryFlexibilityDays: deliveryFlexibilityDaysSchema,
+    timeWindowRequested: z.enum(TIME_WINDOW_VALUES),
     placementType: z.enum(["soukromy", "verejny"]),
     permitConfirmed: z.boolean(),
     extras: z.object({
@@ -48,6 +56,7 @@ export const createOrderSchema = z
       opakovanyOdvoz: z.boolean(),
     }),
     note: z.string().optional(),
+    callbackNote: z.string().trim().max(1000).optional(),
     pinLocation: z
       .object({
         lat: z.number().min(-90).max(90),
@@ -58,20 +67,11 @@ export const createOrderSchema = z
     marketingConsent: z.boolean().default(false),
   })
   .superRefine((value, context) => {
-    const requestedDate = new Date(`${value.deliveryDateRequested}T00:00:00`);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (Number.isNaN(requestedDate.getTime())) {
+    const dateError = validateDeliveryDateRequested(value.deliveryDateRequested);
+    if (dateError) {
       context.addIssue({
         code: "custom",
-        message: "Zadejte platné datum přistavení",
-        path: ["deliveryDateRequested"],
-      });
-    } else if (requestedDate < today) {
-      context.addIssue({
-        code: "custom",
-        message: "Datum přistavení musí být dnes nebo později",
+        message: dateError,
         path: ["deliveryDateRequested"],
       });
     }
@@ -103,3 +103,12 @@ export const createOrderSchema = z
       }
     }
   });
+
+export const callbackRequestSchema = z.object({
+  phone: z.string().regex(phoneRegex, "Zadejte platné telefonní číslo"),
+  name: z.string().trim().min(2).max(120).optional(),
+  email: z.email("Zadejte platný e-mail").optional(),
+  preferredCallTime: z.string().trim().max(120).optional(),
+  note: z.string().trim().max(1500).optional(),
+  wizardSnapshot: z.record(z.string(), z.unknown()).optional(),
+});

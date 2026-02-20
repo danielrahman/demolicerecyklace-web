@@ -9,6 +9,7 @@ const TRANSPORT_BASE = 1200;
 export function estimatePrice(input: {
   wasteType: WasteTypeId;
   containerCount: number;
+  rentalDays: number;
   extras: {
     expresniPristaveni: boolean;
     nakladkaOdNas: boolean;
@@ -21,15 +22,19 @@ export function estimatePrice(input: {
     throw new Error("Neznámý typ odpadu");
   }
 
-  const base = wasteType.basePriceCzk * input.containerCount;
+  const rentalDays = Math.max(1, input.rentalDays);
+  const base = wasteType.basePriceCzk * input.containerCount * rentalDays;
   const transport = TRANSPORT_BASE * input.containerCount;
 
-  let surcharge = 0;
-  if (input.extras.expresniPristaveni) surcharge += EXPRES_SURCHARGE;
-  if (input.extras.nakladkaOdNas) surcharge += NAKLADKA_SURCHARGE;
-  if (input.extras.opakovanyOdvoz) surcharge += OPAKOVANY_ODVOZ_SURCHARGE;
+  let surchargePerDay = 0;
+  if (input.extras.expresniPristaveni) surchargePerDay += EXPRES_SURCHARGE;
+  if (input.extras.nakladkaOdNas) surchargePerDay += NAKLADKA_SURCHARGE;
+  if (input.extras.opakovanyOdvoz) surchargePerDay += OPAKOVANY_ODVOZ_SURCHARGE;
+
+  const surcharge = surchargePerDay * rentalDays;
 
   return {
+    rentalDays,
     base,
     transport,
     surcharge,

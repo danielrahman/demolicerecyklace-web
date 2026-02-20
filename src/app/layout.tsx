@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, IBM_Plex_Mono, Source_Sans_3 } from "next/font/google";
-import Script from "next/script";
 
+import { CookieConsentManager } from "@/components/cookie-consent-manager";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { SiteHeader } from "@/components/site-header";
@@ -29,9 +29,9 @@ const monoFont = IBM_Plex_Mono({
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
 
 export const metadata: Metadata = {
-  title: "Demolice Recyklace - Kontejnery 3 m3",
+  title: "Demolice Recyklace - Kontejnery 3m³",
   description:
-    "Demolice, recyklace a online objednávka kontejneru 3 m3 pro Prahu a Středočeský kraj.",
+    "Demolice, recyklace a online objednávka kontejneru 3m³ pro Prahu a Středočeský kraj.",
 };
 
 export default function RootLayout({
@@ -42,23 +42,9 @@ export default function RootLayout({
   return (
     <html lang="cs">
       <body className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable} bg-[#0B0B0B] text-zinc-100`}>
-        {gaMeasurementId ? (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
-              strategy="afterInteractive"
-            />
-            <Script id="ga-setup" strategy="afterInteractive">
-              {`window.dataLayer = window.dataLayer || [];
-function gtag(){window.dataLayer.push(arguments);}
-window.gtag = gtag;
-gtag('js', new Date());
-gtag('config', '${gaMeasurementId}');`}
-            </Script>
-          </>
-        ) : null}
+        <CookieConsentManager gaMeasurementId={gaMeasurementId} />
         <SiteHeader />
-        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           <SiteBreadcrumbs />
           {children}
         </main>

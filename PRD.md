@@ -95,13 +95,10 @@ Středočeský kraj - kompletní seznam PSČ:
 ```text
 /
 |- /kontejnery
-|  |- /kontejnery/cenik
+|  |- /cenik#kontejnery
 |  |- /kontejnery/co-patri-nepatri
 |  |- /kontejnery/objednat
 |  |- /kontejnery/faq
-|  |- /kontejnery/lokality
-|     |- /kontejnery/lokality/praha
-|     |- /kontejnery/lokality/stredocesky-kraj
 |- /demolice
 |- /recyklace
 |- /prodej-materialu
@@ -119,7 +116,7 @@ Středočeský kraj - kompletní seznam PSČ:
 
 - `Kontejnery` jsou samostatný pilíř webu.
 - Ceník a pravidla odpadu mají vlastní indexovatelné URL.
-- Lokální stránky mají unikátní obsah, ne duplikáty.
+- Obsahové stránky mají unikátní obsah, ne duplikáty.
 
 ## 6. Specifikace stranek
 
@@ -135,11 +132,11 @@ Středočeský kraj - kompletní seznam PSČ:
 - Sekce: typy odpadu, aktuálně dostupný kontejner, průběh objednávky, pravidla, FAQ.
 - CTA: `Spustit online objednávku`.
 
-### `/kontejnery/cenik`
+### `/cenik#kontejnery`
 
 - Cíl: transparentní ceník v HTML.
 - Sekce: filtry (lokalita, typ odpadu), tabulka cen, doplatky, podmínky.
-- CTA: `Objednat 3 m3 kontejner`.
+- CTA: `Objednat 3m³ kontejner`.
 
 ### `/kontejnery/co-patri-nepatri`
 
@@ -211,9 +208,9 @@ Středočeský kraj - kompletní seznam PSČ:
 
 1. Velikost kontejneru
 
-- Aktuálně dostupná velikost: `3 m3`.
-- Pole: `Objem = 3 m3`, `Počet kusů`.
-- Budoucí rozšíření: 5 m3, 7 m3, 9 m3, 12 m3.
+- Aktuálně dostupná velikost: `3m³`.
+- Pole: `Objem = 3m³`, `Počet kusů`.
+- Budoucí rozšíření: 5m³, 7m³, 9m³, 12m³.
 - ASSUMPTION: pro MVP max 3 kontejnery na objednávku.
 
 1. Termín a umístění
@@ -287,7 +284,7 @@ Středočeský kraj - kompletní seznam PSČ:
 
 ### Aktuální produkt kontejnerů
 
-- MVP ceník obsahuje pouze `kontejner 3 m3`.
+- MVP ceník obsahuje pouze `kontejner 3m³`.
 - U ostatních velikostí zobrazit `Brzy dostupné` bez možnosti objednat.
 
 ### Pravidla odpadu
@@ -317,7 +314,7 @@ Středočeský kraj - kompletní seznam PSČ:
 
 ### Doporučené texty
 
-- Hero: `Kontejner 3 m3 přistavíme rychle. Objednávku potvrdí operátor.`
+- Hero: `Kontejner 3m³ přistavíme rychle. Objednávku potvrdí operátor.`
 - Po submitu: `Objednávku jsme přijali. Brzy vás kontaktujeme s potvrzením termínu.`
 
 ## 10. Foto a video shot list
@@ -326,7 +323,7 @@ Středočeský kraj - kompletní seznam PSČ:
 | Záběr                          | Účel                        | Umístění                           |
 | ------------------------------ | --------------------------- | ---------------------------------- |
 | Přistavení kontejneru v ulici  | Důvěra a realita služby     | `/kontejnery` hero                 |
-| Kontejner 3 m3 z více úhlů     | Jasná představa o velikosti | `/kontejnery`, `/kontejnery/cenik` |
+| Kontejner 3m³ z více úhlů     | Jasná představa o velikosti | `/kontejnery`, `/cenik#kontejnery` |
 | Správné třídění odpadu         | Edukace co patří a nepatří  | `/kontejnery/co-patri-nepatri`     |
 | Řidič a obsluha                | Lidský rozměr               | Homepage, `/o-nas`                 |
 | Recyklační středisko v provozu | Důvěryhodnost zázemí        | `/recyklace`                       |
@@ -564,7 +561,7 @@ Po potvrzení operátorem:
 
 1. Stránka `/kontejnery` má hlavní CTA na objednávku bez scrollu na mobile.
 2. Ceník je v HTML, ne jen v PDF.
-3. V objednávce jde zvolit pouze `3 m3` kontejner.
+3. V objednávce jde zvolit pouze `3m³` kontejner.
 4. Wizard validuje PSČ proti seznamu Praha + Středočeský kraj.
 5. Nelze odeslat objednávku bez povinných údajů a GDPR souhlasu.
 6. Po submitu vznikne záznam v tabulce `containerOrders` se stavem `new`.
@@ -589,5 +586,3 @@ Po potvrzení operátorem:
 | Spam objednávky          | Ztráta času obsluhy         | Rate limit, honeypot, server-side validace                       |
 | Slabá kvalita fotek      | Nízká důvěra                | Real shot list a konzistentní vizuální styl                      |
 | Rozšíření scope mimo MVP | Zpoždění spuštění           | Striktní oddělení MVP a Phase 2                                  |
-
-

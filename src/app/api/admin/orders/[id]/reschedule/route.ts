@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { rescheduleOrder } from "@/lib/order-store";
 import { sendCustomerConfirmedEmail, sendInternalStatusEmail } from "@/lib/email";
 import type { TimeWindow } from "@/lib/types";
+import { TIME_WINDOW_VALUES } from "@/lib/time-windows";
 
-const validWindows = new Set<TimeWindow>(["rano", "dopoledne", "odpoledne"]);
+const validWindows = new Set<TimeWindow>(TIME_WINDOW_VALUES);
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;

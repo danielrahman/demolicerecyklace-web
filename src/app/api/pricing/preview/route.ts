@@ -11,6 +11,7 @@ export async function POST(request: Request) {
     const estimate = estimatePrice({
       wasteType: parsed.wasteType,
       containerCount: parsed.containerCount,
+      rentalDays: parsed.rentalDays,
       extras: parsed.extras,
     });
 

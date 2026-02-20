@@ -1,3 +1,5 @@
+import { hasAnalyticsConsent } from "@/lib/cookie-consent";
+
 export type FunnelEventName =
   | "start_order"
   | "order_step_view"
@@ -16,6 +18,10 @@ declare global {
 
 export function trackAnalyticsEvent(eventName: FunnelEventName, params: Record<string, unknown> = {}) {
   if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!hasAnalyticsConsent()) {
     return;
   }
 

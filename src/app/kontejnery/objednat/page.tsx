@@ -1,25 +1,19 @@
-import { OrderWizard } from "@/components/order-wizard";
-import { CONTAINER_PRODUCT, SERVICE_AREA } from "@/lib/site-config";
+import { Suspense } from "react";
 
-export default async function ObjednatPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ psc?: string }>;
-}) {
-  const params = searchParams ? await searchParams : undefined;
-  const prefilledPostalCode = String(params?.psc ?? "")
-    .replace(/\D/g, "")
-    .slice(0, 5);
+import { OrderWizardLazy } from "@/components/order-wizard-lazy";
 
+export default function ObjednatPage() {
   return (
-    <div className="space-y-6 pb-8">
-      <h1 className="text-4xl font-bold">Online objednávka kontejneru</h1>
-      <p className="max-w-4xl text-zinc-300">
-        Formulář je navržený od adresy, aby bylo hned jasné, zda obsluhujeme lokalitu. Online aktuálně objednáte
-        kontejner {CONTAINER_PRODUCT.availableNow} pro {SERVICE_AREA.regionsLabel}. Po odeslání vždy obdržíte potvrzení
-        o přijetí a termín ručně potvrdí operátor.
-      </p>
-      <OrderWizard initialPostalCode={prefilledPostalCode} />
+    <div className="space-y-3 pb-5">
+      <Suspense
+        fallback={
+          <div className="min-h-[500px] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-zinc-300 sm:min-h-[620px] sm:p-6">
+            Načítám objednávkový formulář...
+          </div>
+        }
+      >
+        <OrderWizardLazy />
+      </Suspense>
     </div>
   );
 }

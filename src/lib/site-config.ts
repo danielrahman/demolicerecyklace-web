@@ -21,8 +21,8 @@ export const CONTACT = {
 } as const;
 
 export const CONTAINER_PRODUCT = {
-  availableNow: "3 m3",
-  futureSizes: ["5 m3", "7 m3", "9 m3", "12 m3"],
+  availableNow: "3m³",
+  futureSizes: ["5m³", "7m³", "9m³", "12m³"],
   maxContainerCountPerOrder: 3,
 } as const;
 
@@ -35,36 +35,30 @@ export const SERVICE_AREA = {
 export const HEADER_LINKS = [
   { href: "/", label: "Domů" },
   { href: "/kontejnery", label: "Kontejnery" },
-  { href: "/cenik", label: "Ceník" },
   { href: "/demolice", label: "Demolice" },
-  { href: "/prodej-materialu", label: "Materiál" },
   { href: "/recyklace", label: "Recyklace" },
+  { href: "/prodej-materialu", label: "Materiál" },
+  { href: "/cenik", label: "Ceník" },
   { href: "/o-nas", label: "O nás" },
   { href: "/kontakt", label: "Kontakt" },
 ] as const;
 
 export const FOOTER_SERVICE_LINKS = [
   { href: "/kontejnery", label: "Kontejnery" },
-  { href: "/kontejnery/cenik", label: "Ceník kontejnerů 3 m3" },
-  { href: "/kontejnery/objednat", label: "Objednat kontejner" },
-  { href: "/kontejnery/co-patri-nepatri", label: "Co patří a nepatří" },
-  { href: "/kontejnery/faq", label: "FAQ ke kontejnerům" },
-  { href: "/kontejnery/lokality", label: "Obsluhované lokality" },
   { href: "/demolice", label: "Demolice" },
   { href: "/recyklace", label: "Recyklace" },
   { href: "/prodej-materialu", label: "Prodej materiálu" },
   { href: "/technika", label: "Technika" },
   { href: "/realizace", label: "Realizace" },
+  { href: "/cenik", label: "Ceník" },
   { href: "/o-nas", label: "O nás" },
 ] as const;
 
 export const FOOTER_INFO_LINKS = [
   { href: "/kontakt", label: "Kontakt" },
   { href: "/dokumenty", label: "Dokumenty ke stažení" },
-  { href: "/dokumenty/icp", label: "iČP" },
-  { href: "/dokumenty/zpo", label: "ZPO" },
   { href: "/faq", label: "FAQ" },
-  { href: "/gdpr", label: "GDPR" },
+  { href: "/gdpr", label: "Zásady zpracování osobních údajů" },
   { href: "/obchodni-podminky", label: "Obchodní podmínky" },
   { href: "/cookies", label: "Cookies" },
 ] as const;

@@ -11,6 +11,29 @@ import { cx, ui } from "@/lib/ui";
 export function SiteHeader() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isCheckoutRoute = pathname?.startsWith("/kontejnery/objednat");
+
+  if (isCheckoutRoute) {
+    return (
+      <header className="sticky top-0 z-40 border-b border-zinc-800/90 bg-[#0B0B0B]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <Link href="/" className="shrink-0">
+            <Image
+              src="/brand/logo-original.png"
+              alt="Demolice Recyklace logo"
+              width={215}
+              height={58}
+              priority
+              className="h-10 w-auto"
+            />
+          </Link>
+          <Link href="/" className={cx(ui.buttonSecondary, "px-4 text-sm")}>
+            Domů
+          </Link>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800/90 bg-[#0B0B0B]/95 backdrop-blur">
@@ -42,11 +65,8 @@ export function SiteHeader() {
             ))}
           </nav>
 
-          <Link href="/kontejnery/objednat" className={cx(ui.buttonPrimary, "hidden sm:inline-flex px-4 text-sm")}>
+          <Link href="/kontejnery/objednat" className={cx(ui.buttonPrimary, "hidden lg:inline-flex px-4 text-sm")}>
             Objednat kontejner
-          </Link>
-          <Link href="/kontejnery/objednat" className={cx(ui.buttonPrimary, "inline-flex px-3 text-xs sm:hidden")}>
-            Objednat
           </Link>
 
           <button

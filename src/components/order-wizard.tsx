@@ -1,12 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { WASTE_TYPES } from "@/lib/catalog";
 import { trackAnalyticsEvent } from "@/lib/analytics";
-import { CONTACT, CONTAINER_PRODUCT, SERVICE_AREA } from "@/lib/site-config";
+import { WASTE_TYPES } from "@/lib/catalog";
+import { formatCzechDayCount } from "@/lib/czech";
+import {
+  formatIsoLocalDate,
+  parseIsoLocalDate,
+  todayIsoLocalDate,
+  validateDeliveryDateRequested,
+} from "@/lib/delivery-date";
+import { CONTAINER_PRODUCT, CONTACT } from "@/lib/site-config";
 import { isSupportedPostalCode } from "@/lib/service-area";
+import { TIME_WINDOW_VALUES } from "@/lib/time-windows";
+import type { PriceEstimate, WasteTypeId } from "@/lib/types";
 import { cx, ui } from "@/lib/ui";
 
 type WizardData = {
@@ -21,29 +30,69 @@ type WizardData = {
   city: string;
   street: string;
   houseNumber: string;
-  wasteType: "sut-cista" | "sut-smesna" | "objemny" | "zemina" | "drevo";
+  wasteType: WasteTypeId;
   containerCount: number;
+  rentalDays: number;
   deliveryDateRequested: string;
-  timeWindowRequested: "rano" | "dopoledne" | "odpoledne";
+  deliveryFlexibilityDays?: 1 | 2 | 3 | 7 | 14;
+  timeWindowRequested: (typeof TIME_WINDOW_VALUES)[number];
   placementType: "soukromy" | "verejny";
   permitConfirmed: boolean;
   nakladkaOdNas: boolean;
   expresniPristaveni: boolean;
   opakovanyOdvoz: boolean;
   note: string;
+  callbackNote: string;
   gdprConsent: boolean;
   marketingConsent: boolean;
+};
+
+type DateMode = "exact" | "flex";
+
+type CompanyLookupMatch = {
+  ico: string;
+  companyName: string;
+  dic?: string;
+  addressText?: string;
+  postalCode?: string;
+  city?: string;
+  street?: string;
+  houseNumber?: string;
+};
+
+type CallbackForm = {
+  phone: string;
+  name: string;
+  note: string;
+};
+
+type PricingPreviewResponse = {
+  estimate?: PriceEstimate;
+  error?: string;
+};
+
+type CompanyLookupResponse = {
+  match?: CompanyLookupMatch;
+  suggestions?: CompanyLookupMatch[];
+  error?: string;
+};
+
+type CallbackResponse = {
+  ok?: boolean;
+  requestId?: string;
+  etaMinutes?: number;
+  error?: string;
+};
+
+type PinLocation = {
+  lat: number;
+  lng: number;
 };
 
 type GoogleAddressComponent = {
   long_name: string;
   short_name: string;
   types: string[];
-};
-
-type PinLocation = {
-  lat: number;
-  lng: number;
 };
 
 type GoogleLatLng = {
@@ -79,6 +128,7 @@ type GoogleMap = {
   panTo: (location: PinLocation) => void;
   setZoom: (value: number) => void;
   getZoom: () => number | undefined;
+  addListener: (eventName: string, handler: (event?: GoogleMapMouseEvent) => void) => GoogleMapsListener;
 };
 
 type GoogleMapConstructor = new (
@@ -167,6 +217,8 @@ type StepFieldKey =
   | "houseNumber"
   | "containerCount"
   | "deliveryDateRequested"
+  | "rentalDays"
+  | "timeWindowRequested"
   | "permitConfirmed"
   | "name"
   | "companyName"
@@ -177,8 +229,37 @@ type StepFieldKey =
 
 type ValidationErrors = Partial<Record<StepFieldKey, string>>;
 
+type WizardDraft = {
+  version: 1;
+  updatedAt: number;
+  data: WizardData;
+  dateMode: DateMode;
+  addressInput: string;
+  pinLocation: PinLocation | null;
+  addressEditedByUser: boolean;
+};
+
+const stepTitles = ["Adresa", "Kontejner", "Termín + cena", "Kontakt + souhrn"] as const;
+
+const phoneRegex = /^(\+420|\+421|0)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}$/;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const icoRegex = /^\d{8}$/;
+const postalCodeRegex = /^\d{5}$/;
+const weekDayLabels = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"] as const;
+const rentalDayOptions = Array.from({ length: 14 }, (_, index) => index + 1);
+const flexibilityDayOptions = [1, 2, 3, 7, 14] as const;
+const callbackEtaFallbackMinutes = 15;
+const draftStorageKey = "order-wizard-draft-v3";
+const draftTtlMs = 30 * 24 * 60 * 60 * 1000;
+
+const extrasDescriptions = {
+  nakladkaOdNas: "Posádka pomůže s naložením odpadu přímo na místě.",
+  expresniPristaveni: "Upřednostníme nejbližší dostupný termín přistavení.",
+  opakovanyOdvoz: "Po naplnění zajistíme další odvoz bez nové objednávky.",
+} as const;
+
 const defaultData: WizardData = {
-  customerType: "fo",
+  customerType: "firma",
   name: "",
   companyName: "",
   ico: "",
@@ -191,34 +272,42 @@ const defaultData: WizardData = {
   houseNumber: "",
   wasteType: "sut-cista",
   containerCount: 1,
+  rentalDays: 1,
   deliveryDateRequested: "",
-  timeWindowRequested: "dopoledne",
+  deliveryFlexibilityDays: undefined,
+  timeWindowRequested: "08:00-09:00",
   placementType: "soukromy",
   permitConfirmed: false,
   nakladkaOdNas: false,
   expresniPristaveni: false,
   opakovanyOdvoz: false,
   note: "",
+  callbackNote: "",
   gdprConsent: false,
   marketingConsent: false,
 };
 
-const stepTitles = ["Adresa", "Odpad a kontejner", "Termín", "Zákazník", "Souhrn"] as const;
+function isAddressInputReadyForMap(addressInput: string) {
+  const trimmed = addressInput.trim();
+  if (!trimmed) return false;
+  if (postalCodeRegex.test(trimmed)) return false;
+  return trimmed.length >= 6;
+}
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const phoneRegex = /^(\+420|\+421|0)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}$/;
-const icoRegex = /^\d{8}$/;
-const directGoogleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
-const defaultMapCenter: PinLocation = { lat: 50.087451, lng: 14.420671 };
+function shouldRestorePinFromDraft(data: WizardData, addressInput: string) {
+  return Boolean(addressInput.trim()) || Boolean(data.postalCode || data.city || data.street || data.houseNumber);
+}
 
 const stepFieldLabels: Record<StepFieldKey, string> = {
-  addressInput: "Adresa přistavení",
+  addressInput: "Adresa",
   postalCode: "PSČ",
   city: "Město",
   street: "Ulice",
   houseNumber: "Číslo popisné",
   containerCount: "Počet kontejnerů",
   deliveryDateRequested: "Datum přistavení",
+  rentalDays: "Počet dní pronájmu",
+  timeWindowRequested: "Časové okno",
   permitConfirmed: "Povolení k záboru",
   name: "Jméno a příjmení",
   companyName: "Název firmy",
@@ -236,6 +325,8 @@ const stepFieldInputIds: Record<StepFieldKey, string> = {
   houseNumber: "order-house-number",
   containerCount: "order-container-count",
   deliveryDateRequested: "order-delivery-date",
+  rentalDays: "order-rental-days",
+  timeWindowRequested: "order-time-window",
   permitConfirmed: "order-permit-confirmed",
   name: "order-name",
   companyName: "order-company-name",
@@ -246,6 +337,28 @@ const stepFieldInputIds: Record<StepFieldKey, string> = {
 };
 
 let googleMapsLoadPromise: Promise<void> | null = null;
+
+function formatPrice(amount: number) {
+  return `${new Intl.NumberFormat("cs-CZ").format(amount)} Kč`;
+}
+
+function startOfMonth(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), 1);
+}
+
+function addMonths(value: Date, monthDelta: number) {
+  return new Date(value.getFullYear(), value.getMonth() + monthDelta, 1);
+}
+
+function formatDisplayDate(value: string) {
+  const parsed = parseIsoLocalDate(value);
+  if (!parsed) return value;
+  return new Intl.DateTimeFormat("cs-CZ", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+}
 
 function hasGooglePlacesLoaded() {
   return Boolean(window.google?.maps?.places?.Autocomplete);
@@ -308,6 +421,7 @@ function loadGoogleMapsApi(apiKey: string) {
 }
 
 async function resolveGoogleMapsApiKey() {
+  const directGoogleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
   if (directGoogleMapsApiKey) {
     return directGoogleMapsApiKey;
   }
@@ -346,21 +460,6 @@ function formatPinLocation(location: PinLocation) {
   return `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`;
 }
 
-function parseIsoDate(value: string) {
-  if (!value) return null;
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
-
-function todayLocalIsoDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function parseAddress(
   components?: GoogleAddressComponent[],
   formattedAddress = "",
@@ -387,43 +486,341 @@ function parseAddress(
   };
 }
 
+function saveDraft(draft: WizardDraft) {
+  localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+}
+
+function readDraft() {
+  const rawDraft = localStorage.getItem(draftStorageKey);
+  if (!rawDraft) return null;
+
+  try {
+    const parsed = JSON.parse(rawDraft) as Partial<WizardDraft>;
+    if (parsed.version !== 1 || typeof parsed.updatedAt !== "number") {
+      localStorage.removeItem(draftStorageKey);
+      return null;
+    }
+
+    if (Date.now() - parsed.updatedAt > draftTtlMs) {
+      localStorage.removeItem(draftStorageKey);
+      return null;
+    }
+
+    if (!parsed.data || typeof parsed.data !== "object") {
+      localStorage.removeItem(draftStorageKey);
+      return null;
+    }
+
+    return parsed as WizardDraft;
+  } catch {
+    localStorage.removeItem(draftStorageKey);
+    return null;
+  }
+}
+
+function clearDraft() {
+  localStorage.removeItem(draftStorageKey);
+}
+
+type DeliveryDatePickerProps = {
+  value: string;
+  onChange: (nextValue: string) => void;
+  mode: DateMode;
+  onModeChange: (mode: DateMode) => void;
+  flexibilityDays?: 1 | 2 | 3 | 7 | 14;
+  onFlexibilityDaysChange: (nextValue: 1 | 2 | 3 | 7 | 14) => void;
+  error?: string;
+  todayIso: string;
+};
+
+function DeliveryDatePicker({
+  value,
+  onChange,
+  mode,
+  onModeChange,
+  flexibilityDays,
+  onFlexibilityDaysChange,
+  error,
+  todayIso,
+}: DeliveryDatePickerProps) {
+  const todayDate = useMemo(() => parseIsoLocalDate(todayIso) ?? new Date(), [todayIso]);
+  const minimumMonth = useMemo(() => startOfMonth(todayDate), [todayDate]);
+  const parsedValue = parseIsoLocalDate(value);
+
+  const [visibleStartMonth, setVisibleStartMonth] = useState(() =>
+    startOfMonth(parsedValue && parsedValue >= minimumMonth ? parsedValue : minimumMonth),
+  );
+
+  const maxStartMonth = useMemo(() => addMonths(minimumMonth, 11), [minimumMonth]);
+
+  const monthLabels = useMemo(
+    () =>
+      [visibleStartMonth, addMonths(visibleStartMonth, 1)].map((month) =>
+        new Intl.DateTimeFormat("cs-CZ", { month: "long", year: "numeric" }).format(month),
+      ),
+    [visibleStartMonth],
+  );
+
+  const canGoPrev = visibleStartMonth > minimumMonth;
+  const canGoNext = visibleStartMonth < maxStartMonth;
+
+  function monthCells(monthDate: Date) {
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const firstOffset = (firstDay.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const cells: Array<null | { iso: string; day: number; disabled: boolean; active: boolean }> = [];
+
+    for (let index = 0; index < firstOffset; index += 1) {
+      cells.push(null);
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = new Date(year, month, day);
+      const iso = formatIsoLocalDate(date);
+      const disabled = Boolean(validateDeliveryDateRequested(iso, todayDate));
+
+      cells.push({
+        iso,
+        day,
+        disabled,
+        active: value === iso,
+      });
+    }
+
+    while (cells.length % 7 !== 0) {
+      cells.push(null);
+    }
+
+    return cells;
+  }
+
+  const firstMonthCells = monthCells(visibleStartMonth);
+  const secondMonthCells = monthCells(addMonths(visibleStartMonth, 1));
+
+  function renderMonth(cells: Array<null | { iso: string; day: number; disabled: boolean; active: boolean }>, title: string, key: string, hiddenOnMobile = false) {
+    return (
+      <div key={key} className={hiddenOnMobile ? "hidden lg:block" : "block"}>
+        <h4 className="mb-2 text-lg font-semibold capitalize">{title}</h4>
+        <div className="grid grid-cols-7 gap-1 text-center text-xs text-zinc-400">
+          {weekDayLabels.map((label) => (
+            <span key={`${key}-${label}`} className="py-1">
+              {label}
+            </span>
+          ))}
+        </div>
+        <div className="mt-1 grid grid-cols-7 gap-1">
+          {cells.map((cell, index) => {
+            if (!cell) {
+              return <span key={`${key}-empty-${index}`} className="block h-8 rounded-lg sm:h-9" />;
+            }
+
+            return (
+              <button
+                key={`${key}-${cell.iso}`}
+                type="button"
+                disabled={cell.disabled}
+                onClick={() => onChange(cell.iso)}
+                className={cx(
+                  "h-8 rounded-lg text-xs transition sm:h-9 sm:text-sm",
+                  cell.active
+                    ? "bg-[var(--color-accent)] font-semibold text-black"
+                    : "border border-zinc-800 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
+                  cell.disabled ? "cursor-not-allowed border-zinc-900 bg-zinc-950 text-zinc-600 hover:border-zinc-900" : "",
+                )}
+              >
+                {cell.day}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cx("rounded-2xl border p-3 sm:p-4", error ? "border-red-500 bg-red-950/20" : "border-zinc-700 bg-zinc-950")}>
+      <div className="mb-4 inline-flex rounded-full border border-zinc-700 bg-zinc-900 p-1 text-sm">
+        <button
+          type="button"
+          onClick={() => onModeChange("exact")}
+          className={cx(
+            "rounded-full px-3 py-1.5 text-sm font-semibold sm:px-4 sm:py-2",
+            mode === "exact" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:bg-zinc-800",
+          )}
+        >
+          Termín
+        </button>
+        <button
+          type="button"
+          onClick={() => onModeChange("flex")}
+          className={cx(
+            "rounded-full px-3 py-1.5 text-sm font-semibold sm:px-4 sm:py-2",
+            mode === "flex" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:bg-zinc-800",
+          )}
+        >
+          Flexibilní
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setVisibleStartMonth((previous) => addMonths(previous, -1))}
+          disabled={!canGoPrev}
+          className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+        >
+          ←
+        </button>
+        <button
+          type="button"
+          onClick={() => setVisibleStartMonth((previous) => addMonths(previous, 1))}
+          disabled={!canGoNext}
+          className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
+        >
+          →
+        </button>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2 sm:mt-4 sm:gap-4">
+        {renderMonth(firstMonthCells, monthLabels[0], "month-0")}
+        {renderMonth(secondMonthCells, monthLabels[1], "month-1", true)}
+      </div>
+
+      <p className="mt-3 text-xs text-zinc-400">Online objednávka nepodporuje víkendy. Vyberte pracovní den.</p>
+
+      {mode === "flex" ? (
+        <div className="mt-4 space-y-2">
+          <p className="text-sm font-semibold">Flexibilita termínu</p>
+          <div className="flex flex-wrap gap-2">
+            {flexibilityDayOptions.map((days) => (
+              <button
+                key={days}
+                type="button"
+                onClick={() => onFlexibilityDaysChange(days)}
+                className={cx(
+                  "rounded-full border px-3 py-1.5 text-sm",
+                  flexibilityDays === days
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
+                    : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
+                )}
+              >
+                ± {formatCzechDayCount(days)}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-zinc-500">Operátor může termín posunout v rámci zvolené tolerance.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function mobileProgressClass(index: number, activeStep: number) {
+  if (index < activeStep) return "bg-emerald-500 border-emerald-500";
+  if (index === activeStep) return "bg-[var(--color-accent)] border-[var(--color-accent)]";
+  return "bg-zinc-700 border-zinc-600";
+}
+
+const chevronArrowPx = 14;
+
+function chevronClipPath(index: number, total: number) {
+  if (index === 0) {
+    return `polygon(0 0, calc(100% - ${chevronArrowPx}px) 0, 100% 50%, calc(100% - ${chevronArrowPx}px) 100%, 0 100%)`;
+  }
+
+  if (index === total - 1) {
+    return `polygon(${chevronArrowPx}px 0, 100% 0, 100% 100%, ${chevronArrowPx}px 100%, 0 50%)`;
+  }
+
+  return `polygon(${chevronArrowPx}px 0, calc(100% - ${chevronArrowPx}px) 0, 100% 50%, calc(100% - ${chevronArrowPx}px) 100%, ${chevronArrowPx}px 100%, 0 50%)`;
+}
+
 export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: string }) {
   const normalizedInitialPostalCode = initialPostalCode.replace(/\D/g, "").slice(0, 5);
 
   const [step, setStep] = useState(0);
+  const [furthestStep, setFurthestStep] = useState(0);
   const [data, setData] = useState<WizardData>(() => ({
     ...defaultData,
     postalCode: normalizedInitialPostalCode,
   }));
+  const [dateMode, setDateMode] = useState<DateMode>("exact");
+  const [showManualAddress, setShowManualAddress] = useState(false);
+  const [postalAreaStatusVisible, setPostalAreaStatusVisible] = useState(false);
+
   const [addressInput, setAddressInput] = useState(normalizedInitialPostalCode);
+  const [mapsRequested, setMapsRequested] = useState(false);
   const [mapsStatus, setMapsStatus] = useState<"idle" | "loading" | "ready" | "missing-key" | "error">("idle");
   const [mapsErrorDetail, setMapsErrorDetail] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [locationHelperText, setLocationHelperText] = useState<string | null>(null);
   const [resolvingAddress, setResolvingAddress] = useState(false);
   const [resolvingPin, setResolvingPin] = useState(false);
-  const [pinEditorEnabled, setPinEditorEnabled] = useState(false);
+  const [resolvingAddressForMap, setResolvingAddressForMap] = useState(false);
   const [pinLocation, setPinLocation] = useState<PinLocation | null>(null);
   const [pinError, setPinError] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
 
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
+  const [pricePreview, setPricePreview] = useState<PriceEstimate | null>(null);
+
+  const [callbackModalOpen, setCallbackModalOpen] = useState(false);
+  const [callbackSubmitting, setCallbackSubmitting] = useState(false);
+  const [callbackError, setCallbackError] = useState<string | null>(null);
+  const [callbackSuccess, setCallbackSuccess] = useState<string | null>(null);
+  const [callbackForm, setCallbackForm] = useState<CallbackForm>({
+    phone: "",
+    name: "",
+    note: "",
+  });
+
+  const [companySuggestions, setCompanySuggestions] = useState<CompanyLookupMatch[]>([]);
+  const [companyLookupLoading, setCompanyLookupLoading] = useState(false);
+  const [companyLookupError, setCompanyLookupError] = useState<string | null>(null);
+  const [icoLookupLoading, setIcoLookupLoading] = useState(false);
+  const [icoLookupError, setIcoLookupError] = useState<string | null>(null);
+
+  const [companyNameEditedByUser, setCompanyNameEditedByUser] = useState(false);
+  const [dicEditedByUser, setDicEditedByUser] = useState(false);
+  const [addressEditedByUser, setAddressEditedByUser] = useState(false);
+
+  const draftHydratedRef = useRef(false);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const autocompleteRef = useRef<GoogleAutocomplete | null>(null);
   const geocoderRef = useRef<GoogleGeocoder | null>(null);
   const mapRef = useRef<GoogleMap | null>(null);
   const mapMarkerRef = useRef<GoogleMarker | null>(null);
   const markerDragListenerRef = useRef<GoogleMapsListener | null>(null);
-  const resolveAddressFromPinRef = useRef<(nextPinLocation: PinLocation) => Promise<void>>(async () => undefined);
+  const mapClickListenerRef = useRef<GoogleMapsListener | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
+  const lastIcoLookupRef = useRef("");
+  const resolveAddressFromPinRef = useRef<(nextPinLocation: PinLocation) => Promise<void>>(async () => undefined);
+
+  const todayIso = useMemo(() => todayIsoLocalDate(), []);
+  const selectedWaste = useMemo(() => WASTE_TYPES.find((waste) => waste.id === data.wasteType), [data.wasteType]);
+  const shouldShowAddressMap = isAddressInputReadyForMap(addressInput) || Boolean(pinLocation);
 
   const postalCodeOk = useMemo(() => {
-    if (!data.postalCode || data.postalCode.length !== 5) return false;
+    if (data.postalCode.length !== 5) return false;
     return isSupportedPostalCode(data.postalCode);
   }, [data.postalCode]);
-  const minimumDeliveryDate = useMemo(() => todayLocalIsoDate(), []);
+
+  const hasFullAddressData =
+    data.postalCode.length === 5 &&
+    Boolean(data.city.trim()) &&
+    Boolean(data.street.trim()) &&
+    Boolean(data.houseNumber.trim());
+
+  const estimatedTotal = pricePreview?.total ?? null;
 
   const errorSummaryItems = useMemo(
     () =>
@@ -439,22 +836,22 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
   );
 
   function update<K extends keyof WizardData>(key: K, value: WizardData[K]) {
-    setData((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function clearFieldError(fieldName: StepFieldKey) {
-    setFieldErrors((prev) => {
-      if (!prev[fieldName]) return prev;
-      const next = { ...prev };
-      delete next[fieldName];
-      return next;
-    });
+    setData((previous) => ({ ...previous, [key]: value }));
   }
 
   function clearErrors() {
     setFieldErrors({});
     setSubmitError(null);
   }
+
+  const clearFieldError = useCallback((fieldName: StepFieldKey) => {
+    setFieldErrors((previous) => {
+      if (!previous[fieldName]) return previous;
+      const next = { ...previous };
+      delete next[fieldName];
+      return next;
+    });
+  }, []);
 
   function fieldClass(fieldName: StepFieldKey) {
     return cx(ui.field, fieldErrors[fieldName] ? "border-red-500 focus-visible:outline-red-400" : "");
@@ -473,9 +870,46 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
     };
   }
 
+  useEffect(() => {
+    setFurthestStep((previous) => Math.max(previous, step));
+  }, [step]);
+
+  function goToStep(targetStep: number) {
+    if (targetStep === step || targetStep < 0 || targetStep > furthestStep) return;
+
+    if (targetStep > step) {
+      for (let checkStep = step; checkStep < targetStep; checkStep += 1) {
+        const stepErrors = validateStep(checkStep);
+        if (Object.keys(stepErrors).length > 0) {
+          setStep(checkStep);
+          setFieldErrors(stepErrors);
+          setSubmitError(null);
+          return;
+        }
+      }
+
+      setStep(targetStep);
+      clearErrors();
+      return;
+    }
+
+    setStep(targetStep);
+    clearErrors();
+  }
+
+  function revealPostalAreaStatusIfAddressComplete() {
+    if (
+      data.postalCode.length === 5 &&
+      data.city.trim() &&
+      data.street.trim() &&
+      data.houseNumber.trim()
+    ) {
+      setPostalAreaStatusVisible(true);
+    }
+  }
+
   function renderFieldError(fieldName: StepFieldKey) {
     const message = fieldErrors[fieldName];
-
     if (!message) return null;
 
     return (
@@ -487,14 +921,45 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
 
   function clearPinLocation() {
     setPinLocation(null);
-    setPinEditorEnabled(false);
     setPinError(null);
   }
 
-  function applyParsedAddress(parsed: ParsedAddress, options?: { keepPinLocation?: boolean }) {
+  function clearAddress() {
+    const nextData = {
+      ...data,
+      postalCode: "",
+      city: "",
+      street: "",
+      houseNumber: "",
+    };
+
+    setAddressInput("");
+    setData(nextData);
+    setAddressEditedByUser(true);
+    setShowManualAddress(false);
+    clearPinLocation();
+    setPostalAreaStatusVisible(false);
+    setFurthestStep(0);
+
+    try {
+      saveDraft({
+        version: 1,
+        updatedAt: Date.now(),
+        data: nextData,
+        dateMode,
+        addressInput: "",
+        pinLocation: null,
+        addressEditedByUser: true,
+      });
+    } catch {
+      // Ignore storage write errors while clearing address.
+    }
+  }
+
+  const applyParsedAddress = useCallback((parsed: ParsedAddress, options?: { keepPinLocation?: boolean }) => {
     setAddressInput(parsed.formattedAddress);
-    setData((prev) => ({
-      ...prev,
+    setData((previous) => ({
+      ...previous,
       postalCode: parsed.postalCode,
       city: parsed.city,
       street: parsed.street,
@@ -504,11 +969,36 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
     if (!options?.keepPinLocation) {
       if (parsed.pinLocation) {
         setPinLocation(parsed.pinLocation);
-        setPinError(null);
       } else {
         setPinLocation(null);
       }
     }
+
+    setAddressEditedByUser(false);
+    setPostalAreaStatusVisible(true);
+    clearFieldError("addressInput");
+    clearFieldError("postalCode");
+    clearFieldError("city");
+    clearFieldError("street");
+    clearFieldError("houseNumber");
+  }, [clearFieldError]);
+
+  function waitForGeocoderReady(timeoutMs = 8000) {
+    return new Promise<boolean>((resolve) => {
+      const startedAt = Date.now();
+      const checkInterval = window.setInterval(() => {
+        if (getGeocoder()) {
+          window.clearInterval(checkInterval);
+          resolve(true);
+          return;
+        }
+
+        if (Date.now() - startedAt > timeoutMs) {
+          window.clearInterval(checkInterval);
+          resolve(false);
+        }
+      }, 120);
+    });
   }
 
   function getGeocoder() {
@@ -548,7 +1038,7 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
   }
 
   async function resolveAddressFromInputText() {
-    if (!addressInput.trim() || mapsStatus !== "ready") return null;
+    if (!addressInput.trim() || !isAddressInputReadyForMap(addressInput) || mapsStatus !== "ready") return null;
 
     setResolvingAddress(true);
     try {
@@ -568,23 +1058,31 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
   }
 
   async function fillAddressFromCurrentLocation() {
+    setMapsRequested(true);
+    setLocationHelperText("Načítám mapové podklady...");
     setSubmitError(null);
-
-    if (mapsStatus !== "ready") {
-      setSubmitError("Autodoplňování adresy není aktivní. Zkuste to znovu za chvíli nebo doplňte adresu ručně.");
-      return;
-    }
 
     if (!navigator.geolocation) {
       setSubmitError("Tento prohlížeč nepodporuje geolokaci.");
+      setLocating(false);
+      setLocationHelperText(null);
       return;
     }
 
     setLocating(true);
-
     navigator.geolocation.getCurrentPosition(
       (position) => {
         void (async () => {
+          setLocationHelperText("Vyhledávám adresu podle polohy...");
+          const hasGeocoder = await waitForGeocoderReady();
+
+          if (!hasGeocoder) {
+            setSubmitError("Nepodařilo se načíst Google Maps, zkuste to prosím znovu.");
+            setLocating(false);
+            setLocationHelperText(null);
+            return;
+          }
+
           const parsed = await geocodeRequest({
             location: {
               lat: position.coords.latitude,
@@ -595,17 +1093,20 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
           if (!parsed) {
             setSubmitError("Nepodařilo se načíst adresu z aktuální polohy.");
             setLocating(false);
+            setLocationHelperText(null);
             return;
           }
 
           applyParsedAddress(parsed);
-          setSubmitError(null);
           setLocating(false);
+          setSubmitError(null);
+          setLocationHelperText(null);
         })();
       },
       () => {
         setSubmitError("Přístup k poloze byl zamítnut nebo se polohu nepodařilo načíst.");
         setLocating(false);
+        setLocationHelperText(null);
       },
       {
         enableHighAccuracy: true,
@@ -638,30 +1139,408 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
 
   resolveAddressFromPinRef.current = resolveAddressFromPin;
 
-  async function enablePinEditor() {
-    setPinError(null);
-    setSubmitError(null);
+  const applyCompanyLookupMatch = useCallback((match: CompanyLookupMatch, force = false) => {
+    const shouldApplyAddress = force || !addressEditedByUser;
 
-    if (mapsStatus !== "ready") {
-      setPinError("Mapa zatím není dostupná. Zkontrolujte Google Maps API.");
+    setData((previous) => {
+      const next = { ...previous, ico: match.ico };
+
+      if (force || !companyNameEditedByUser || !previous.companyName.trim()) {
+        next.companyName = match.companyName;
+      }
+
+      if (match.dic && (force || !dicEditedByUser || !previous.dic.trim())) {
+        next.dic = match.dic;
+      }
+
+      if (shouldApplyAddress) {
+        next.postalCode = match.postalCode ?? next.postalCode;
+        next.city = match.city ?? next.city;
+        next.street = match.street ?? next.street;
+        next.houseNumber = match.houseNumber ?? next.houseNumber;
+      }
+
+      return next;
+    });
+
+    if (shouldApplyAddress) {
+      setPostalAreaStatusVisible(true);
+    }
+
+    clearFieldError("companyName");
+    clearFieldError("ico");
+  }, [addressEditedByUser, clearFieldError, companyNameEditedByUser, dicEditedByUser]);
+
+  function validateStep(stepToValidate: number): ValidationErrors {
+    const nextErrors: ValidationErrors = {};
+
+    if (stepToValidate === 0) {
+      const postalCode = data.postalCode.trim();
+      const city = data.city.trim();
+      const street = data.street.trim();
+      const houseNumber = data.houseNumber.trim();
+
+      if (!addressInput.trim() && !postalCode && !city && !street && !houseNumber) {
+        nextErrors.addressInput = "Zadejte adresu a vyberte ji z nabídky, nebo ji vyplňte ručně.";
+      }
+
+      if (!postalCode) {
+        nextErrors.postalCode = "Doplňte PSČ.";
+      } else if (postalCode.length !== 5) {
+        nextErrors.postalCode = "PSČ musí mít 5 číslic.";
+      } else if (!isSupportedPostalCode(postalCode)) {
+        nextErrors.postalCode = "Do této lokality zatím online nedoručujeme. Zavolejte dispečink.";
+      }
+
+      if (!city) {
+        nextErrors.city = "Doplňte město.";
+      }
+
+      if (!street) {
+        nextErrors.street = "Doplňte ulici.";
+      }
+
+      if (!houseNumber) {
+        nextErrors.houseNumber = "Doplňte číslo popisné.";
+      }
+    }
+
+    if (stepToValidate === 1) {
+      const containerCount = Number(data.containerCount);
+      if (!Number.isInteger(containerCount) || containerCount < 1 || containerCount > CONTAINER_PRODUCT.maxContainerCountPerOrder) {
+        nextErrors.containerCount = `Počet kontejnerů musí být 1 až ${CONTAINER_PRODUCT.maxContainerCountPerOrder}.`;
+      }
+    }
+
+    if (stepToValidate === 2) {
+      const deliveryDateError = validateDeliveryDateRequested(data.deliveryDateRequested);
+      if (deliveryDateError) {
+        nextErrors.deliveryDateRequested = `${deliveryDateError}.`;
+      }
+
+      if (!TIME_WINDOW_VALUES.includes(data.timeWindowRequested)) {
+        nextErrors.timeWindowRequested = "Vyberte časové okno přistavení.";
+      }
+
+      if (!Number.isInteger(data.rentalDays) || data.rentalDays < 1 || data.rentalDays > 14) {
+        nextErrors.rentalDays = "Počet dní pronájmu musí být 1 až 14.";
+      }
+
+      if (data.placementType === "verejny" && !data.permitConfirmed) {
+        nextErrors.permitConfirmed = "Pro umístění na veřejnou komunikaci potvrďte povolení.";
+      }
+    }
+
+    if (stepToValidate === 3) {
+      if (data.customerType === "firma" && data.companyName.trim().length < 2) {
+        nextErrors.companyName = "Doplňte název firmy.";
+      }
+
+      if (data.name.trim().length < 2) {
+        nextErrors.name = "Doplňte jméno a příjmení.";
+      }
+
+      const normalizedIco = data.ico.replace(/\D/g, "");
+      if (data.customerType === "firma" && !icoRegex.test(normalizedIco)) {
+        nextErrors.ico = "Doplňte platné IČO (8 číslic).";
+      }
+
+      if (!emailRegex.test(data.email.trim())) {
+        nextErrors.email = "Zadejte platný e-mail.";
+      }
+
+      if (!phoneRegex.test(data.phone.trim())) {
+        nextErrors.phone = "Zadejte platné telefonní číslo.";
+      }
+
+      if (!data.gdprConsent) {
+        nextErrors.gdprConsent = "Bez souhlasu GDPR nelze objednávku odeslat.";
+      }
+    }
+
+    return nextErrors;
+  }
+
+  async function next() {
+    const nextErrors = validateStep(step);
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      setSubmitError(null);
+      trackAnalyticsEvent("order_validation_error", {
+        step: step + 1,
+        step_name: stepTitles[step],
+        fields: Object.keys(nextErrors).join(","),
+      });
       return;
     }
 
-    if (pinLocation) {
-      setPinEditorEnabled(true);
+    if (step === 0 && mapsStatus === "ready" && !addressEditedByUser) {
+      await resolveAddressFromInputText();
+    }
+
+    trackAnalyticsEvent("order_step_complete", {
+      step: step + 1,
+      step_name: stepTitles[step],
+    });
+
+    clearErrors();
+    setStep((previous) => Math.min(previous + 1, stepTitles.length - 1));
+  }
+
+  function prev() {
+    clearErrors();
+    setStep((previous) => Math.max(previous - 1, 0));
+  }
+
+  function firstInvalidStep() {
+    for (const stepToValidate of [0, 1, 2, 3]) {
+      const stepErrors = validateStep(stepToValidate);
+      if (Object.keys(stepErrors).length > 0) {
+        return { stepToValidate, stepErrors };
+      }
+    }
+
+    return null;
+  }
+
+  async function submit() {
+    const invalid = firstInvalidStep();
+    if (invalid) {
+      setStep(invalid.stepToValidate);
+      setFieldErrors(invalid.stepErrors);
+      setSubmitError(null);
+      trackAnalyticsEvent("order_validation_error", {
+        step: invalid.stepToValidate + 1,
+        step_name: stepTitles[invalid.stepToValidate],
+        fields: Object.keys(invalid.stepErrors).join(","),
+      });
       return;
     }
 
-    const parsed = await resolveAddressFromInputText();
-    if (!parsed?.pinLocation) {
-      setPinError("Nejdřív vyberte přesnou adresu z našeptávače, potom lze upravit pin.");
+    setSubmitting(true);
+    clearErrors();
+
+    trackAnalyticsEvent("submit_order", { step: 4, step_name: stepTitles[3] });
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerType: data.customerType,
+          name: data.name.trim(),
+          companyName: data.companyName.trim() || undefined,
+          ico: data.ico.replace(/\D/g, "") || undefined,
+          dic: data.dic.trim() || undefined,
+          email: data.email.trim(),
+          phone: data.phone.trim(),
+          postalCode: data.postalCode,
+          city: data.city.trim(),
+          street: data.street.trim(),
+          houseNumber: data.houseNumber.trim(),
+          wasteType: data.wasteType,
+          containerSizeM3: 3,
+          containerCount: data.containerCount,
+          rentalDays: data.rentalDays,
+          deliveryDateRequested: data.deliveryDateRequested,
+          deliveryFlexibilityDays: dateMode === "flex" ? data.deliveryFlexibilityDays ?? 1 : undefined,
+          timeWindowRequested: data.timeWindowRequested,
+          placementType: data.placementType,
+          permitConfirmed: data.permitConfirmed,
+          extras: {
+            nakladkaOdNas: data.nakladkaOdNas,
+            expresniPristaveni: data.expresniPristaveni,
+            opakovanyOdvoz: data.opakovanyOdvoz,
+          },
+          note: data.note.trim() || undefined,
+          callbackNote: data.callbackNote || undefined,
+          pinLocation: pinLocation
+            ? {
+                lat: Number(pinLocation.lat.toFixed(7)),
+                lng: Number(pinLocation.lng.toFixed(7)),
+              }
+            : undefined,
+          gdprConsent: data.gdprConsent,
+          marketingConsent: data.marketingConsent,
+        }),
+      });
+
+      let payload: { orderId?: string; error?: string } = {};
+      try {
+        payload = (await response.json()) as { orderId?: string; error?: string };
+      } catch {
+        payload = {};
+      }
+
+      if (!response.ok || !payload.orderId) {
+        const nextError = payload.error ?? "Objednávku se nepodařilo odeslat. Zkuste to prosím znovu.";
+        setSubmitError(nextError);
+        trackAnalyticsEvent("submit_order_fail", {
+          step: 4,
+          reason: nextError,
+        });
+        return;
+      }
+
+      setOrderId(payload.orderId);
+      clearDraft();
+      trackAnalyticsEvent("submit_order_success", {
+        step: 4,
+        order_id: payload.orderId,
+      });
+    } catch {
+      setSubmitError("Objednávku se nepodařilo odeslat. Zkuste to prosím znovu.");
+      trackAnalyticsEvent("submit_order_fail", {
+        step: 4,
+        reason: "network_error",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitCallbackRequest(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCallbackError(null);
+    setCallbackSuccess(null);
+
+    if (!phoneRegex.test(callbackForm.phone.trim())) {
+      setCallbackError("Telefon je povinný a musí mít platný formát.");
       return;
     }
 
-    setPinEditorEnabled(true);
+    setCallbackSubmitting(true);
+
+    try {
+      const response = await fetch("/api/callback-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: callbackForm.phone.trim(),
+          name: callbackForm.name.trim() || undefined,
+          note: callbackForm.note.trim() || undefined,
+          wizardSnapshot: {
+            postalCode: data.postalCode,
+            city: data.city,
+            street: data.street,
+            houseNumber: data.houseNumber,
+            wasteType: data.wasteType,
+            containerCount: data.containerCount,
+            rentalDays: data.rentalDays,
+            deliveryDateRequested: data.deliveryDateRequested,
+            deliveryFlexibilityDays: dateMode === "flex" ? data.deliveryFlexibilityDays ?? 1 : undefined,
+            timeWindowRequested: data.timeWindowRequested,
+          },
+        }),
+      });
+
+      let payload: CallbackResponse = {};
+      try {
+        payload = (await response.json()) as CallbackResponse;
+      } catch {
+        payload = {};
+      }
+
+      if (!response.ok || !payload.ok) {
+        setCallbackError(payload.error ?? "Požadavek na zavolání se nepodařilo odeslat.");
+        return;
+      }
+
+      const etaMinutes = payload.etaMinutes ?? callbackEtaFallbackMinutes;
+      setCallbackSuccess(`Děkujeme, naši operátoři zavolají do ${etaMinutes} minut.`);
+      setCallbackModalOpen(false);
+      setData((previous) => ({
+        ...previous,
+        callbackNote: [
+          `Callback požadován (${new Date().toLocaleString("cs-CZ")})`,
+          callbackForm.note.trim() ? `poznámka: ${callbackForm.note.trim()}` : "",
+        ]
+          .filter(Boolean)
+          .join("; "),
+      }));
+    } catch {
+      setCallbackError("Požadavek na zavolání se nepodařilo odeslat. Zkuste to prosím znovu.");
+    } finally {
+      setCallbackSubmitting(false);
+    }
   }
 
   useEffect(() => {
+    trackAnalyticsEvent("start_order", {
+      step: 1,
+      step_name: stepTitles[0],
+    });
+  }, []);
+
+  useEffect(() => {
+    trackAnalyticsEvent("order_step_view", {
+      step: step + 1,
+      step_name: stepTitles[step],
+    });
+  }, [step]);
+
+  useEffect(() => {
+    if (!draftHydratedRef.current) {
+      draftHydratedRef.current = true;
+
+      try {
+        const draft = readDraft();
+        if (!draft) return;
+
+        setData(draft.data);
+        setDateMode(draft.dateMode);
+        setAddressInput(draft.addressInput);
+        const shouldRestorePin = shouldRestorePinFromDraft(draft.data, draft.addressInput);
+        const hasAddressData = Boolean(
+          (draft.addressInput.trim() && !postalCodeRegex.test(draft.addressInput.trim()))
+            || draft.data.city
+            || draft.data.street
+            || draft.data.houseNumber
+            || draft.data.postalCode,
+        );
+        setAddressEditedByUser(
+          typeof draft.addressEditedByUser === "boolean" ? draft.addressEditedByUser : !hasAddressData,
+        );
+        setPinLocation(shouldRestorePin ? draft.pinLocation : null);
+      } catch {
+        clearDraft();
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftHydratedRef.current || orderId) return;
+
+    const timeout = window.setTimeout(() => {
+      try {
+        saveDraft({
+          version: 1,
+          updatedAt: Date.now(),
+          data,
+          dateMode,
+          addressInput,
+          pinLocation,
+          addressEditedByUser,
+        });
+      } catch {
+        // Ignore storage errors (private mode/quota).
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [addressEditedByUser, addressInput, data, dateMode, orderId, pinLocation]);
+
+  useEffect(() => {
+    if (errorSummaryItems.length === 0 && !submitError) return;
+    errorSummaryRef.current?.focus();
+  }, [errorSummaryItems.length, submitError]);
+
+  useEffect(() => {
+    if (!mapsRequested) return;
+
     let isMounted = true;
     const authFailureKey = "__codexGmAuthFailureOriginal";
     const globalWindow = window as Window & {
@@ -707,9 +1586,7 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
         if (!isMounted) return;
         googleMapsLoadPromise = null;
         setMapsStatus("error");
-        setMapsErrorDetail(
-          mapsError instanceof Error ? mapsError.message : "Nepodařilo se načíst Google Maps API.",
-        );
+        setMapsErrorDetail(mapsError instanceof Error ? mapsError.message : "Nepodařilo se načíst Google Maps API.");
       }
     })();
 
@@ -718,7 +1595,7 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
       globalWindow.gm_authFailure = globalWindow[authFailureKey];
       delete globalWindow[authFailureKey];
     };
-  }, []);
+  }, [mapsRequested]);
 
   useEffect(() => {
     if (mapsStatus !== "ready" || !addressInputRef.current || autocompleteRef.current || !window.google?.maps?.places) {
@@ -749,19 +1626,85 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
       listener.remove();
       autocompleteRef.current = null;
     };
-  }, [mapsStatus]);
+  }, [applyParsedAddress, mapsStatus]);
 
   useEffect(() => {
-    if (!pinEditorEnabled) {
+    if (shouldShowAddressMap) {
+      setMapsRequested(true);
+    }
+  }, [shouldShowAddressMap]);
+
+  useEffect(() => {
+    if (!shouldShowAddressMap || mapsStatus !== "ready" || pinLocation) {
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      const trimmedAddress = addressInput.trim();
+      if (!isAddressInputReadyForMap(trimmedAddress)) {
+        return;
+      }
+
+      setResolvingAddressForMap(true);
+      const geocoder = getGeocoder();
+      if (!geocoder) {
+        setResolvingAddressForMap(false);
+        return;
+      }
+
+      geocoder.geocode(
+        { address: trimmedAddress, componentRestrictions: { country: "CZ" } },
+        (results, status) => {
+          if (!cancelled) {
+            if (status === "OK" && results && results.length > 0) {
+              const nextPinLocation = normalizePinLocation(results[0].geometry?.location);
+              if (nextPinLocation) {
+                setPinLocation(nextPinLocation);
+              }
+            }
+
+            setResolvingAddressForMap(false);
+          }
+        },
+      );
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      setResolvingAddressForMap(false);
+      window.clearTimeout(timeout);
+    };
+  }, [addressInput, mapsStatus, pinLocation, shouldShowAddressMap]);
+
+  useEffect(() => {
+    if (step !== 0) {
       markerDragListenerRef.current?.remove();
       markerDragListenerRef.current = null;
+      mapClickListenerRef.current?.remove();
+      mapClickListenerRef.current = null;
       mapMarkerRef.current?.setMap(null);
       mapMarkerRef.current = null;
       mapRef.current = null;
       return;
     }
 
-    if (mapsStatus !== "ready" || !mapContainerRef.current || !window.google?.maps?.Map || !window.google?.maps?.Marker) {
+    if (
+      !shouldShowAddressMap ||
+      mapsStatus !== "ready" ||
+      !mapContainerRef.current ||
+      !window.google?.maps?.Map ||
+      !window.google?.maps?.Marker ||
+      !pinLocation
+    ) {
+      markerDragListenerRef.current?.remove();
+      markerDragListenerRef.current = null;
+      mapClickListenerRef.current?.remove();
+      mapClickListenerRef.current = null;
+
+      mapMarkerRef.current?.setMap(null);
+      mapMarkerRef.current = null;
+      mapRef.current = null;
       return;
     }
 
@@ -769,10 +1712,11 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
       return;
     }
 
-    const center = pinLocation ?? defaultMapCenter;
+    const center = pinLocation;
+
     const map = new window.google.maps.Map(mapContainerRef.current, {
       center,
-      zoom: pinLocation ? 18 : 12,
+      zoom: 17,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
@@ -786,6 +1730,7 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
 
     mapRef.current = map;
     mapMarkerRef.current = marker;
+
     markerDragListenerRef.current = marker.addListener("dragend", (event) => {
       const nextPinLocation = normalizePinLocation(event?.latLng);
       if (!nextPinLocation) return;
@@ -793,24 +1738,35 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
       setPinLocation(nextPinLocation);
       void resolveAddressFromPinRef.current(nextPinLocation);
     });
-  }, [mapsStatus, pinEditorEnabled, pinLocation]);
+
+    mapClickListenerRef.current = map.addListener("click", (event) => {
+      const nextPinLocation = normalizePinLocation(event?.latLng);
+      if (!nextPinLocation) return;
+
+      marker.setPosition(nextPinLocation);
+      setPinLocation(nextPinLocation);
+      void resolveAddressFromPinRef.current(nextPinLocation);
+    });
+  }, [mapsStatus, pinLocation, shouldShowAddressMap, step]);
 
   useEffect(() => {
-    if (!pinEditorEnabled || !pinLocation || !mapRef.current || !mapMarkerRef.current) return;
+    if (!shouldShowAddressMap || step !== 0 || !pinLocation || !mapRef.current || !mapMarkerRef.current) return;
 
     mapMarkerRef.current.setPosition(pinLocation);
     mapRef.current.panTo(pinLocation);
 
     const zoom = mapRef.current.getZoom() ?? 0;
-    if (zoom < 18) {
-      mapRef.current.setZoom(18);
+    if (zoom < 17) {
+      mapRef.current.setZoom(17);
     }
-  }, [pinEditorEnabled, pinLocation]);
+  }, [shouldShowAddressMap, pinLocation, step]);
 
   useEffect(
     () => () => {
       markerDragListenerRef.current?.remove();
       markerDragListenerRef.current = null;
+      mapClickListenerRef.current?.remove();
+      mapClickListenerRef.current = null;
       mapMarkerRef.current?.setMap(null);
       mapMarkerRef.current = null;
       mapRef.current = null;
@@ -819,276 +1775,190 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
   );
 
   useEffect(() => {
-    trackAnalyticsEvent("start_order", {
-      step: 1,
-      step_name: stepTitles[0],
-    });
-  }, []);
-
-  useEffect(() => {
-    trackAnalyticsEvent("order_step_view", {
-      step: step + 1,
-      step_name: stepTitles[step],
-    });
-  }, [step]);
-
-  useEffect(() => {
-    if (errorSummaryItems.length === 0 && !submitError) return;
-    errorSummaryRef.current?.focus();
-  }, [errorSummaryItems.length, submitError]);
-
-  async function validateStep(stepToValidate: number): Promise<ValidationErrors> {
-    const nextErrors: ValidationErrors = {};
-
-    if (stepToValidate === 0) {
-      let postalCode = data.postalCode.trim();
-      let city = data.city.trim();
-      let street = data.street.trim();
-      let houseNumber = data.houseNumber.trim();
-      const hasAddressParts = Boolean(postalCode && city && street && houseNumber);
-
-      if (!addressInput.trim() && !hasAddressParts) {
-        nextErrors.addressInput = "Zadejte adresu přistavení nebo vyplňte adresu ručně níže.";
-      }
-
-      if (!hasAddressParts && addressInput.trim() && mapsStatus === "ready") {
-        const resolved = await resolveAddressFromInputText();
-
-        if (resolved) {
-          postalCode = resolved.postalCode.trim();
-          city = resolved.city.trim();
-          street = resolved.street.trim();
-          houseNumber = resolved.houseNumber.trim();
-        }
-      }
-
-      if (!postalCode) {
-        nextErrors.postalCode = "Doplňte PSČ.";
-      } else if (postalCode.length !== 5) {
-        nextErrors.postalCode = "PSČ musí mít 5 číslic.";
-      } else if (!isSupportedPostalCode(postalCode)) {
-        nextErrors.postalCode = "Do této lokality zatím online nedoručujeme. Zavolejte dispečink.";
-      }
-
-      if (!city) {
-        nextErrors.city = "Doplňte město.";
-      }
-
-      if (!street) {
-        nextErrors.street = "Doplňte ulici.";
-      }
-
-      if (!houseNumber) {
-        nextErrors.houseNumber = "Doplňte číslo popisné.";
-      }
-    }
-
-    if (stepToValidate === 1) {
-      const containerCount = Number(data.containerCount);
-
-      if (
-        !Number.isInteger(containerCount) ||
-        containerCount < 1 ||
-        containerCount > CONTAINER_PRODUCT.maxContainerCountPerOrder
-      ) {
-        nextErrors.containerCount = `Počet kontejnerů musí být 1 až ${CONTAINER_PRODUCT.maxContainerCountPerOrder}.`;
-      }
-    }
-
-    if (stepToValidate === 2) {
-      if (!data.deliveryDateRequested) {
-        nextErrors.deliveryDateRequested = "Vyberte požadované datum přistavení.";
-      } else {
-        const requestedDate = parseIsoDate(data.deliveryDateRequested);
-
-        if (!requestedDate) {
-          nextErrors.deliveryDateRequested = "Zadejte platné datum přistavení.";
-        } else {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          if (requestedDate < today) {
-            nextErrors.deliveryDateRequested = "Datum přistavení musí být dnes nebo později.";
-          }
-        }
-      }
-
-      if (data.placementType === "verejny" && !data.permitConfirmed) {
-        nextErrors.permitConfirmed = "Pro umístění na veřejnou komunikaci potvrďte, že máte povolení.";
-      }
-    }
-
-    if (stepToValidate === 3) {
-      if (data.name.trim().length < 2) {
-        nextErrors.name = "Doplňte jméno a příjmení.";
-      }
-
-      if (data.customerType === "firma" && data.companyName.trim().length < 2) {
-        nextErrors.companyName = "Doplňte název firmy.";
-      }
-
-      const normalizedIco = data.ico.replace(/\D/g, "");
-      if (data.customerType === "firma" && !icoRegex.test(normalizedIco)) {
-        nextErrors.ico = "Doplňte platné IČO (8 číslic).";
-      }
-
-      if (!emailRegex.test(data.email)) {
-        nextErrors.email = "Zadejte platný e-mail.";
-      }
-
-      if (!phoneRegex.test(data.phone)) {
-        nextErrors.phone = "Zadejte platné telefonní číslo.";
-      }
-
-      if (!data.gdprConsent) {
-        nextErrors.gdprConsent = "Bez souhlasu GDPR nelze objednávku odeslat.";
-      }
-    }
-
-    return nextErrors;
-  }
-
-  async function next() {
-    const nextErrors = await validateStep(step);
-
-    if (Object.keys(nextErrors).length > 0) {
-      setFieldErrors(nextErrors);
-      setSubmitError(null);
-      trackAnalyticsEvent("order_validation_error", {
-        step: step + 1,
-        step_name: stepTitles[step],
-        fields: Object.keys(nextErrors).join(","),
-      });
+    if (!postalCodeOk) {
+      setPricePreview(null);
+      setPricingError(
+        data.postalCode.length === 5 && !isSupportedPostalCode(data.postalCode)
+          ? "Pro zadané PSČ zatím online orientační kalkulaci nezobrazujeme."
+          : null,
+      );
       return;
     }
 
-    trackAnalyticsEvent("order_step_complete", {
-      step: step + 1,
-      step_name: stepTitles[step],
-    });
-
-    clearErrors();
-    setStep((prev) => Math.min(prev + 1, stepTitles.length - 1));
-  }
-
-  function prev() {
-    clearErrors();
-    setStep((prev) => Math.max(prev - 1, 0));
-  }
-
-  async function firstInvalidStep() {
-    const stepsToValidate = [0, 1, 2, 3];
-
-    for (const stepToValidate of stepsToValidate) {
-      const stepErrors = await validateStep(stepToValidate);
-      if (Object.keys(stepErrors).length > 0) {
-        return { stepToValidate, stepErrors };
-      }
-    }
-
-    return null;
-  }
-
-  async function submit() {
-    const invalid = await firstInvalidStep();
-    if (invalid) {
-      setStep(invalid.stepToValidate);
-      setFieldErrors(invalid.stepErrors);
-      setSubmitError(null);
-      trackAnalyticsEvent("order_validation_error", {
-        step: invalid.stepToValidate + 1,
-        step_name: stepTitles[invalid.stepToValidate],
-        fields: Object.keys(invalid.stepErrors).join(","),
-      });
-      return;
-    }
-
-    setSubmitting(true);
-    clearErrors();
-    trackAnalyticsEvent("submit_order", { step: 5, step_name: stepTitles[4] });
-
-    try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerType: data.customerType,
-          name: data.name,
-          companyName: data.companyName || undefined,
-          ico: data.ico.replace(/\D/g, "") || undefined,
-          dic: data.dic || undefined,
-          email: data.email,
-          phone: data.phone,
-          postalCode: data.postalCode,
-          city: data.city,
-          street: data.street,
-          houseNumber: data.houseNumber,
-          wasteType: data.wasteType,
-          containerSizeM3: 3,
-          containerCount: data.containerCount,
-          deliveryDateRequested: data.deliveryDateRequested,
-          timeWindowRequested: data.timeWindowRequested,
-          placementType: data.placementType,
-          permitConfirmed: data.permitConfirmed,
-          extras: {
-            nakladkaOdNas: data.nakladkaOdNas,
-            expresniPristaveni: data.expresniPristaveni,
-            opakovanyOdvoz: data.opakovanyOdvoz,
-          },
-          note: data.note || undefined,
-          pinLocation: pinLocation
-            ? {
-                lat: Number(pinLocation.lat.toFixed(7)),
-                lng: Number(pinLocation.lng.toFixed(7)),
-              }
-            : undefined,
-          gdprConsent: data.gdprConsent,
-          marketingConsent: data.marketingConsent,
-        }),
-      });
-
-      let json: { orderId?: string; error?: string } = {};
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setPricingLoading(true);
+      setPricingError(null);
 
       try {
-        json = (await response.json()) as { orderId?: string; error?: string };
-      } catch {
-        json = {};
-      }
-
-      if (!response.ok || !json.orderId) {
-        const nextSubmitError = json.error ?? "Objednávku se nepodařilo odeslat. Zkuste to prosím znovu.";
-        setSubmitError(nextSubmitError);
-        trackAnalyticsEvent("submit_order_fail", {
-          step: 5,
-          reason: nextSubmitError,
+        const response = await fetch("/api/pricing/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            postalCode: data.postalCode,
+            wasteType: data.wasteType,
+            containerCount: data.containerCount,
+            rentalDays: data.rentalDays,
+            extras: {
+              nakladkaOdNas: data.nakladkaOdNas,
+              expresniPristaveni: data.expresniPristaveni,
+              opakovanyOdvoz: data.opakovanyOdvoz,
+            },
+          }),
         });
-        return;
-      }
 
-      setOrderId(json.orderId);
-      trackAnalyticsEvent("submit_order_success", {
-        step: 5,
-        order_id: json.orderId,
-      });
-    } catch {
-      setSubmitError("Objednávku se nepodařilo odeslat. Zkuste to prosím znovu.");
-      trackAnalyticsEvent("submit_order_fail", {
-        step: 5,
-        reason: "network_error",
-      });
-    } finally {
-      setSubmitting(false);
+        const payload = (await response.json()) as PricingPreviewResponse;
+        if (!response.ok || !payload.estimate) {
+          setPricingError(payload.error ?? "Cenu se nepodařilo spočítat.");
+          return;
+        }
+
+        setPricePreview(payload.estimate);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPricingError("Cenu se nepodařilo spočítat.");
+      } finally {
+        setPricingLoading(false);
+      }
+    }, 320);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [
+    data.containerCount,
+    data.expresniPristaveni,
+    data.nakladkaOdNas,
+    data.opakovanyOdvoz,
+    data.postalCode,
+    data.rentalDays,
+    data.wasteType,
+    postalCodeOk,
+  ]);
+
+  useEffect(() => {
+    if (data.customerType !== "firma") return;
+
+    const normalizedIco = data.ico.replace(/\D/g, "").slice(0, 8);
+    if (normalizedIco.length !== 8) {
+      setIcoLookupError(null);
+      return;
     }
-  }
+
+    if (lastIcoLookupRef.current === normalizedIco) {
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      setIcoLookupLoading(true);
+      setIcoLookupError(null);
+
+      try {
+        const response = await fetch(`/api/company-lookup?ico=${normalizedIco}`, { cache: "no-store" });
+        const payload = (await response.json()) as CompanyLookupResponse;
+
+        if (!response.ok) {
+          if (!cancelled) {
+            setIcoLookupError(payload.error ?? "ARES lookup se nepodařilo načíst.");
+          }
+          return;
+        }
+
+        if (!payload.match) {
+          if (!cancelled) {
+            setIcoLookupError("IČO nebylo v ARES nalezeno, doplňte údaje ručně.");
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          applyCompanyLookupMatch(payload.match, false);
+          lastIcoLookupRef.current = normalizedIco;
+          setIcoLookupError(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setIcoLookupError("ARES lookup se nepodařilo načíst.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIcoLookupLoading(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [addressEditedByUser, applyCompanyLookupMatch, companyNameEditedByUser, data.customerType, data.ico, dicEditedByUser]);
+
+  useEffect(() => {
+    if (data.customerType !== "firma") {
+      setCompanySuggestions([]);
+      setCompanyLookupError(null);
+      return;
+    }
+
+    const query = data.companyName.trim();
+    if (!companyNameEditedByUser || query.length < 3) {
+      setCompanySuggestions([]);
+      setCompanyLookupError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      setCompanyLookupLoading(true);
+      setCompanyLookupError(null);
+
+      try {
+        const response = await fetch(`/api/company-lookup?query=${encodeURIComponent(query)}`, {
+          cache: "no-store",
+        });
+        const payload = (await response.json()) as CompanyLookupResponse;
+
+        if (!response.ok) {
+          if (!cancelled) {
+            setCompanyLookupError(payload.error ?? "Vyhledání firmy se nepodařilo.");
+            setCompanySuggestions([]);
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setCompanySuggestions(payload.suggestions ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setCompanyLookupError("Vyhledání firmy se nepodařilo.");
+          setCompanySuggestions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCompanyLookupLoading(false);
+        }
+      }
+    }, 320);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [companyNameEditedByUser, data.companyName, data.customerType]);
 
   if (orderId) {
     return (
-      <div className="rounded-2xl border border-emerald-700 bg-emerald-950/40 p-6">
-        <h3 className="font-heading text-2xl font-bold text-emerald-300">Objednávka odeslána</h3>
+      <div className="rounded-2xl border border-emerald-700 bg-emerald-950/30 p-4">
+        <h2 className="font-heading text-3xl font-bold text-emerald-300">Objednávka odeslána</h2>
         <p className="mt-2 text-emerald-100">Objednávku jsme přijali pod číslem {orderId}.</p>
-        <p className="mt-2 text-emerald-100">Termín vždy potvrzuje operátor ručně. Ozveme se nejpozději do 1 pracovního dne.</p>
-        <p className="mt-2 text-emerald-100">
+        <p className="mt-1.5 text-emerald-100">Termín vždy potvrzuje operátor ručně. Ozveme se nejpozději do 1 pracovního dne.</p>
+        <p className="mt-1.5 text-emerald-100">
           Potřebujete něco upravit hned? Zavolejte na{" "}
-          <a className="text-[var(--color-accent)] underline" href={CONTACT.phoneHref}>
+          <a className="underline" href={CONTACT.phoneHref}>
             {CONTACT.phone}
           </a>
           .
@@ -1098,596 +1968,926 @@ export function OrderWizard({ initialPostalCode = "" }: { initialPostalCode?: st
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
-      <ol className="mb-6 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
-        {stepTitles.map((title, idx) => (
-          <li
-            key={title}
-            className={idx === step ? ui.stepBadgeActive : ui.stepBadgeIdle}
-            aria-current={idx === step ? "step" : undefined}
-          >
-            {idx + 1}. {title}
-          </li>
-        ))}
-      </ol>
+    <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80 p-2.5 sm:p-3 md:p-4">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(242,196,0,0.12),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(242,196,0,0.06),transparent_45%)]" />
 
-      {errorSummaryItems.length > 0 || submitError ? (
-        <div
-          ref={errorSummaryRef}
-          tabIndex={-1}
-          role="alert"
-          className="mb-6 rounded-xl border border-red-700 bg-red-950/40 p-4 text-sm"
-        >
-          <h2 className="text-base font-bold text-red-200">Formulář obsahuje chyby</h2>
-          {errorSummaryItems.length > 0 ? (
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-red-100">
-              {errorSummaryItems.map((summaryItem) => (
-                <li key={summaryItem.fieldName}>
-                  <a href={`#${summaryItem.id}`} className="underline underline-offset-2">
-                    {summaryItem.label}: {summaryItem.message}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {submitError ? <p className="mt-2 text-red-100">{submitError}</p> : null}
+      <div className="relative space-y-3">
+        <div className="hidden overflow-hidden rounded-lg border border-zinc-700 bg-zinc-950/80 md:block">
+          <ol className="flex items-stretch">
+            {stepTitles.map((title, index) => (
+              <li
+                key={title}
+                style={{
+                  clipPath: chevronClipPath(index, stepTitles.length),
+                  zIndex: stepTitles.length - index,
+                }}
+                className={cx(
+                  "relative flex-1 py-2.5 pl-7 pr-7 text-[10px] font-semibold uppercase tracking-wide first:pl-4 md:pl-6 md:pr-7 md:text-xs",
+                  index === step
+                    ? "bg-[var(--color-accent)] text-black"
+                    : index < step
+                      ? "bg-[var(--color-accent)] text-black"
+                      : index > step && index <= furthestStep
+                        ? "bg-emerald-700/40 text-emerald-100"
+                        : "bg-zinc-800 text-zinc-300",
+                  index > 0 ? "-ml-1.5" : "",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => goToStep(index)}
+                  className={cx(
+                    "h-full w-full truncate text-left",
+                    index <= furthestStep ? "cursor-pointer" : "cursor-not-allowed",
+                  )}
+                  disabled={index > furthestStep}
+                >
+                  <span className="truncate uppercase tracking-wide">{index + 1}. {title}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
         </div>
-      ) : null}
 
-      {step === 0 ? (
-        <div className="space-y-4">
-          <p className="text-sm text-zinc-300">
-            Zadejte adresu do jednoho pole a vyberte ji z nabídky. Online obsluhujeme oblast {SERVICE_AREA.regionsLabel}.
-            Pokud je PSČ mimo obsluhu, objednávku dokončíte telefonicky na{" "}
-            <a href={CONTACT.phoneHref} className="text-[var(--color-accent)]">
-              {CONTACT.phone}
-            </a>
-            .
-          </p>
+        <div className="md:hidden">
+          <div className="relative mt-1 h-1 rounded bg-zinc-700">
+            <div
+              className="absolute left-0 top-0 h-1 rounded bg-[var(--color-accent)] transition-all"
+              style={{ width: `${(step / (stepTitles.length - 1)) * 100}%` }}
+            />
+          </div>
+          <ol className="mt-2 flex items-center justify-between px-1">
+            {stepTitles.map((title, index) => (
+              <li key={title} className="flex w-1/4 justify-center">
+                <button
+                  type="button"
+                  onClick={() => goToStep(index)}
+                  disabled={index > furthestStep}
+                  className={cx(
+                    "flex h-7 w-7 items-center justify-center rounded-full border",
+                    index <= furthestStep ? "cursor-pointer" : "cursor-not-allowed opacity-50",
+                  )}
+                >
+                  <span
+                    className={cx(
+                      "h-2.5 w-2.5 rounded-full border",
+                      mobileProgressClass(index, step),
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">
+                    Krok {index + 1}: {title}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
 
-          <label className="flex flex-col gap-2">
-            Adresa přistavení
-            <input
-              {...fieldA11yProps("addressInput")}
-              ref={addressInputRef}
-              value={addressInput}
-              onChange={(event) => {
-                setAddressInput(event.target.value);
-                clearPinLocation();
-                clearFieldError("addressInput");
+        {callbackSuccess ? (
+          <div className="rounded-xl border border-emerald-600 bg-emerald-950/40 p-3 text-sm text-emerald-100">{callbackSuccess}</div>
+        ) : null}
+
+        {errorSummaryItems.length > 0 || submitError ? (
+          <div
+            ref={errorSummaryRef}
+            tabIndex={-1}
+            role="alert"
+            className="rounded-xl border border-red-700 bg-red-950/40 p-3 text-sm"
+          >
+            <h3 className="text-sm font-bold text-red-200">Formulář obsahuje chyby</h3>
+            {errorSummaryItems.length > 0 ? (
+              <ul className="mt-1.5 list-disc space-y-1 pl-5 text-red-100">
+                {errorSummaryItems.map((item) => (
+                  <li key={item.fieldName}>
+                    <a href={`#${item.id}`} className="underline underline-offset-2">
+                      {item.label}: {item.message}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {submitError ? <p className="mt-2 text-red-100">{submitError}</p> : null}
+          </div>
+        ) : null}
+
+        {step === 0 ? (
+          <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
+            <p className="text-sm text-zinc-300">Zadejte adresu přistavení.</p>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-3">
+                <label className="relative flex flex-col gap-2 text-sm">
+                  Adresa přistavení
+                  <div className="relative">
+                    <input
+                      {...fieldA11yProps("addressInput")}
+                      ref={addressInputRef}
+                      value={addressInput}
+                      onFocus={() => {
+                        setShowManualAddress(false);
+                        setMapsRequested(true);
+                      }}
+                      onChange={(event) => {
+                        setAddressInput(event.target.value);
+                        setAddressEditedByUser(true);
+                        if (!isAddressInputReadyForMap(event.target.value)) {
+                          setPinLocation(null);
+                        }
+                        clearFieldError("addressInput");
+                        setSubmitError(null);
+                      }}
+                      className={cx(fieldClass("addressInput"), "pr-10")}
+                      placeholder="Např. Na Kodymce 1440/17, Praha"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
+                      enterKeyHint="done"
+                      name="order-address-autocomplete"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                    />
+                    {addressInput.trim() ? (
+                      <button
+                        type="button"
+                        onClick={clearAddress}
+                        aria-label="Vyčistit adresu"
+                        className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-xs text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
+                  {renderFieldError("addressInput")}
+                </label>
+
+                <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void fillAddressFromCurrentLocation();
+                      }}
+                      disabled={locating}
+                      className="text-xs font-semibold text-zinc-300 underline decoration-zinc-500 underline-offset-4 hover:text-[var(--color-accent)]"
+                    >
+                      {locating ? "Načítám polohu..." : "Použít aktuální polohu"}
+                    </button>
+                </div>
+
+                {mapsStatus === "loading" ? (
+                  <p className="text-xs text-zinc-400">Načítám Google adresní našeptávač...</p>
+                ) : null}
+                {locationHelperText && <p className="text-xs text-zinc-400">{locationHelperText}</p>}
+                {mapsStatus === "missing-key" ? (
+                  <p className="text-xs text-amber-300">
+                    Chybí Google API klíč. Nastavte `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` nebo `GOOGLE_MAPS_API_KEY`.
+                  </p>
+                ) : null}
+                {mapsStatus === "error" ? (
+                  <p className="text-xs text-amber-300">
+                    Google adresní našeptávač se nepodařilo načíst.
+                    {mapsErrorDetail ? ` ${mapsErrorDetail}` : ""}
+                  </p>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => setShowManualAddress((previous) => !previous)}
+                  className="text-xs font-semibold text-zinc-300 underline decoration-zinc-500 underline-offset-4 hover:text-[var(--color-accent)]"
+                >
+                  {showManualAddress ? "Skrýt ruční zadání" : "Ručně zadat adresu"}
+                </button>
+
+                {showManualAddress ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="flex flex-col gap-2 text-sm">
+                      PSČ
+                      <input
+                        {...fieldA11yProps("postalCode")}
+                        value={data.postalCode}
+                        onChange={(event) => {
+                          update("postalCode", event.target.value.replace(/\D/g, "").slice(0, 5));
+                          setAddressEditedByUser(true);
+                          clearFieldError("postalCode");
+                          setSubmitError(null);
+                        }}
+                        onBlur={() => {
+                          if (data.postalCode.length === 5) {
+                            revealPostalAreaStatusIfAddressComplete();
+                          }
+                        }}
+                        className={fieldClass("postalCode")}
+                        inputMode="numeric"
+                      />
+                      {renderFieldError("postalCode")}
+                    </label>
+
+                    <label className="flex flex-col gap-2 text-sm">
+                      Město
+                      <input
+                        {...fieldA11yProps("city")}
+                        value={data.city}
+                        onChange={(event) => {
+                          update("city", event.target.value);
+                          setAddressEditedByUser(true);
+                          clearFieldError("city");
+                          setSubmitError(null);
+                        }}
+                        onBlur={revealPostalAreaStatusIfAddressComplete}
+                        className={fieldClass("city")}
+                      />
+                      {renderFieldError("city")}
+                    </label>
+
+                    <label className="flex flex-col gap-2 text-sm">
+                      Ulice
+                      <input
+                        {...fieldA11yProps("street")}
+                        value={data.street}
+                        onChange={(event) => {
+                          update("street", event.target.value);
+                          setAddressEditedByUser(true);
+                          clearFieldError("street");
+                          setSubmitError(null);
+                        }}
+                        onBlur={revealPostalAreaStatusIfAddressComplete}
+                        className={fieldClass("street")}
+                      />
+                      {renderFieldError("street")}
+                    </label>
+
+                    <label className="flex flex-col gap-2 text-sm">
+                      Číslo popisné
+                      <input
+                        {...fieldA11yProps("houseNumber")}
+                        value={data.houseNumber}
+                        onChange={(event) => {
+                          update("houseNumber", event.target.value);
+                          setAddressEditedByUser(true);
+                          clearFieldError("houseNumber");
+                          setSubmitError(null);
+                        }}
+                        onBlur={revealPostalAreaStatusIfAddressComplete}
+                        className={fieldClass("houseNumber")}
+                      />
+                      {renderFieldError("houseNumber")}
+                    </label>
+                  </div>
+                ) : null}
+                <div className="min-h-5">
+                  {hasFullAddressData && postalAreaStatusVisible ? (
+                    <p className={cx("text-sm", postalCodeOk ? "text-emerald-300" : "text-amber-300")}>
+                      {postalCodeOk ? "PSČ je v obsluhované oblasti." : "PSČ zatím není v online obsluze."}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div>
+                <div
+                  className={cx(
+                    "overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 transition-all duration-200 ease-out",
+                    shouldShowAddressMap ? "max-h-[208px] opacity-100 p-2" : "max-h-0 border-transparent p-0 opacity-0",
+                  )}
+                >
+                  <div
+                    className={cx(
+                      "relative w-full overflow-hidden rounded-xl border border-zinc-700 transition-all duration-200 ease-out",
+                      shouldShowAddressMap
+                        ? "h-[132px] scale-100 sm:h-[170px] md:h-[184px]"
+                        : "h-0 scale-95",
+                    )}
+                  >
+                    {shouldShowAddressMap && (mapsStatus === "ready" ? (
+                      pinLocation ? (
+                        <div ref={mapContainerRef} className="h-full w-full" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                          {resolvingAddressForMap ? <span className="sr-only">Hledám polohu...</span> : null}
+                        </div>
+                      )
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                        {mapsStatus === "loading" ? "Načítám mapu..." : "Mapa se načítá..."}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        ) : null}
+
+        {step === 1 ? (
+          <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
+            <p className="text-sm text-zinc-300">Vyberte typ odpadu, počet kontejnerů a doplňkové služby.</p>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {WASTE_TYPES.map((waste) => (
+                <button
+                  key={waste.id}
+                  type="button"
+                  onClick={() => update("wasteType", waste.id)}
+                  className={cx(
+                    "rounded-xl border p-3 text-left",
+                    waste.id === data.wasteType
+                      ? "border-[var(--color-accent)] bg-[var(--color-accent)]/20"
+                      : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
+                  )}
+                >
+                  <p className="font-semibold">{waste.label}</p>
+                  <p className="mt-1 text-xs text-zinc-400">{waste.shortDescription}</p>
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-sm font-semibold">Počet kontejnerů</p>
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: CONTAINER_PRODUCT.maxContainerCountPerOrder }, (_, index) => index + 1).map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => {
+                      update("containerCount", count);
+                      clearFieldError("containerCount");
+                    }}
+                    className={cx(
+                      "rounded-full border px-3 py-1.5 text-sm font-semibold",
+                      data.containerCount === count
+                        ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
+                        : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
+                    )}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+              {renderFieldError("containerCount")}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm sm:col-span-1">
+                <input
+                  type="checkbox"
+                  checked={data.nakladkaOdNas}
+                  onChange={(event) => update("nakladkaOdNas", event.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="font-semibold">Nakládka od nás</span>
+                  <span className="mt-1 block text-xs text-zinc-400">{extrasDescriptions.nakladkaOdNas}</span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm sm:col-span-1">
+                <input
+                  type="checkbox"
+                  checked={data.expresniPristaveni}
+                  onChange={(event) => update("expresniPristaveni", event.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="font-semibold">Expresní přistavení</span>
+                  <span className="mt-1 block text-xs text-zinc-400">{extrasDescriptions.expresniPristaveni}</span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={data.opakovanyOdvoz}
+                  onChange={(event) => update("opakovanyOdvoz", event.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="font-semibold">Opakovaný odvoz</span>
+                  <span className="mt-1 block text-xs text-zinc-400">{extrasDescriptions.opakovanyOdvoz}</span>
+                </span>
+              </label>
+            </div>
+          </div>
+        ) : null}
+
+        {step === 2 ? (
+          <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
+            <DeliveryDatePicker
+              value={data.deliveryDateRequested}
+              onChange={(nextDate) => {
+                update("deliveryDateRequested", nextDate);
+                clearFieldError("deliveryDateRequested");
                 setSubmitError(null);
               }}
-              className={fieldClass("addressInput")}
-              placeholder="Např. Na Kodymce 1440/17, Praha"
-              autoComplete="street-address"
+              mode={dateMode}
+              onModeChange={(nextMode) => {
+                setDateMode(nextMode);
+                if (nextMode === "exact") {
+                  update("deliveryFlexibilityDays", undefined);
+                } else if (!data.deliveryFlexibilityDays) {
+                  update("deliveryFlexibilityDays", 1);
+                }
+              }}
+              flexibilityDays={data.deliveryFlexibilityDays}
+              onFlexibilityDaysChange={(nextDays) => update("deliveryFlexibilityDays", nextDays)}
+              error={fieldErrors.deliveryDateRequested}
+              todayIso={todayIso}
             />
-            {renderFieldError("addressInput")}
-          </label>
+            {renderFieldError("deliveryDateRequested")}
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                void fillAddressFromCurrentLocation();
-              }}
-              disabled={locating || mapsStatus !== "ready"}
-              className={ui.buttonSecondary}
-            >
-              {locating ? "Načítám polohu..." : "Použít aktuální polohu"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                void enablePinEditor();
-              }}
-              disabled={mapsStatus !== "ready" || locating || resolvingAddress}
-              className={ui.buttonSecondary}
-            >
-              {pinEditorEnabled ? "Pin lze upravit níže" : "Upravit pin na mapě"}
-            </button>
-          </div>
-
-          {mapsStatus === "loading" ? <p className="text-sm text-zinc-400">Načítám Google adresní našeptávač...</p> : null}
-          {mapsStatus === "missing-key" ? (
-            <p className="text-sm text-amber-300">
-              Chybí Google API klíč. Nastavte `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` nebo `GOOGLE_MAPS_API_KEY`.
-            </p>
-          ) : null}
-          {mapsStatus === "error" ? (
-            <p className="text-sm text-amber-300">
-              Google adresní našeptávač se nepodařilo načíst.
-              {mapsErrorDetail ? ` ${mapsErrorDetail}` : ""}
-            </p>
-          ) : null}
-
-          {(data.street || data.city || data.postalCode) ? (
-            <div className="rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-sm">
-              <p>
-                <span className="text-zinc-400">Vybraná adresa:</span> {data.street} {data.houseNumber}, {data.city}, {data.postalCode}
-              </p>
-              {pinLocation ? (
-                <p className="mt-2 text-xs text-zinc-400">
-                  Pin: {formatPinLocation(pinLocation)} •{" "}
-                  <a
-                    href={`https://www.google.com/maps?q=${pinLocation.lat},${pinLocation.lng}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[var(--color-accent)]"
+            <div>
+              <p className="mb-1.5 text-sm font-semibold">Časové okno (1 hodina)</p>
+              <div id={stepFieldInputIds.timeWindowRequested} className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {TIME_WINDOW_VALUES.map((windowValue) => (
+                  <button
+                    key={windowValue}
+                    type="button"
+                    onClick={() => {
+                      update("timeWindowRequested", windowValue);
+                      clearFieldError("timeWindowRequested");
+                    }}
+                    className={cx(
+                      "rounded-xl border px-2.5 py-1.5 text-sm",
+                      data.timeWindowRequested === windowValue
+                        ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
+                        : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
+                    )}
                   >
-                    otevřít bod v mapě
-                  </a>
-                </p>
-              ) : null}
-              {data.postalCode.length === 5 ? (
-                <p className={postalCodeOk ? "mt-2 text-emerald-300" : "mt-2 text-red-300"}>
-                  {postalCodeOk ? "PSČ je v obsluhované oblasti." : "PSČ zatím není v online obsluze."}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          {pinEditorEnabled ? (
-            <div className="space-y-3 rounded-xl border border-zinc-700 bg-zinc-950 p-4">
-              <p className="text-sm text-zinc-300">
-                Přetažením pinu upřesníte přesné místo přistavení. Po posunu pinu adresu automaticky aktualizujeme.
-              </p>
-              <div ref={mapContainerRef} className="h-[320px] w-full overflow-hidden rounded-xl border border-zinc-700" />
-              <p className="text-xs text-zinc-400">
-                Aktuální pin: {pinLocation ? formatPinLocation(pinLocation) : "nevybrán"}
-              </p>
-              {resolvingPin ? <p className="text-xs text-zinc-400">Aktualizuji adresu podle nové pozice pinu...</p> : null}
-              {pinError ? <p className="text-xs text-amber-300">{pinError}</p> : null}
-            </div>
-          ) : null}
-
-          <details className="rounded-xl border border-zinc-700 bg-zinc-950 p-4">
-            <summary className="cursor-pointer text-sm font-semibold text-zinc-200">Nemůžete vybrat adresu? Vyplňte ji ručně</summary>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm">
-                PSČ
-                <input
-                  {...fieldA11yProps("postalCode")}
-                  value={data.postalCode}
-                  onChange={(event) => {
-                    update("postalCode", event.target.value.replace(/\D/g, "").slice(0, 5));
-                    clearPinLocation();
-                    clearFieldError("addressInput");
-                    clearFieldError("postalCode");
-                    setSubmitError(null);
-                  }}
-                  className={fieldClass("postalCode")}
-                  inputMode="numeric"
-                />
-                {renderFieldError("postalCode")}
-              </label>
-
-              <label className="flex flex-col gap-2 text-sm">
-                Město
-                <input
-                  {...fieldA11yProps("city")}
-                  value={data.city}
-                  onChange={(event) => {
-                    update("city", event.target.value);
-                    clearPinLocation();
-                    clearFieldError("addressInput");
-                    clearFieldError("city");
-                    setSubmitError(null);
-                  }}
-                  className={fieldClass("city")}
-                />
-                {renderFieldError("city")}
-              </label>
-
-              <label className="flex flex-col gap-2 text-sm">
-                Ulice
-                <input
-                  {...fieldA11yProps("street")}
-                  value={data.street}
-                  onChange={(event) => {
-                    update("street", event.target.value);
-                    clearPinLocation();
-                    clearFieldError("addressInput");
-                    clearFieldError("street");
-                    setSubmitError(null);
-                  }}
-                  className={fieldClass("street")}
-                />
-                {renderFieldError("street")}
-              </label>
-
-              <label className="flex flex-col gap-2 text-sm">
-                Číslo popisné
-                <input
-                  {...fieldA11yProps("houseNumber")}
-                  value={data.houseNumber}
-                  onChange={(event) => {
-                    update("houseNumber", event.target.value);
-                    clearPinLocation();
-                    clearFieldError("addressInput");
-                    clearFieldError("houseNumber");
-                    setSubmitError(null);
-                  }}
-                  className={fieldClass("houseNumber")}
-                />
-                {renderFieldError("houseNumber")}
-              </label>
-            </div>
-          </details>
-        </div>
-      ) : null}
-
-      {step === 1 ? (
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-2 sm:col-span-2">
-              Typ odpadu
-              <select
-                value={data.wasteType}
-                onChange={(e) =>
-                  update(
-                    "wasteType",
-                    e.target.value as "sut-cista" | "sut-smesna" | "objemny" | "zemina" | "drevo",
-                  )
-                }
-                className={ui.field}
-              >
-                {WASTE_TYPES.map((waste) => (
-                  <option value={waste.id} key={waste.id}>
-                    {waste.label}
-                  </option>
+                    {windowValue}
+                  </button>
                 ))}
-              </select>
-            </label>
-
-            <div className="rounded-xl border border-zinc-700 bg-zinc-950 p-4">
-              <p className="font-semibold text-[var(--color-accent)]">Aktuálně dostupná velikost</p>
-              <p className="mt-1 text-zinc-100">Kontejner {CONTAINER_PRODUCT.availableNow}</p>
-              <p className="text-sm text-zinc-400">Další velikosti: {CONTAINER_PRODUCT.futureSizes.join(", ")}.</p>
+              </div>
+              {renderFieldError("timeWindowRequested")}
             </div>
 
-            <label className="flex flex-col gap-2">
-              Počet kontejnerů
-              <input
-                {...fieldA11yProps("containerCount")}
-                type="number"
-                min={1}
-                max={CONTAINER_PRODUCT.maxContainerCountPerOrder}
-                value={data.containerCount}
-                onChange={(e) => {
-                  update("containerCount", Number(e.target.value) || 1);
-                  clearFieldError("containerCount");
-                  setSubmitError(null);
-                }}
-                className={fieldClass("containerCount")}
-              />
-              {renderFieldError("containerCount")}
-            </label>
-          </div>
+            <div>
+              <p className="mb-1.5 text-sm font-semibold">Počet dní pronájmu (1-14)</p>
+              <div id={stepFieldInputIds.rentalDays} className="flex flex-wrap gap-2">
+                {rentalDayOptions.map((days) => (
+                  <button
+                    key={days}
+                    type="button"
+                    onClick={() => {
+                      update("rentalDays", days);
+                      clearFieldError("rentalDays");
+                    }}
+                    className={cx(
+                      "rounded-full border px-3 py-1.5 text-sm",
+                      data.rentalDays === days
+                        ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
+                        : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
+                    )}
+                  >
+                    {days}
+                  </button>
+                ))}
+              </div>
+              {renderFieldError("rentalDays")}
+            </div>
 
-          <div className="rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-sm text-zinc-300">
-            <p>
-              Vybraný odpad: {WASTE_TYPES.find((w) => w.id === data.wasteType)?.label}. Před odesláním doporučujeme
-              zkontrolovat stránku &quot;Co patří a nepatří&quot;.
-            </p>
-          </div>
-        </div>
-      ) : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-2 text-sm">
+                Umístění kontejneru
+                <select
+                  value={data.placementType}
+                  onChange={(event) => {
+                    update("placementType", event.target.value as "soukromy" | "verejny");
+                    clearFieldError("permitConfirmed");
+                  }}
+                  className={ui.field}
+                >
+                  <option value="soukromy">Soukromý pozemek</option>
+                  <option value="verejny">Veřejná komunikace</option>
+                </select>
+              </label>
 
-      {step === 2 ? (
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-2">
-              Datum přistavení
-              <input
-                {...fieldA11yProps("deliveryDateRequested")}
-                type="date"
-                min={minimumDeliveryDate}
-                value={data.deliveryDateRequested}
-                onChange={(e) => {
-                  update("deliveryDateRequested", e.target.value);
-                  clearFieldError("deliveryDateRequested");
-                  setSubmitError(null);
-                }}
-                className={fieldClass("deliveryDateRequested")}
-              />
-              {renderFieldError("deliveryDateRequested")}
-            </label>
+              <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm">
+                <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">Orientační kalkulace</p>
+                {pricingLoading ? <p className="mt-2 text-zinc-400">Přepočítávám cenu...</p> : null}
+                {pricingError ? <p className="mt-2 text-amber-300">{pricingError}</p> : null}
 
-            <label className="flex flex-col gap-2">
-              Časové okno
-              <select
-                value={data.timeWindowRequested}
-                onChange={(e) =>
-                  update("timeWindowRequested", e.target.value as "rano" | "dopoledne" | "odpoledne")
-                }
-                className={ui.field}
+                {pricePreview ? (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xl font-bold text-[var(--color-accent)]">{formatPrice(pricePreview.total)}</p>
+                    <p className="text-zinc-300">Doba pronájmu: {formatCzechDayCount(pricePreview.rentalDays)}</p>
+                    <p className="text-xs text-zinc-400">Základ: {formatPrice(pricePreview.base)}</p>
+                    <p className="text-xs text-zinc-400">Doprava: {formatPrice(pricePreview.transport)}</p>
+                    <p className="text-xs text-zinc-400">Příplatky: {formatPrice(pricePreview.surcharge)}</p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-zinc-400">Cena se zobrazí po vyplnění adresy.</p>
+                )}
+              </div>
+            </div>
+
+            {data.placementType === "verejny" ? (
+              <label
+                className={cx(
+                  "flex items-start gap-3 rounded-xl border border-amber-700/60 bg-amber-950/30 p-3 text-sm",
+                  fieldErrors.permitConfirmed ? "border-red-500 bg-red-950/40" : "",
+                )}
               >
-                <option value="rano">Ráno</option>
-                <option value="dopoledne">Dopoledne</option>
-                <option value="odpoledne">Odpoledne</option>
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-2 sm:col-span-2">
-              Umístění kontejneru
-              <select
-                value={data.placementType}
-                onChange={(e) => {
-                  update("placementType", e.target.value as "soukromy" | "verejny");
-                  clearFieldError("permitConfirmed");
-                  setSubmitError(null);
-                }}
-                className={ui.field}
-              >
-                <option value="soukromy">Soukromý pozemek</option>
-                <option value="verejny">Veřejná komunikace</option>
-              </select>
-            </label>
+                <input
+                  {...fieldA11yProps("permitConfirmed")}
+                  type="checkbox"
+                  checked={data.permitConfirmed}
+                  onChange={(event) => {
+                    update("permitConfirmed", event.target.checked);
+                    clearFieldError("permitConfirmed");
+                  }}
+                  className="mt-1"
+                />
+                <span>
+                  Potvrzuji, že mám povolení k záboru veřejné komunikace.
+                  {renderFieldError("permitConfirmed")}
+                </span>
+              </label>
+            ) : null}
           </div>
+        ) : null}
 
-          {data.placementType === "verejny" ? (
+        {step === 3 ? (
+          <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
+            <div className="inline-flex rounded-full border border-zinc-700 bg-zinc-900 p-1 text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  update("customerType", "firma");
+                }}
+                className={cx(
+                  "rounded-full px-4 py-2 font-semibold",
+                  data.customerType === "firma" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:bg-zinc-800",
+                )}
+              >
+                Firma
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setData((previous) => ({
+                    ...previous,
+                    customerType: "fo",
+                    name: previous.name.trim() ? previous.name : previous.companyName,
+                  }));
+                }}
+                className={cx(
+                  "rounded-full px-4 py-2 font-semibold",
+                  data.customerType === "fo" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:bg-zinc-800",
+                )}
+              >
+                Člověk
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {data.customerType === "firma" ? (
+                <>
+                  <div className="flex flex-col gap-2 text-sm sm:col-span-2">
+                    <label htmlFor={stepFieldInputIds.companyName}>Název firmy (ARES našeptávač)</label>
+                    <input
+                      {...fieldA11yProps("companyName")}
+                      value={data.companyName}
+                      onChange={(event) => {
+                        update("companyName", event.target.value);
+                        setCompanyNameEditedByUser(true);
+                        clearFieldError("companyName");
+                      }}
+                      className={fieldClass("companyName")}
+                      autoComplete="organization"
+                      placeholder="Začněte psát název firmy"
+                    />
+                    {renderFieldError("companyName")}
+
+                    {companyLookupLoading ? <p className="text-xs text-zinc-400">Vyhledávám firmy v ARES...</p> : null}
+                    {companyLookupError ? <p className="text-xs text-amber-300">{companyLookupError}</p> : null}
+
+                {companySuggestions.length > 0 ? (
+                      <ul className="max-h-44 overflow-auto rounded-xl border border-zinc-700 bg-zinc-900">
+                        {companySuggestions.map((suggestion) => (
+                          <li key={suggestion.ico}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCompanyNameEditedByUser(false);
+                                setDicEditedByUser(false);
+                                setAddressEditedByUser(false);
+                                applyCompanyLookupMatch(suggestion, true);
+                                setCompanySuggestions([]);
+                                setCompanyLookupError(null);
+                              }}
+                              className="w-full border-b border-zinc-800 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-zinc-800"
+                            >
+                              <p className="font-semibold text-zinc-100">{suggestion.companyName}</p>
+                              <p className="text-xs text-zinc-400">IČO {suggestion.ico}{suggestion.addressText ? ` · ${suggestion.addressText}` : ""}</p>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+
+                  <label className="flex flex-col gap-2 text-sm">
+                    IČO
+                    <input
+                      {...fieldA11yProps("ico")}
+                      value={data.ico}
+                      onChange={(event) => {
+                        update("ico", event.target.value.replace(/\D/g, "").slice(0, 8));
+                        clearFieldError("ico");
+                        setIcoLookupError(null);
+                        lastIcoLookupRef.current = "";
+                      }}
+                      className={fieldClass("ico")}
+                      inputMode="numeric"
+                    />
+                    {renderFieldError("ico")}
+                    {icoLookupLoading ? <span className="text-xs text-zinc-400">Načítám data firmy podle IČO...</span> : null}
+                    {icoLookupError ? <span className="text-xs text-amber-300">{icoLookupError}</span> : null}
+                  </label>
+
+                  <label className="flex flex-col gap-2 text-sm">
+                    DIČ (volitelné)
+                    <input
+                      value={data.dic}
+                      onChange={(event) => {
+                        update("dic", event.target.value);
+                        setDicEditedByUser(true);
+                      }}
+                      className={ui.field}
+                    />
+                  </label>
+                </>
+              ) : null}
+
+              <label className="flex flex-col gap-2 text-sm sm:col-span-2">
+                Jméno a příjmení
+                <input
+                  {...fieldA11yProps("name")}
+                  value={data.name}
+                  onChange={(event) => {
+                    update("name", event.target.value);
+                    clearFieldError("name");
+                    setSubmitError(null);
+                  }}
+                  className={fieldClass("name")}
+                  autoComplete="name"
+                />
+                {renderFieldError("name")}
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm">
+                E-mail
+                <input
+                  {...fieldA11yProps("email")}
+                  value={data.email}
+                  onChange={(event) => {
+                    update("email", event.target.value);
+                    clearFieldError("email");
+                    setSubmitError(null);
+                  }}
+                  className={fieldClass("email")}
+                  type="email"
+                  autoComplete="email"
+                />
+                {renderFieldError("email")}
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm">
+                Telefon
+                <input
+                  {...fieldA11yProps("phone")}
+                  value={data.phone}
+                  onChange={(event) => {
+                    update("phone", event.target.value);
+                    clearFieldError("phone");
+                    setSubmitError(null);
+                  }}
+                  className={fieldClass("phone")}
+                  inputMode="tel"
+                  autoComplete="tel"
+                />
+                {renderFieldError("phone")}
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm sm:col-span-2">
+                Poznámka k objednávce (volitelné)
+                <textarea
+                  value={data.note}
+                  onChange={(event) => update("note", event.target.value)}
+                  className={ui.field}
+                  rows={3}
+                />
+              </label>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">Souhrn objednávky</p>
+              <div className="mt-2 grid gap-1 text-zinc-200">
+                <p>
+                  <span className="text-zinc-400">Adresa:</span> {data.street} {data.houseNumber}, {data.city}, {data.postalCode}
+                </p>
+                {pinLocation ? (
+                  <p>
+                    <span className="text-zinc-400">Pin:</span> {formatPinLocation(pinLocation)}
+                  </p>
+                ) : null}
+                <p>
+                  <span className="text-zinc-400">Odpad:</span> {selectedWaste?.label}
+                </p>
+                <p>
+                  <span className="text-zinc-400">Kontejner:</span> {CONTAINER_PRODUCT.availableNow}, počet {data.containerCount}
+                </p>
+                <p>
+                  <span className="text-zinc-400">Termín:</span> {data.deliveryDateRequested ? formatDisplayDate(data.deliveryDateRequested) : "nezadán"} ({data.timeWindowRequested})
+                </p>
+                {dateMode === "flex" && data.deliveryFlexibilityDays ? (
+                  <p>
+                    <span className="text-zinc-400">Flexibilita:</span> ±{formatCzechDayCount(data.deliveryFlexibilityDays)}
+                  </p>
+                ) : null}
+                <p>
+                  <span className="text-zinc-400">Pronájem:</span> {formatCzechDayCount(data.rentalDays)}
+                </p>
+                <p>
+                  <span className="text-zinc-400">Orientační cena:</span>{" "}
+                  {estimatedTotal ? (
+                    <strong className="text-[var(--color-accent)]">{formatPrice(estimatedTotal)}</strong>
+                  ) : (
+                    "bude dopočítána"
+                  )}
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-zinc-400">Finální termín i cenu potvrzuje operátor telefonicky/e-mailem.</p>
+            </div>
+
             <label
               className={cx(
-                "flex items-start gap-3 rounded-xl border border-amber-700/60 bg-amber-950/30 p-3 text-sm",
-                fieldErrors.permitConfirmed ? "border-red-500 bg-red-950/40" : "",
+                "flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm",
+                fieldErrors.gdprConsent ? "border-red-500" : "",
               )}
             >
               <input
-                {...fieldA11yProps("permitConfirmed")}
+                {...fieldA11yProps("gdprConsent")}
                 type="checkbox"
-                checked={data.permitConfirmed}
-                onChange={(e) => {
-                  update("permitConfirmed", e.target.checked);
-                  clearFieldError("permitConfirmed");
-                  setSubmitError(null);
+                checked={data.gdprConsent}
+                onChange={(event) => {
+                  update("gdprConsent", event.target.checked);
+                  clearFieldError("gdprConsent");
                 }}
                 className="mt-1"
               />
               <span>
-                Potvrzuji, že mám zajištěné povolení k záboru veřejné komunikace.
-                {renderFieldError("permitConfirmed")}
+                Souhlasím se zpracováním osobních údajů podle{" "}
+                <Link href="/gdpr" className="text-[var(--color-accent)] underline">
+                  GDPR
+                </Link>{" "}
+                a{" "}
+                <Link href="/obchodni-podminky" className="text-[var(--color-accent)] underline">
+                  obchodních podmínek
+                </Link>
+                .
+                {renderFieldError("gdprConsent")}
               </span>
             </label>
-          ) : null}
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm">
+            <label className="flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm">
               <input
                 type="checkbox"
-                checked={data.nakladkaOdNas}
-                onChange={(e) => update("nakladkaOdNas", e.target.checked)}
+                checked={data.marketingConsent}
+                onChange={(event) => update("marketingConsent", event.target.checked)}
+                className="mt-1"
               />
-              Nakládka od nás
+              Chci dostávat obchodní sdělení (volitelné).
             </label>
+          </div>
+        ) : null}
 
-            <label className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm">
-              <input
-                type="checkbox"
-                checked={data.expresniPristaveni}
-                onChange={(e) => update("expresniPristaveni", e.target.checked)}
-              />
-              Expresní přistavení
-            </label>
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={prev} disabled={step === 0 || submitting} className={ui.buttonSecondary}>
+              Zpět
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCallbackError(null);
+                setCallbackSuccess(null);
+                setCallbackForm((previous) => ({
+                  ...previous,
+                  phone: previous.phone || data.phone,
+                  name: previous.name || data.name,
+                }));
+                setCallbackModalOpen(true);
+              }}
+              className="text-xs text-zinc-400 underline decoration-zinc-500 underline-offset-4 transition hover:text-zinc-200"
+            >
+              Zavolejte mi
+            </button>
+          </div>
 
-            <label className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={data.opakovanyOdvoz}
-                onChange={(e) => update("opakovanyOdvoz", e.target.checked)}
-              />
-              Opakovaný odvoz
-            </label>
+          {step < stepTitles.length - 1 ? (
+            <button
+              type="button"
+              onClick={() => {
+                void next();
+              }}
+              disabled={submitting || resolvingAddress || resolvingPin}
+              className={ui.buttonPrimary}
+            >
+              {resolvingAddress ? "Ověřuji adresu..." : resolvingPin ? "Aktualizuji pin..." : "Pokračovat"}
+            </button>
+          ) : (
+            <button type="button" onClick={submit} disabled={submitting} className={ui.buttonPrimary}>
+              {submitting ? "Odesílám..." : "Odeslat objednávku"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {callbackModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="presentation"
+          onClick={() => {
+            setCallbackModalOpen(false);
+            setCallbackError(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-heading text-lg font-bold">Zavolejte mi</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setCallbackModalOpen(false);
+                  setCallbackError(null);
+                }}
+                className="rounded-lg border border-zinc-700 px-3 py-1 text-sm"
+            >
+              Zavřít
+            </button>
+          </div>
+
+          <p className="mt-2 text-sm text-zinc-300">Pošleme kontakt operátorovi, objednávku pak můžete dokončit online.</p>
+
+            <form className="mt-4 space-y-3" onSubmit={(event) => void submitCallbackRequest(event)}>
+              <label className="flex flex-col gap-2 text-sm">
+                Telefon (povinné)
+                <input
+                  value={callbackForm.phone}
+                  onChange={(event) => setCallbackForm((previous) => ({ ...previous, phone: event.target.value }))}
+                  className={ui.field}
+                  required
+                  inputMode="tel"
+                  autoComplete="tel"
+                />
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm">
+                Jméno (volitelné)
+                <input
+                  value={callbackForm.name}
+                  onChange={(event) => setCallbackForm((previous) => ({ ...previous, name: event.target.value }))}
+                  className={ui.field}
+                  autoComplete="name"
+                />
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm">
+                Poznámka (volitelné)
+                <textarea
+                  value={callbackForm.note}
+                  onChange={(event) => setCallbackForm((previous) => ({ ...previous, note: event.target.value }))}
+                  className={ui.field}
+                  rows={3}
+                />
+              </label>
+
+              {callbackError ? <p className="text-sm text-red-300">{callbackError}</p> : null}
+
+              <div className="flex flex-wrap justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCallbackModalOpen(false);
+                    setCallbackError(null);
+                  }}
+                  className={ui.buttonSecondary}
+                >
+                  Zrušit
+                </button>
+                <button type="submit" disabled={callbackSubmitting} className={ui.buttonPrimary}>
+                  {callbackSubmitting ? "Odesílám..." : "Požádat o kontakt"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}
-
-      {step === 3 ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-2">
-            Typ zákazníka
-            <select
-              value={data.customerType}
-              onChange={(e) => {
-                const value = e.target.value as "fo" | "firma";
-                update("customerType", value);
-                if (value === "fo") {
-                  clearFieldError("companyName");
-                  clearFieldError("ico");
-                }
-                setSubmitError(null);
-              }}
-              className={ui.field}
-            >
-              <option value="fo">Fyzická osoba</option>
-              <option value="firma">Firma</option>
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-2">
-            Jméno a příjmení
-            <input
-              {...fieldA11yProps("name")}
-              value={data.name}
-              onChange={(e) => {
-                update("name", e.target.value);
-                clearFieldError("name");
-                setSubmitError(null);
-              }}
-              className={fieldClass("name")}
-            />
-            {renderFieldError("name")}
-          </label>
-
-          {data.customerType === "firma" ? (
-            <>
-              <label className="flex flex-col gap-2">
-                Název firmy
-                <input
-                  {...fieldA11yProps("companyName")}
-                  value={data.companyName}
-                  onChange={(e) => {
-                    update("companyName", e.target.value);
-                    clearFieldError("companyName");
-                    setSubmitError(null);
-                  }}
-                  className={fieldClass("companyName")}
-                />
-                {renderFieldError("companyName")}
-              </label>
-              <label className="flex flex-col gap-2">
-                IČO
-                <input
-                  {...fieldA11yProps("ico")}
-                  value={data.ico}
-                  onChange={(e) => {
-                    update("ico", e.target.value.replace(/\D/g, "").slice(0, 8));
-                    clearFieldError("ico");
-                    setSubmitError(null);
-                  }}
-                  className={fieldClass("ico")}
-                  inputMode="numeric"
-                />
-                {renderFieldError("ico")}
-              </label>
-              <label className="flex flex-col gap-2 sm:col-span-2">
-                DIČ (volitelné)
-                <input value={data.dic} onChange={(e) => update("dic", e.target.value)} className={ui.field} />
-              </label>
-            </>
-          ) : null}
-
-          <label className="flex flex-col gap-2">
-            E-mail
-            <input
-              {...fieldA11yProps("email")}
-              type="email"
-              value={data.email}
-              onChange={(e) => {
-                update("email", e.target.value);
-                clearFieldError("email");
-                setSubmitError(null);
-              }}
-              className={fieldClass("email")}
-            />
-            {renderFieldError("email")}
-          </label>
-
-          <label className="flex flex-col gap-2">
-            Telefon
-            <input
-              {...fieldA11yProps("phone")}
-              value={data.phone}
-              onChange={(e) => {
-                update("phone", e.target.value);
-                clearFieldError("phone");
-                setSubmitError(null);
-              }}
-              className={fieldClass("phone")}
-            />
-            {renderFieldError("phone")}
-          </label>
-
-          <label className="flex flex-col gap-2 sm:col-span-2">
-            Poznámka k objednávce (volitelné)
-            <textarea
-              value={data.note}
-              onChange={(e) => update("note", e.target.value)}
-              className={ui.field}
-              rows={3}
-            />
-          </label>
-
-          <label
-            className={cx(
-              "sm:col-span-2 flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm",
-              fieldErrors.gdprConsent ? "border-red-500" : "",
-            )}
-          >
-            <input
-              {...fieldA11yProps("gdprConsent")}
-              type="checkbox"
-              checked={data.gdprConsent}
-              onChange={(e) => {
-                update("gdprConsent", e.target.checked);
-                clearFieldError("gdprConsent");
-                setSubmitError(null);
-              }}
-              className="mt-1"
-            />
-            <span>
-              Souhlasím se zpracováním osobních údajů podle{" "}
-              <Link href="/gdpr" className="text-[var(--color-accent)] underline">
-                GDPR
-              </Link>{" "}
-              a{" "}
-              <Link href="/obchodni-podminky" className="text-[var(--color-accent)] underline">
-                obchodních podmínek
-              </Link>
-              .
-              {renderFieldError("gdprConsent")}
-            </span>
-          </label>
-
-          <label className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm">
-            <input
-              type="checkbox"
-              checked={data.marketingConsent}
-              onChange={(e) => update("marketingConsent", e.target.checked)}
-              className="mt-1"
-            />
-            Chci dostávat obchodní sdělení (volitelné).
-          </label>
-        </div>
-      ) : null}
-
-      {step === 4 ? (
-        <div className="space-y-3 rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-sm">
-          <p>
-            <span className="text-zinc-400">Adresa:</span> {data.street} {data.houseNumber}, {data.city}, {data.postalCode}
-          </p>
-          {pinLocation ? (
-            <p>
-              <span className="text-zinc-400">Pin:</span> {formatPinLocation(pinLocation)}
-            </p>
-          ) : null}
-          <p>
-            <span className="text-zinc-400">Typ odpadu:</span> {WASTE_TYPES.find((w) => w.id === data.wasteType)?.label}
-          </p>
-          <p>
-            <span className="text-zinc-400">Kontejner:</span> {CONTAINER_PRODUCT.availableNow}, počet {data.containerCount}
-          </p>
-          <p>
-            <span className="text-zinc-400">Požadovaný termín:</span> {data.deliveryDateRequested} ({data.timeWindowRequested})
-          </p>
-          <p>
-            <span className="text-zinc-400">Kontakt:</span> {data.name}, {data.phone}, {data.email}
-          </p>
-          <p className="text-[var(--color-accent)]">Termín bude potvrzen ručně operátorem.</p>
-        </div>
-      ) : null}
-
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button type="button" onClick={prev} disabled={step === 0 || submitting} className={ui.buttonSecondary}>
-          Zpět
-        </button>
-
-        {step < stepTitles.length - 1 ? (
-          <button
-            type="button"
-            onClick={() => {
-              void next();
-            }}
-            disabled={submitting || locating || resolvingAddress || resolvingPin}
-            className={ui.buttonPrimary}
-          >
-            {resolvingAddress ? "Ověřuji adresu..." : resolvingPin ? "Aktualizuji pin..." : "Pokračovat"}
-          </button>
-        ) : (
-          <button type="button" onClick={submit} disabled={submitting} className={ui.buttonPrimary}>
-            {submitting ? "Odesílám..." : "Odeslat objednávku"}
-          </button>
-        )}
-      </div>
     </div>
   );
 }

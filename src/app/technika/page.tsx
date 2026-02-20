@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import { MachineRentalGrid } from "@/components/machine-rental-grid";
 import { MACHINE_RENTAL_PRICING } from "@/lib/full-pricing";
-import { ui } from "@/lib/ui";
+import { CONTACT, SERVICE_AREA } from "@/lib/site-config";
+import { cx, ui } from "@/lib/ui";
 
 const capabilities = [
   "Pásová rypadla pro demolice a zemní práce",
@@ -12,15 +13,28 @@ const capabilities = [
   "Možnost strojů s kladivem a nůžkami",
 ] as const;
 
+const planningPoints = [
+  "Typ práce a předpokládaná délka nasazení",
+  "Lokalita a podmínky přístupu na místo",
+  "Požadovaná technika a případná obsluha",
+] as const;
+
 export default function TechnikaPage() {
   return (
     <div className="space-y-10 pb-8">
       <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <article className="space-y-3">
+        <article className="space-y-4">
+          <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-accent)]">
+            Technika pro demolice a recyklaci
+          </p>
           <h1 className="text-4xl font-bold">Technika</h1>
           <p className="max-w-3xl text-zinc-300">
             Pro demolice, recyklaci i odvoz využíváme vlastní techniku. Přehled níže slouží jako rychlá orientace -
             konkrétní nasazení vždy navrhujeme podle typu zakázky.
+          </p>
+          <p className="max-w-3xl text-zinc-300">
+            Primární oblast nasazení je {SERVICE_AREA.regionsLabel}. Vzdálenější lokality řešíme podle rozsahu a
+            harmonogramu projektu.
           </p>
           <ul className="space-y-2 text-zinc-300">
             {capabilities.map((item) => (
@@ -31,9 +45,9 @@ export default function TechnikaPage() {
             <Link href="/cenik#pronajem-stroju" className={ui.buttonSecondary}>
               Otevřít ceník techniky
             </Link>
-            <Link href="/kontakt" className={ui.buttonPrimary}>
-              Poptat termín techniky
-            </Link>
+            <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>
+              Zavolat {CONTACT.phone}
+            </a>
           </div>
         </article>
 
@@ -46,6 +60,33 @@ export default function TechnikaPage() {
             className="h-full w-full object-cover"
           />
         </div>
+      </section>
+
+      <section className="grid gap-5 border-t border-zinc-800 pt-8 lg:grid-cols-[1.2fr_1fr]">
+        <article className={cx(ui.cardSoft, "p-6")}>
+          <h2 className="text-2xl font-bold">Jak připravit poptávku techniky</h2>
+          <ul className="mt-4 space-y-2 text-zinc-300">
+            {planningPoints.map((point) => (
+              <li key={point}>- {point}</li>
+            ))}
+          </ul>
+          <p className="mt-4 text-sm text-zinc-400">
+            Čím přesnější vstupní informace, tím rychleji potvrdíme vhodný stroj i realistický termín nasazení.
+          </p>
+        </article>
+
+        <article className={cx(ui.card, "p-6")}>
+          <h2 className="text-2xl font-bold">Rychlý kontakt</h2>
+          <p className="mt-2 text-zinc-300">
+            Potřebujete ověřit dostupnost stroje nebo cenu na konkrétní termín? Nejrychlejší je kontakt přes dispečink.
+          </p>
+          <a href={CONTACT.phoneHref} className={cx(ui.buttonPrimary, "mt-4")}>
+            Zavolat {CONTACT.phone}
+          </a>
+          <a href={CONTACT.emailHref} className={cx(ui.buttonSecondary, "mt-3")}>
+            Napsat dispečinku
+          </a>
+        </article>
       </section>
 
       <section className="space-y-4 border-t border-zinc-800 pt-6">

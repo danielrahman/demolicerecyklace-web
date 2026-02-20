@@ -55,7 +55,7 @@ export default function WasteRulesPage() {
         <Link href="/kontejnery/objednat" className={ui.buttonPrimary}>
           Pokračovat do objednávky
         </Link>
-        <Link href="/kontejnery/cenik" className={ui.buttonSecondary}>
+        <Link href="/cenik#kontejnery" className={ui.buttonSecondary}>
           Zobrazit ceník kontejnerů
         </Link>
       </section>

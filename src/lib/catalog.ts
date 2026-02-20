@@ -55,17 +55,17 @@ export const WASTE_TYPES: WasteTypeCatalogItem[] = [
 export const CONTAINER_OPTIONS = [
   {
     sizeM3: 3,
-    label: "Kontejner 3 m3",
+    label: "Kontejner 3m³",
     available: true,
   },
   {
     sizeM3: 5,
-    label: "Kontejner 5 m3",
+    label: "Kontejner 5m³",
     available: false,
   },
   {
     sizeM3: 7,
-    label: "Kontejner 7 m3",
+    label: "Kontejner 7m³",
     available: false,
   },
 ] as const;

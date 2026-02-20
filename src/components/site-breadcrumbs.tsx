@@ -14,7 +14,7 @@ const segmentLabels: Record<string, string> = {
   icp: "iČP",
   zpo: "ZPO",
   faq: "FAQ",
-  gdpr: "GDPR",
+  gdpr: "Zásady osobních údajů",
   kontakt: "Kontakt",
   kontejnery: "Kontejnery",
   "co-patri-nepatri": "Co patří a nepatří",
@@ -53,6 +53,10 @@ export function SiteBreadcrumbs() {
   const pathname = usePathname();
 
   if (!pathname || pathname === "/") {
+    return null;
+  }
+
+  if (pathname.startsWith("/kontejnery/objednat")) {
     return null;
   }
 
