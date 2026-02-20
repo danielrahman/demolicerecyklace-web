@@ -11,30 +11,36 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-14 pb-10">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-7 py-10 sm:px-10">
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/55 to-black/45" />
+      <section className="home-hero relative overflow-hidden rounded-3xl px-7 py-10 sm:px-10">
+        <div className="home-hero-overlay absolute inset-0" />
         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#F2C400]/20 blur-3xl" />
         <div className="pointer-events-none absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-[#F2C400]/10 blur-3xl" />
 
         <p className="relative z-10 text-sm font-semibold uppercase tracking-widest text-[#F2C400]">{content.heroEyebrow}</p>
-        <h1 className="relative z-10 mt-3 max-w-5xl text-4xl font-bold leading-tight sm:text-5xl">{content.heroTitle}</h1>
-        <p className="relative z-10 mt-4 max-w-3xl text-lg text-zinc-200">{content.heroDescription}</p>
+        <h1 className="relative z-10 mt-3 max-w-5xl text-4xl font-bold leading-tight text-white sm:text-5xl">{content.heroTitle}</h1>
+        <p className="relative z-10 mt-4 max-w-3xl text-lg text-white/85">{content.heroDescription}</p>
 
         <div className="relative z-10 mt-6 flex flex-wrap gap-3">
           <Link href="/kontejnery/objednat" className={ui.buttonPrimary}>
             Objednat kontejner
           </Link>
-          <a href={CONTACT.phoneHref} className={ui.buttonSecondary}>
+          <a
+            href={CONTACT.phoneHref}
+            className={cx(ui.buttonSecondary, "!border-white/45 !text-white hover:!border-white/60 hover:!bg-white/12")}
+          >
             Zavolat {CONTACT.phone}
           </a>
-          <Link href="/cenik" className={ui.buttonSecondary}>
+          <Link
+            href="/cenik"
+            className={cx(ui.buttonSecondary, "!border-white/45 !text-white hover:!border-white/60 hover:!bg-white/12")}
+          >
             Otevřít ceník
           </Link>
         </div>
 
-        <div className="relative z-10 mt-5 flex flex-wrap gap-2 text-xs text-zinc-200">
+        <div className="relative z-10 mt-5 flex flex-wrap gap-2 text-xs text-white/85">
           {content.quickFacts.map((fact) => (
-            <span key={fact} className="rounded-full border border-zinc-700 bg-black/25 px-3 py-1">
+            <span key={fact} className="rounded-full border border-white/30 bg-black/25 px-3 py-1">
               {fact}
             </span>
           ))}

@@ -19,7 +19,7 @@ export function SiteHeader({ settings }: SiteHeaderProps) {
 
   if (isCheckoutRoute) {
     return (
-      <header className="sticky top-0 z-40 border-b border-zinc-800/90 bg-[#0B0B0B]/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-zinc-800/90 bg-[var(--color-header-bg)] backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <Link href="/" className="shrink-0">
             <Image
@@ -40,7 +40,7 @@ export function SiteHeader({ settings }: SiteHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-800/90 bg-[#0B0B0B]/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-zinc-800/90 bg-[var(--color-header-bg)] backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/" className="shrink-0">
           <Image

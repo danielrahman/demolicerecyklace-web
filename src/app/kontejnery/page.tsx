@@ -13,7 +13,7 @@ export default async function KontejneryPage() {
 
   return (
     <div className="space-y-10 pb-8">
-      <section className="relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-10 sm:px-10">
+      <section className="containers-hero relative overflow-hidden rounded-3xl border border-zinc-800 px-6 py-10 sm:px-10">
         <Image
           src={content.heroImageUrl}
           alt={content.heroImageAlt}
@@ -22,21 +22,27 @@ export default async function KontejneryPage() {
           className="absolute inset-0 h-full w-full object-cover opacity-30"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/65 to-black/40" />
-        <div className="relative z-10 max-w-4xl space-y-4">
+        <div className="containers-hero-overlay absolute inset-0" />
+        <div className="relative z-10 max-w-4xl space-y-4 text-white">
           <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-accent)]">
             Kontejnery - online objednávka
           </p>
           <h1 className="text-4xl font-bold leading-tight sm:text-5xl">{content.heroTitle}</h1>
-          <p className="text-lg text-zinc-200">{content.heroDescription}</p>
+          <p className="text-lg text-white/85">{content.heroDescription}</p>
           <div className="flex flex-wrap gap-3 pt-2">
             <Link href="/kontejnery/objednat" className={ui.buttonPrimary}>
               Objednat kontejner
             </Link>
-            <Link href="/cenik#kontejnery" className={ui.buttonSecondary}>
+            <Link
+              href="/cenik#kontejnery"
+              className={cx(ui.buttonSecondary, "!border-white/45 !text-white hover:!border-white/60 hover:!bg-white/12")}
+            >
               Zobrazit ceník kontejnerů
             </Link>
-            <Link href="/kontejnery/co-patri-nepatri" className={ui.buttonSecondary}>
+            <Link
+              href="/kontejnery/co-patri-nepatri"
+              className={cx(ui.buttonSecondary, "!border-white/45 !text-white hover:!border-white/60 hover:!bg-white/12")}
+            >
               Co patří a nepatří
             </Link>
           </div>

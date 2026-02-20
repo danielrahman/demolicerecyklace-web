@@ -47,7 +47,7 @@ export default async function RootLayout({
 
   return (
     <html lang="cs">
-      <body className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable} bg-[#0B0B0B] text-zinc-100`}>
+      <body className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable}`}>
         <CookieConsentManager gaMeasurementId={gaMeasurementId} />
         <SiteHeader settings={settings} />
         <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
