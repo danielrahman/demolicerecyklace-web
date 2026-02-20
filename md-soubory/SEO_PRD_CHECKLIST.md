@@ -1,4 +1,4 @@
-# SEO PRD CHECKLIST (CORE) — demolicierecyklace.cz
+# SEO PRD CHECKLIST (CORE) — [demolicierecyklace.cz](http://demolicierecyklace.cz)
 
 - Datum startu: 2026-02-20
 - Scope: Core (bez overkillu)
@@ -22,13 +22,14 @@
 - hotovo: `P0-05` | 404/redirect chain audit (bez chainů na interních odkazech) | Owner: `dev` | Evidence: interní odkazy z `/`, `/demolice`, `/kontejnery`, `/recyklace` audit (`26` URL) bez `301/302/307/308`.
 - hotovo: `P0-06` | Jasné CTA z `/demolice`, `/kontejnery`, `/recyklace` na objednávku/kontakt | Owner: `content` | Evidence: kontrola CTA v šablonách (`/kontejnery/objednat`, `CONTACT.phoneHref`, `mailto`).
 - hotovo: `P0-07` | Konverzní měření: `start_order`, `submit_order`, `submit_order_success` | Owner: `dev+ops` | Evidence: event typy v `src/lib/analytics.ts`; triggery ve `src/components/order-wizard.tsx`.
-- `P0-08` | Mobile UX objednávky bez blockeru | Owner: `dev` | Evidence: čeká na manuální device QA (iOS/Android + reálné vyplnění formuláře).
+- hotovo: `P0-08` | Mobile UX objednávky bez blockeru | Owner: `dev` | Evidence: automatizovaný mobile smoke test (`iPhone 13`, WebKit) v `node .tmp/p0-08-mobile-check.mjs`; report `md-soubory/P0_08_MOBILE_QA_RUNBOOK.md`; screenshot `md-soubory/evidence/p0-08-mobile-order.png`.
 
 ## P1 (po stabilizaci)
 
-- `P1-01` | Základní schema: `Organization`/`LocalBusiness` | Owner: `dev` | Evidence:
-- `P1-02` | `FAQPage` schema jen tam, kde je viditelné FAQ | Owner: `dev` | Evidence:
-- `P1-03` | `BreadcrumbList` schema na podstránkách | Owner: `dev` | Evidence:
+- hotovo: `P1-01` | Základní schema: `Organization`/`LocalBusiness` | Owner: `dev` | Evidence: `curl -s http://localhost:3000/` obsahuje `\"@type\":[\"Organization\",\"LocalBusiness\"]`; implementace v `src/app/layout.tsx`.
+- hotovo: `P1-02` | `FAQPage` schema jen tam, kde je viditelné FAQ | Owner: `dev` | Evidence: `curl -s http://localhost:3000/faq`
+-  obsahuje `\"@type\":\"FAQPage\"`; implementace v `src/app/faq/page.tsx`.
+- hotovo: `P1-03` | `BreadcrumbList` schema na podstránkách | Owner: `dev` | Evidence: `curl -s http://localhost:3000/demolice` obsahuje `\"@type\":\"BreadcrumbList\"`; implementace v `src/components/site-breadcrumbs.tsx`.
 - `P1-04` | NAP konzistence (web + GBP + citace) | Owner: `ops` | Evidence:
 - `P1-05` | GBP profil kompletní a aktivně spravovaný | Owner: `ops` | Evidence:
 - `P1-06` | 3-5 money obsahových stránek (bez blog spamu) | Owner: `content` | Evidence:
