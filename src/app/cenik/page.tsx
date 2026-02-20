@@ -5,7 +5,7 @@ import { MachineRentalGrid } from "@/components/machine-rental-grid";
 import { getPricingPageContent } from "@/lib/cms/getters";
 import type { CmsPricingRow } from "@/lib/cms/mappers";
 import { CONTAINER_PRODUCT } from "@/lib/site-config";
-import { cx, ui } from "@/lib/ui";
+import { ui } from "@/lib/ui";
 
 const containerVisualRules = [
   {
@@ -87,33 +87,6 @@ function buildContainerGroups(rows: CmsPricingRow[]) {
   return [...ordered, ...rest];
 }
 
-const containerCategoryTheme: Record<string, { chip: string; accent: string }> = {
-  beton: {
-    chip: "border-blue-400/40 bg-blue-500/10 text-blue-200",
-    accent: "bg-gradient-to-r from-blue-500/18 to-transparent",
-  },
-  "cihly a keramika": {
-    chip: "border-amber-400/40 bg-amber-500/10 text-amber-200",
-    accent: "bg-gradient-to-r from-amber-500/18 to-transparent",
-  },
-  asfalt: {
-    chip: "border-violet-400/40 bg-violet-500/10 text-violet-200",
-    accent: "bg-gradient-to-r from-violet-500/18 to-transparent",
-  },
-  "zemina a kámen": {
-    chip: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200",
-    accent: "bg-gradient-to-r from-emerald-500/18 to-transparent",
-  },
-};
-
-function getContainerCategoryTheme(label: string) {
-  const key = normalizeCategoryLabel(label);
-  return containerCategoryTheme[key] ?? {
-    chip: "border-zinc-500/40 bg-zinc-500/10 text-zinc-200",
-    accent: "bg-gradient-to-r from-zinc-500/18 to-transparent",
-  };
-}
-
 function PricingTable(props: { title: string; rows: CmsPricingRow[]; subtitle?: string }) {
   const hasNotes = props.rows.some((row) => Boolean(row.note));
 
@@ -185,50 +158,54 @@ export default async function KompletníCeníkPage() {
           {buildContainerGroups(content.containerPricing).map((group) => (
             <section
               key={group.label}
-              className={cx(
-                "overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/35",
-                "shadow-sm transition",
-                "hover:shadow-[0_10px_40px_-24px_rgba(0,0,0,0.55)]",
-              )}
+              className="overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/45"
             >
-              <div className={`px-4 py-3.5 ${getContainerCategoryTheme(group.label).accent}`}>
-                <p
-                  className={cx(
-                    "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
-                    getContainerCategoryTheme(group.label).chip,
-                  )}
-                >
-                  {group.label}
-                </p>
-                <h3 className="mt-2 text-sm font-semibold text-zinc-300">{group.rows.length} položek</h3>
-                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-400">Nejčastější materiály: {group.label}</p>
+              <div className="border-b border-zinc-800 px-4 py-3">
+                <h3 className="text-base font-semibold">{group.label}</h3>
+                <p className="mt-1 text-xs text-zinc-400">{group.rows.length} položek</p>
               </div>
 
-              <div className="divide-y divide-zinc-800/80">
-                {group.rows.map((item) => {
-                  const rowVisual = containerVisualFor(item.item);
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-zinc-950/70 text-zinc-400">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Materiál</th>
+                      <th className="px-3 py-2 text-left font-medium">Kód</th>
+                      <th className="px-3 py-2 text-right font-medium">Cena</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.rows.map((item) => {
+                      const rowVisual = containerVisualFor(item.item);
 
-                  return (
-                    <article
-                      key={`${group.label}-${item.item}-${item.code}`}
-                      className="flex items-center gap-3 bg-zinc-900/20 px-3 py-2.5 transition hover:bg-zinc-900/40"
-                    >
-                      <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-md border border-zinc-700/80">
-                        <Image
-                          src={item.imageUrl || rowVisual.image}
-                          alt={item.imageAlt || rowVisual.alt}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold leading-tight">{item.item}</p>
-                        <p className="text-xs text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
-                      </div>
-                      <p className="ml-auto shrink-0 text-sm font-bold text-[var(--color-accent)]">{item.price}</p>
-                    </article>
-                  );
-                })}
+                      return (
+                        <tr
+                          key={`${group.label}-${item.item}-${item.code}`}
+                          className="border-t border-zinc-800/80"
+                        >
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-10 w-12 shrink-0 overflow-hidden rounded border border-zinc-700/80">
+                                <Image
+                                  src={item.imageUrl || rowVisual.image}
+                                  alt={item.imageAlt || rowVisual.alt}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium leading-snug">{item.item}</p>
+                                <p className="text-xs text-zinc-500">Kód: {item.code ?? "-"}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs text-zinc-400">{item.code ?? "-"}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-[var(--color-accent)]">{item.price}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </section>
           ))}
