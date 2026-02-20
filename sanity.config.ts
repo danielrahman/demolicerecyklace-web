@@ -11,6 +11,7 @@ const singletonTypes = new Set(["homePage", "containersPage", "pricingPage"]);
 export default defineConfig({
   name: "default",
   title: "Demolice Recyklace CMS",
+  basePath: "/studio",
   projectId,
   dataset,
   plugins: [
