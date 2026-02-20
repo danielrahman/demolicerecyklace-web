@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# demolice-v1
 
-## Getting Started
+Skeleton projektu pro nový web `demolicerecyklace.cz` podle PRD.
 
-First, run the development server:
+## Doporučený stack
+- Frontend: Next.js (App Router, TypeScript)
+- Backend: Next.js API route handlers
+- Databáze: PostgreSQL
+- ORM: Drizzle ORM
+- Auth: Auth.js (pro admin)
+- E-mail: Resend
 
+## Co je připravené
+- Obsahové stránky: `/`, `/kontejnery`, `/kontejnery/cenik`, `/kontejnery/co-patri-nepatri`, `/kontejnery/objednat`, `/demolice`, `/recyklace`
+- Wizard objednávky s pravidlem `kontejner 3 m3`
+- Validace PSČ (Praha + Středočeský kraj)
+- Jednoduchý admin:
+  - `/admin/prihlaseni`
+  - `/admin/objednavky`
+  - `/admin/objednavky/[id]`
+- API routy pro katalog, pricing, objednávky a admin akce
+- Datové schéma Drizzle (`src/server/db/schema.ts`)
+- E-mail flow:
+  - po submitu zákazník + interní tým
+  - po potvrzení termínu zákazník
+
+## Lokální spuštění
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Web poběží na `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Poznámky k MVP
+- Aktuální uložení objednávek je in-memory (`src/lib/order-store.ts`) pro rychlý prototyp.
+- Pro produkci napojit API na PostgreSQL přes Drizzle.
+- Admin auth je připravená jako struktura, ale bez finální implementace session/role guardu.

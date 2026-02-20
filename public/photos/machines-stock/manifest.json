@@ -1,0 +1,26 @@
+[
+  {
+    "query": "excavator",
+    "source": "https://loremflickr.com/cache/resized/65535_54473725028_89a17b30ff_h_1280_800_nofilter.jpg",
+    "local": "/Users/danielrahman/Desktop/demolice-v1/public/photos/machines-stock/excavator.jpg",
+    "bytes": 189643
+  },
+  {
+    "query": "bulldozer",
+    "source": "https://loremflickr.com/cache/resized/65535_54170523796_fa13cf16f9_h_1280_800_nofilter.jpg",
+    "local": "/Users/danielrahman/Desktop/demolice-v1/public/photos/machines-stock/bulldozer.jpg",
+    "bytes": 245425
+  },
+  {
+    "query": "wheel-loader",
+    "source": "https://loremflickr.com/cache/resized/65535_51193201787_9bcb20050f_h_1280_800_nofilter.jpg",
+    "local": "/Users/danielrahman/Desktop/demolice-v1/public/photos/machines-stock/wheel-loader.jpg",
+    "bytes": 192288
+  },
+  {
+    "query": "construction-machine",
+    "source": "https://loremflickr.com/cache/resized/65535_53776658652_bb7ef161df_h_1280_800_nofilter.jpg",
+    "local": "/Users/danielrahman/Desktop/demolice-v1/public/photos/machines-stock/construction-machine.jpg",
+    "bytes": 332206
+  }
+]
