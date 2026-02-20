@@ -154,27 +154,27 @@ export default async function KompletníCeníkPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="columns-1 gap-4 lg:columns-2">
           {buildContainerGroups(content.containerPricing).map((group) => (
             <section
               key={group.label}
-              className="overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/45"
+              className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/45"
             >
               <div className="border-b border-zinc-800 px-4 py-3">
                 <h3 className="text-base font-semibold">{group.label}</h3>
                 <p className="mt-1 text-xs text-zinc-400">{group.rows.length} položek</p>
               </div>
 
-              <div>
+              <div className="grid gap-3 p-3 sm:grid-cols-2">
                 {group.rows.map((item) => {
                   const rowVisual = containerVisualFor(item.item);
 
                   return (
                     <article
                       key={`${group.label}-${item.item}-${item.code}`}
-                      className="flex flex-wrap gap-4 border-t border-zinc-800/80 px-4 py-4 md:flex-nowrap"
+                      className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-950/30"
                     >
-                      <div className="relative h-40 w-full overflow-hidden rounded border border-zinc-700/80 md:h-28 md:w-56">
+                      <div className="relative h-32 w-full">
                         <Image
                           src={item.imageUrl || rowVisual.image}
                           alt={item.imageAlt || rowVisual.alt}
@@ -183,10 +183,10 @@ export default async function KompletníCeníkPage() {
                         />
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        <p className="text-base font-semibold leading-snug">{item.item}</p>
-                        <p className="mt-1 text-sm text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
-                        <p className="mt-2 text-lg font-semibold text-[var(--color-accent)]">{item.price}</p>
+                      <div className="min-w-0 space-y-1 px-3 py-2.5">
+                        <p className="text-sm font-semibold leading-snug">{item.item}</p>
+                        <p className="text-xs text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
+                        <p className="pt-0.5 text-base font-semibold text-[var(--color-accent)]">{item.price}</p>
                       </div>
                     </article>
                   );
