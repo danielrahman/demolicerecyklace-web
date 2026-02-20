@@ -611,89 +611,154 @@ function DeliveryDatePicker({
   error,
   todayIso,
 }: DeliveryDatePickerProps) {
-  const pageSize = 10;
+  const desktopPageSize = 10;
+  const mobilePageSize = 6;
   const todayDate = useMemo(() => parseIsoLocalDate(todayIso) ?? new Date(), [todayIso]);
   const availableDays = useMemo(() => buildAvailableDeliveryDayOptions(todayDate), [todayDate]);
-  const initialPageIndex = useMemo(() => {
+  const initialDesktopPageIndex = useMemo(() => {
     if (!value) return 0;
     const selectedIndex = availableDays.findIndex((option) => option.iso === value);
-    return selectedIndex >= 0 ? Math.floor(selectedIndex / pageSize) : 0;
-  }, [availableDays, pageSize, value]);
-  const [pageIndex, setPageIndex] = useState(initialPageIndex);
-  const maxPageIndex = Math.max(0, Math.ceil(availableDays.length / pageSize) - 1);
-  const safePageIndex = Math.min(pageIndex, maxPageIndex);
-  const canGoPrev = safePageIndex > 0;
-  const canGoNext = safePageIndex < maxPageIndex;
-  const visibleDayOptions = availableDays.slice(safePageIndex * pageSize, safePageIndex * pageSize + pageSize);
+    return selectedIndex >= 0 ? Math.floor(selectedIndex / desktopPageSize) : 0;
+  }, [availableDays, desktopPageSize, value]);
+  const [desktopPageIndex, setDesktopPageIndex] = useState(initialDesktopPageIndex);
+  const maxDesktopPageIndex = Math.max(0, Math.ceil(availableDays.length / desktopPageSize) - 1);
+  const safeDesktopPageIndex = Math.min(desktopPageIndex, maxDesktopPageIndex);
+  const canGoDesktopPrev = safeDesktopPageIndex > 0;
+  const canGoDesktopNext = safeDesktopPageIndex < maxDesktopPageIndex;
+  const visibleDayOptions = availableDays.slice(
+    safeDesktopPageIndex * desktopPageSize,
+    safeDesktopPageIndex * desktopPageSize + desktopPageSize,
+  );
   const splitIndex = Math.ceil(visibleDayOptions.length / 2);
   const leftColumnOptions = visibleDayOptions.slice(0, splitIndex);
   const rightColumnOptions = visibleDayOptions.slice(splitIndex);
   const firstVisibleDay = visibleDayOptions[0]?.iso;
   const lastVisibleDay = visibleDayOptions[visibleDayOptions.length - 1]?.iso;
+  const initialMobilePageIndex = useMemo(() => {
+    if (!value) return 0;
+    const selectedIndex = availableDays.findIndex((option) => option.iso === value);
+    return selectedIndex >= 0 ? Math.floor(selectedIndex / mobilePageSize) : 0;
+  }, [availableDays, mobilePageSize, value]);
+  const [mobilePageIndex, setMobilePageIndex] = useState(initialMobilePageIndex);
+  const maxMobilePageIndex = Math.max(0, Math.ceil(availableDays.length / mobilePageSize) - 1);
+  const safeMobilePageIndex = Math.min(mobilePageIndex, maxMobilePageIndex);
+  const canGoMobilePrev = safeMobilePageIndex > 0;
+  const canGoMobileNext = safeMobilePageIndex < maxMobilePageIndex;
+  const mobileVisibleDayOptions = availableDays.slice(
+    safeMobilePageIndex * mobilePageSize,
+    safeMobilePageIndex * mobilePageSize + mobilePageSize,
+  );
+  const firstMobileVisibleDay = mobileVisibleDayOptions[0]?.iso;
+  const lastMobileVisibleDay = mobileVisibleDayOptions[mobileVisibleDayOptions.length - 1]?.iso;
   const selectedEndValue = calculateDeliveryEndDate(value, rentalDays);
   const selectedRentalDays = calculateRentalDays(value, selectedEndValue);
 
   return (
     <div className={cx("rounded-2xl border p-3 sm:p-4", error ? "border-red-500 bg-red-950/20" : "border-zinc-700 bg-zinc-950")}>
-      <div className="flex items-center justify-between gap-2 px-1 py-1.5">
-        <button
-          type="button"
-          onClick={() => setPageIndex((previous) => Math.max(0, previous - 1))}
-          disabled={!canGoPrev}
-          className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          ←
-        </button>
-        <p className="text-center text-xs text-zinc-300 sm:text-sm">
-          {firstVisibleDay && lastVisibleDay
-            ? `${formatDisplayDateWithoutYear(firstVisibleDay)} - ${formatDisplayDateWithoutYear(lastVisibleDay)}`
-            : "Vyberte datum"}
-        </p>
-        <button
-          type="button"
-          onClick={() => setPageIndex((previous) => Math.min(maxPageIndex, previous + 1))}
-          disabled={!canGoNext}
-          className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          →
-        </button>
+      <div className="sm:hidden">
+        <div className="flex items-center justify-between gap-2 px-1 py-1.5">
+          <button
+            type="button"
+            onClick={() => setMobilePageIndex((previous) => Math.max(0, previous - 1))}
+            disabled={!canGoMobilePrev}
+            className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ←
+          </button>
+          <p className="text-center text-xs text-zinc-300">
+            {firstMobileVisibleDay && lastMobileVisibleDay
+              ? `${formatDisplayDateWithoutYear(firstMobileVisibleDay)} - ${formatDisplayDateWithoutYear(lastMobileVisibleDay)}`
+              : "Vyberte datum"}
+          </p>
+          <button
+            type="button"
+            onClick={() => setMobilePageIndex((previous) => Math.min(maxMobilePageIndex, previous + 1))}
+            disabled={!canGoMobileNext}
+            className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            →
+          </button>
+        </div>
+        <div className="mt-2 space-y-2 px-1">
+          {mobileVisibleDayOptions.map((option) => (
+            <button
+              key={option.iso}
+              type="button"
+              onClick={() => onChange(option.iso)}
+              className={cx(
+                "w-full rounded-full border px-3 py-2 text-left text-sm transition",
+                value === option.iso
+                  ? "border-[var(--color-accent)] bg-[var(--color-accent)] font-semibold text-black"
+                  : "border-zinc-700 bg-zinc-900 text-zinc-100",
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="max-h-72 overflow-y-auto px-1 pb-1 pt-1">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <div className="space-y-2">
-            {leftColumnOptions.map((option) => (
-              <button
-                key={option.iso}
-                type="button"
-                onClick={() => onChange(option.iso)}
-                className={cx(
-                  "w-full rounded-full border px-3 py-2 text-left text-sm transition sm:text-base",
-                  value === option.iso
-                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] font-semibold text-black"
-                    : "border-zinc-700 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-2">
-            {rightColumnOptions.map((option) => (
-              <button
-                key={option.iso}
-                type="button"
-                onClick={() => onChange(option.iso)}
-                className={cx(
-                  "w-full rounded-full border px-3 py-2 text-left text-sm transition sm:text-base",
-                  value === option.iso
-                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] font-semibold text-black"
-                    : "border-zinc-700 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
+      <div className="hidden sm:block">
+        <div className="flex items-center justify-between gap-2 px-1 py-1.5">
+          <button
+            type="button"
+            onClick={() => setDesktopPageIndex((previous) => Math.max(0, previous - 1))}
+            disabled={!canGoDesktopPrev}
+            className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ←
+          </button>
+          <p className="text-center text-sm text-zinc-300">
+            {firstVisibleDay && lastVisibleDay
+              ? `${formatDisplayDateWithoutYear(firstVisibleDay)} - ${formatDisplayDateWithoutYear(lastVisibleDay)}`
+              : "Vyberte datum"}
+          </p>
+          <button
+            type="button"
+            onClick={() => setDesktopPageIndex((previous) => Math.min(maxDesktopPageIndex, previous + 1))}
+            disabled={!canGoDesktopNext}
+            className="rounded-full border border-zinc-700 px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            →
+          </button>
+        </div>
+
+        <div className="max-h-72 overflow-y-auto px-1 pb-1 pt-1">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-2">
+              {leftColumnOptions.map((option) => (
+                <button
+                  key={option.iso}
+                  type="button"
+                  onClick={() => onChange(option.iso)}
+                  className={cx(
+                    "w-full rounded-full border px-3 py-2 text-left text-sm transition sm:text-base",
+                    value === option.iso
+                      ? "border-[var(--color-accent)] bg-[var(--color-accent)] font-semibold text-black"
+                      : "border-zinc-700 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {rightColumnOptions.map((option) => (
+                <button
+                  key={option.iso}
+                  type="button"
+                  onClick={() => onChange(option.iso)}
+                  className={cx(
+                    "w-full rounded-full border px-3 py-2 text-left text-sm transition sm:text-base",
+                    value === option.iso
+                      ? "border-[var(--color-accent)] bg-[var(--color-accent)] font-semibold text-black"
+                      : "border-zinc-700 bg-zinc-900 text-zinc-100 hover:border-zinc-500",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -2091,13 +2156,7 @@ export function OrderWizard({
         </div>
 
         <div className="md:hidden">
-          <div className="relative mt-1 h-1 rounded bg-zinc-700">
-            <div
-              className="absolute left-0 top-0 h-1 rounded bg-[var(--color-accent)] transition-all"
-              style={{ width: `${(step / (stepTitles.length - 1)) * 100}%` }}
-            />
-          </div>
-          <ol className="mt-2 flex items-center justify-between px-1">
+          <ol className="flex items-center justify-between px-1">
             {stepTitles.map((title, index) => (
               <li key={title} className="flex w-1/4 justify-center">
                 <button
@@ -2539,7 +2598,7 @@ export function OrderWizard({
                       clearFieldError("timeWindowRequested");
                     }}
                     className={cx(
-                      "rounded-lg border px-2 py-1 text-xs font-medium leading-none sm:px-2.5 sm:py-1.5",
+                      "rounded-lg border px-2 py-1.5 text-xs font-medium leading-none sm:px-2.5 sm:py-1.5 sm:text-sm",
                       data.timeWindowRequested === windowValue
                         ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-black"
                         : "border-zinc-700 bg-zinc-900 hover:border-zinc-500",
@@ -2555,17 +2614,26 @@ export function OrderWizard({
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-2 text-sm">
                 Umístění kontejneru
-                <select
-                  value={data.placementType}
-                  onChange={(event) => {
-                    update("placementType", event.target.value as "soukromy" | "verejny");
-                    clearFieldError("permitConfirmed");
-                  }}
-                  className={ui.field}
-                >
-                  <option value="soukromy">Soukromý pozemek</option>
-                  <option value="verejny">Veřejná komunikace</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={data.placementType}
+                    onChange={(event) => {
+                      const nextPlacementType = event.target.value as "soukromy" | "verejny";
+                      update("placementType", nextPlacementType);
+                      // Force explicit confirmation each time public placement is selected.
+                      update("permitConfirmed", false);
+                      clearFieldError("permitConfirmed");
+                    }}
+                    className={cx(ui.field, "appearance-none pr-10")}
+                  >
+                    <option value="soukromy">Soukromý pozemek</option>
+                    <option value="verejny">Veřejná komunikace</option>
+                  </select>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b-2 border-r-2 border-zinc-400"
+                  />
+                </div>
               </label>
 
               <div className="text-sm">

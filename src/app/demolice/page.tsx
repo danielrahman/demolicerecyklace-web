@@ -3,9 +3,8 @@ import Link from "next/link";
 
 import { FaqSection } from "@/components/faq-section";
 import { MachineRentalGrid } from "@/components/machine-rental-grid";
-import { getMarketingPageContent } from "@/lib/cms/getters";
+import { getMarketingPageContent, getPricingPageContent } from "@/lib/cms/getters";
 import { DEMOLITION_FAQ } from "@/lib/faq-content";
-import { MACHINE_RENTAL_PRICING } from "@/lib/full-pricing";
 import { CONTACT, SERVICE_AREA } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -50,7 +49,10 @@ const requirements = [
 ] as const;
 
 export default async function DemolicePage() {
-  const marketing = await getMarketingPageContent("demolice");
+  const [marketing, pricing] = await Promise.all([
+    getMarketingPageContent("demolice"),
+    getPricingPageContent(),
+  ]);
 
   return (
     <div className="space-y-10 pb-8">
@@ -161,10 +163,12 @@ export default async function DemolicePage() {
       <section className="space-y-4 border-t border-zinc-800 pt-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold">Pronájem strojů</h2>
-            <p className="mt-2 max-w-3xl text-sm text-zinc-400">
-              Fotky strojů jsou pro náhled kombinované z aktuálního webu a veřejně dostupných ilustračních zdrojů.
-            </p>
+            <h2 className="text-3xl font-bold">{pricing.machineSectionTitle}</h2>
+            {pricing.machineSectionSubtitle ? (
+              <p className="mt-2 max-w-3xl text-sm text-zinc-400">
+                {pricing.machineSectionSubtitle}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/cenik#pronajem-stroju" className={ui.buttonSecondary}>
@@ -175,7 +179,7 @@ export default async function DemolicePage() {
             </a>
           </div>
         </div>
-        <MachineRentalGrid machines={MACHINE_RENTAL_PRICING} />
+        <MachineRentalGrid machines={pricing.machinePricing} />
       </section>
     </div>
   );
