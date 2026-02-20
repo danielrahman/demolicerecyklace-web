@@ -34,6 +34,20 @@ const containerVisualRules = [
   },
 ] as const;
 
+const containerCategoryOrder = ["Beton", "Cihly a keramika", "Asfalt", "Zemina a kámen", "Stavební odpad", "Ostatní materiály"] as const;
+
+type ContainerCategory = {
+  label: string;
+  image: string;
+  alt: string;
+  rows: CmsPricingRow[];
+};
+
+const fallbackCategory = {
+  image: "/photos/competitor/competitor-04.jpg",
+  alt: "Kontejnery připravené k přistavení",
+};
+
 function containerVisualFor(item: string) {
   const matchedRule = containerVisualRules.find((rule) => rule.pattern.test(item));
   if (matchedRule) return matchedRule;
@@ -43,6 +57,43 @@ function containerVisualFor(item: string) {
     alt: "Kontejnery připravené k přistavení",
     tag: "Stavební odpad",
   };
+}
+
+function normalizeCategoryLabel(label: string) {
+  return label.trim().toLowerCase();
+}
+
+function buildContainerGroups(rows: CmsPricingRow[]) {
+  const grouped = new Map<string, ContainerCategory>();
+
+  rows.forEach((row) => {
+    const visual = containerVisualFor(row.item);
+    const label = row.tag?.trim() || visual.tag;
+    const key = normalizeCategoryLabel(label);
+    const existing = grouped.get(key);
+
+    if (existing) {
+      existing.rows.push(row);
+      return;
+    }
+
+    grouped.set(key, {
+      label,
+      image: row.imageUrl || visual.image,
+      alt: row.imageAlt || visual.alt,
+      rows: [row],
+    });
+  });
+
+  const ordered = containerCategoryOrder
+    .map((label) => grouped.get(label.toLowerCase()))
+    .filter((group): group is ContainerCategory => Boolean(group));
+
+  const rest = Array.from(grouped.values()).filter(
+    (group) => !containerCategoryOrder.map((label) => label.toLowerCase()).includes(normalizeCategoryLabel(group.label)),
+  );
+
+  return [...ordered, ...rest];
 }
 
 function PricingTable(props: { title: string; rows: CmsPricingRow[]; subtitle?: string }) {
@@ -112,33 +163,60 @@ export default async function KompletníCeníkPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {content.containerPricing.map((item) => {
-            const fallbackVisual = containerVisualFor(item.item);
-            const visualImage = item.imageUrl || fallbackVisual.image;
-            const visualAlt = item.imageAlt || fallbackVisual.alt;
-            const visualTag = item.tag || fallbackVisual.tag;
-
-            return (
-              <article key={`${item.item}-${item.code}`} className={cx(ui.card, "p-4")}>
-                <div className="flex gap-3">
-                  <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-800">
-                    <Image src={visualImage} alt={visualAlt} fill className="object-cover" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-accent)]">{visualTag}</p>
-                    <h3 className="mt-1 text-sm font-semibold leading-snug">{item.item}</h3>
-                    <p className="mt-1 text-xs text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
-                  </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {buildContainerGroups(content.containerPricing).map((group) => (
+            <section
+              key={group.label}
+              className={cx(
+                ui.card,
+                "space-y-3 p-3 transition md:p-4",
+                "border-2 border-transparent hover:border-zinc-500/50 hover:shadow-md",
+              )}
+            >
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative h-16 w-20 overflow-hidden rounded-lg border border-zinc-800">
+                  <Image
+                    src={group.image || fallbackCategory.image}
+                    alt={group.alt || fallbackCategory.alt}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-
-                <div className="mt-4 flex items-end justify-between gap-3 border-t border-zinc-800 pt-3">
-                  <p className="text-lg font-bold text-[var(--color-accent)]">{item.price}</p>
-                  <p className="text-right text-xs text-zinc-400">{content.containerLimitNote}</p>
+                <div>
+                  <h3 className="text-lg font-bold">{group.label}</h3>
+                  <p className="text-xs text-zinc-400">{group.rows.length} položek</p>
                 </div>
-              </article>
-            );
-          })}
+              </div>
+
+              <div className="space-y-2 border-t border-zinc-800 pt-3">
+                {group.rows.map((item) => (
+                  <article
+                    key={`${group.label}-${item.item}-${item.code}`}
+                    className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/40 px-2 py-2"
+                  >
+                    {(() => {
+                      const rowVisual = containerVisualFor(item.item);
+                      return (
+                        <div className="relative h-11 w-14 shrink-0 overflow-hidden rounded-md border border-zinc-700">
+                          <Image
+                            src={item.imageUrl || rowVisual.image}
+                            alt={item.imageAlt || rowVisual.alt}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      );
+                    })()}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold leading-snug">{item.item}</p>
+                      <p className="text-xs text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
+                    </div>
+                    <p className="ml-auto shrink-0 text-sm font-bold text-[var(--color-accent)]">{item.price}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       </section>
 
