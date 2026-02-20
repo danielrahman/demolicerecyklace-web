@@ -10,7 +10,10 @@ export type OrderEventType =
   | "emailed_internal_new"
   | "status_confirmed"
   | "status_rescheduled"
+  | "status_done"
+  | "location_updated"
   | "status_cancelled"
+  | "price_estimate_updated"
   | "internal_note_updated"
   | "rate_limited_rejected"
   | "honeypot_rejected";

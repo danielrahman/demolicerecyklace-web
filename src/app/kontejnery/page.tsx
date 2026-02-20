@@ -147,6 +147,24 @@ export default async function KontejneryPage() {
       </section>
 
       <section className="space-y-4 border-t border-zinc-800 pt-8">
+        <h2 className="text-3xl font-bold">Související služby a ceník</h2>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <Link href="/cenik#kontejnery" className={ui.buttonSecondary}>
+            Ceník kontejnerů
+          </Link>
+          <Link href="/demolice" className={ui.buttonSecondary}>
+            Demolice
+          </Link>
+          <Link href="/recyklace" className={ui.buttonSecondary}>
+            Recyklace
+          </Link>
+          <Link href="/lokality" className={ui.buttonSecondary}>
+            Lokality obsluhy
+          </Link>
+        </div>
+      </section>
+
+      <section className="space-y-4 border-t border-zinc-800 pt-8">
         <FaqSection
           title="Nejčastější dotazy ke kontejnerům"
           description="Rychlé odpovědi na nejčastější otázky před odesláním objednávky."

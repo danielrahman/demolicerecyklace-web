@@ -111,6 +111,8 @@ export default async function DemolicePage() {
               alt="Demoliční technika - ilustrační náhled"
               width={1125}
               height={1500}
+              preload
+              sizes="(min-width: 1024px) 40vw, 100vw"
               className="h-full w-full object-cover"
             />
           </div>
@@ -161,6 +163,24 @@ export default async function DemolicePage() {
             </a>
           </article>
         </aside>
+      </section>
+
+      <section className="space-y-4 border-t border-zinc-800 pt-8">
+        <h2 className="text-3xl font-bold">Související služby a ceník</h2>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <Link href="/cenik#pronajem-stroju" className={ui.buttonSecondary}>
+            Ceník techniky
+          </Link>
+          <Link href="/recyklace" className={ui.buttonSecondary}>
+            Recyklace materiálu
+          </Link>
+          <Link href="/kontejnery" className={ui.buttonSecondary}>
+            Kontejnery na odpad
+          </Link>
+          <Link href="/lokality" className={ui.buttonSecondary}>
+            Lokality obsluhy
+          </Link>
+        </div>
       </section>
 
       <section className="space-y-4 border-t border-zinc-800 pt-8">

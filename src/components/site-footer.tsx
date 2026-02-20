@@ -56,6 +56,9 @@ export function SiteFooter({ settings }: SiteFooterProps) {
     { href: "/kontejnery/objednat", label: "Objednat kontejner" },
     { href: "/cenik#kontejnery", label: "Ceník kontejnerů" },
   ] as const;
+  const infoLinks = settings.footerInfoLinks.some((link) => link.href === "/lokality")
+    ? settings.footerInfoLinks
+    : [{ href: "/lokality", label: "Lokality obsluhy" }, ...settings.footerInfoLinks];
 
   return (
     <footer className="mt-16 border-t border-zinc-800 bg-zinc-950/70">
@@ -136,7 +139,7 @@ export function SiteFooter({ settings }: SiteFooterProps) {
           <section>
             <h3 className="font-bold text-zinc-100">Informace</h3>
             <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-              {settings.footerInfoLinks.map((link) => (
+              {infoLinks.map((link) => (
                 <li key={link.href}>
                   <Link className="transition hover:text-[var(--color-accent)]" href={link.href}>
                     {link.label}

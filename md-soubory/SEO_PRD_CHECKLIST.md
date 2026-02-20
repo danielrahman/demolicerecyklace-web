@@ -27,19 +27,18 @@
 ## P1 (po stabilizaci)
 
 - hotovo: `P1-01` | Základní schema: `Organization`/`LocalBusiness` | Owner: `dev` | Evidence: `curl -s http://localhost:3000/` obsahuje `\"@type\":[\"Organization\",\"LocalBusiness\"]`; implementace v `src/app/layout.tsx`.
-- hotovo: `P1-02` | `FAQPage` schema jen tam, kde je viditelné FAQ | Owner: `dev` | Evidence: `curl -s http://localhost:3000/faq`
--  obsahuje `\"@type\":\"FAQPage\"`; implementace v `src/app/faq/page.tsx`.
+- hotovo: `P1-02` | `FAQPage` schema jen tam, kde je viditelné FAQ | Owner: `dev` | Evidence: `curl -s http://localhost:3000/faq` obsahuje `\"@type\":\"FAQPage\"`; implementace v `src/app/faq/page.tsx`.
 - hotovo: `P1-03` | `BreadcrumbList` schema na podstránkách | Owner: `dev` | Evidence: `curl -s http://localhost:3000/demolice` obsahuje `\"@type\":\"BreadcrumbList\"`; implementace v `src/components/site-breadcrumbs.tsx`.
-- `P1-04` | NAP konzistence (web + GBP + citace) | Owner: `ops` | Evidence:
-- `P1-05` | GBP profil kompletní a aktivně spravovaný | Owner: `ops` | Evidence:
-- `P1-06` | 3-5 money obsahových stránek (bez blog spamu) | Owner: `content` | Evidence:
-- `P1-07` | CWV kontrola pro homepage + service + order template | Owner: `dev` | Evidence:
+- `P1-04` | NAP konzistence (web + GBP + citace) | Owner: `ops` | Evidence: postup + kanonické NAP v `md-soubory/evidence/P1_04_P1_05_LOCAL_OPS_RUNBOOK.md`.
+- `P1-05` | GBP profil kompletní a aktivně spravovaný | Owner: `ops` | Evidence: checklist odkliků + měsíční cadence v `md-soubory/evidence/P1_04_P1_05_LOCAL_OPS_RUNBOOK.md`.
+- hotovo: `P1-06` | 3-5 money obsahových stránek (bez blog spamu) | Owner: `content` | Evidence: audit URL `/demolice`, `/kontejnery`, `/recyklace`, `/cenik`, `/kontejnery/objednat` + CTA/prolink na objednávku/kontakt/ceník; detail v `md-soubory/evidence/P1_06_MONEY_PAGES_CHECK.md`.
+- hotovo: `P1-07` | CWV kontrola pro homepage + service + order template | Owner: `dev` | Evidence: Lighthouse mobile na produkčním buildu (`/`, `/demolice`, `/kontejnery/objednat`) v `md-soubory/evidence/P1_07_CWV_CHECK.md` + JSON reporty `md-soubory/evidence/lh-*-mobile-prod.json`.
 
 ## P2 (nice-to-have)
 
-- `P2-01` | Lehká lokalitní struktura (max 2-3 kvalitní lokality) | Owner: `content` | Evidence:
-- `P2-02` | Rozšíření interního prolinkování mezi službami a ceníkem | Owner: `content` | Evidence:
-- `P2-03` | Měsíční mini-audit (indexace, dotazy, konverze) | Owner: `ops` | Evidence:
+- hotovo: `P2-01` | Lehká lokalitní struktura (max 2-3 kvalitní lokality) | Owner: `content` | Evidence: implementováno `/lokality`, `/lokality/praha`, `/lokality/stredocesky-kraj`; validace v `md-soubory/evidence/P2_01_LOCALITY_STRUCTURE_CHECK.md`.
+- hotovo: `P2-02` | Rozšíření interního prolinkování mezi službami a ceníkem | Owner: `content` | Evidence: přidané cross-link sekce na `/demolice`, `/kontejnery`, `/recyklace`, `/cenik` + footer discovery; detail v `md-soubory/evidence/P2_02_INTERNAL_LINKING_CHECK.md`.
+- hotovo: `P2-03` | Měsíční mini-audit (indexace, dotazy, konverze) | Owner: `ops` | Evidence: script `scripts/seo-mini-audit.sh`, první run `md-soubory/evidence/SEO_MINI_AUDIT_2026-02.md`, setup v `md-soubory/evidence/P2_03_MONTHLY_MINI_AUDIT_SETUP.md`.
 
 ## Technické změny v této fázi
 
@@ -64,4 +63,3 @@
 
 - Jazyk: pouze `cs`.
 - Priorita: méně věcí, ale dotažených do výsledku.
-

@@ -191,16 +191,31 @@ export async function confirmOrderInDb(id: string, confirmedDate: string, confir
   return row ? mapRowToOrder(row) : null;
 }
 
-export async function rescheduleOrderInDb(id: string, confirmedDate: string, confirmedWindow: TimeWindow) {
-  const existing = await getOrderFromDb(id);
-  if (!existing) return null;
-
+export async function rescheduleOrderInDb(
+  id: string,
+  changes: {
+    confirmedDate: string;
+    confirmedWindow: TimeWindow;
+    deliveryDateRequested: string;
+    deliveryDateEndRequested: string;
+    timeWindowRequested: TimeWindow;
+    rentalDays: number;
+    priceEstimate: ContainerOrder["priceEstimate"];
+  },
+) {
   const [row] = await db
     .update(containerOrders)
     .set({
-      deliveryDateConfirmed: confirmedDate,
-      timeWindowConfirmed: confirmedWindow,
-      status: existing.status === "new" ? "confirmed" : existing.status,
+      deliveryDateConfirmed: changes.confirmedDate,
+      timeWindowConfirmed: changes.confirmedWindow,
+      deliveryDateRequested: changes.deliveryDateRequested,
+      deliveryDateEndRequested: changes.deliveryDateEndRequested,
+      timeWindowRequested: changes.timeWindowRequested,
+      rentalDays: changes.rentalDays,
+      priceEstimate: JSON.stringify(changes.priceEstimate),
+      status: "confirmed",
+      cancelReason: null,
+      cancelledAt: null,
     })
     .where(eq(containerOrders.id, id))
     .returning();
@@ -213,6 +228,44 @@ export async function setInternalNoteInDb(id: string, note: string) {
     .update(containerOrders)
     .set({
       internalNote: note,
+    })
+    .where(eq(containerOrders.id, id))
+    .returning();
+
+  return row ? mapRowToOrder(row) : null;
+}
+
+export async function setOrderPriceEstimateInDb(id: string, priceEstimate: ContainerOrder["priceEstimate"]) {
+  const [row] = await db
+    .update(containerOrders)
+    .set({
+      priceEstimate: JSON.stringify(priceEstimate),
+    })
+    .where(eq(containerOrders.id, id))
+    .returning();
+
+  return row ? mapRowToOrder(row) : null;
+}
+
+export async function updateOrderLocationInDb(
+  id: string,
+  location: {
+    postalCode: string;
+    city: string;
+    street: string;
+    houseNumber: string;
+    pinLocation?: ContainerOrder["pinLocation"];
+  },
+) {
+  const [row] = await db
+    .update(containerOrders)
+    .set({
+      postalCode: location.postalCode,
+      city: location.city,
+      street: location.street,
+      houseNumber: location.houseNumber,
+      pinLat: location.pinLocation?.lat ?? null,
+      pinLng: location.pinLocation?.lng ?? null,
     })
     .where(eq(containerOrders.id, id))
     .returning();

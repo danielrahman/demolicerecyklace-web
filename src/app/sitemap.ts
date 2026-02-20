@@ -15,6 +15,9 @@ const ROUTES: RouteConfig[] = [
   { path: "/recyklace", changeFrequency: "weekly", priority: 0.9 },
   { path: "/cenik", changeFrequency: "weekly", priority: 0.9 },
   { path: "/prodej-materialu", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/lokality", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/lokality/praha", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/lokality/stredocesky-kraj", changeFrequency: "monthly", priority: 0.7 },
   { path: "/kontejnery/co-patri-nepatri", changeFrequency: "monthly", priority: 0.7 },
   { path: "/kontejnery/faq", changeFrequency: "monthly", priority: 0.7 },
   { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
@@ -49,4 +52,3 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: route.priority,
   }));
 }
-

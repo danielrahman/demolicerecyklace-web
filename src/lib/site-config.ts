@@ -59,6 +59,7 @@ export const FOOTER_SERVICE_LINKS = [
 ] as const;
 
 export const FOOTER_INFO_LINKS = [
+  { href: "/lokality", label: "Lokality obsluhy" },
   { href: "/kontakt", label: "Kontakt" },
   { href: "/dokumenty", label: "Dokumenty ke stažení" },
   { href: "/faq", label: "FAQ" },

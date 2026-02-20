@@ -26,12 +26,16 @@ export function OrderWizardLazy(props: { wasteTypes: ContainerOrderWasteType[] }
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "");
+  const initialOrderId = String(searchParams.get("orderId") ?? "").trim();
+  const prefillOrderId = String(searchParams.get("copyOrder") ?? "").trim();
 
   return (
     <OrderWizard
-      key={`${initialPostalCode}:${initialWasteTypeId}`}
+      key={`${initialPostalCode}:${initialWasteTypeId}:${initialOrderId}:${prefillOrderId}`}
       initialPostalCode={initialPostalCode}
       initialWasteTypeId={initialWasteTypeId}
+      initialOrderId={initialOrderId}
+      prefillOrderId={prefillOrderId}
       wasteTypes={props.wasteTypes}
     />
   );

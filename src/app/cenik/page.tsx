@@ -143,7 +143,7 @@ function buildContainerRowActions(rows: CmsPricingRow[]) {
     if (!wasteTypeId) return null;
 
     return {
-      href: `/kontejnery/objednat?waste=${encodeURIComponent(wasteTypeId)}`,
+      href: "/kontejnery/objednat",
       label: "Objednat",
     };
   });
@@ -223,6 +223,24 @@ export default async function KompletníCeníkPage() {
         <h2 className="text-2xl font-bold">{content.machineSectionTitle}</h2>
         {content.machineSectionSubtitle ? <p className="text-sm text-zinc-400">{content.machineSectionSubtitle}</p> : null}
         <MachineRentalGrid machines={content.machinePricing} />
+      </section>
+
+      <section className="space-y-4 border-t border-zinc-800 pt-8">
+        <h2 className="text-2xl font-bold">Související služby</h2>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <Link href="/kontejnery" className={ui.buttonSecondary}>
+            Kontejnery
+          </Link>
+          <Link href="/demolice" className={ui.buttonSecondary}>
+            Demolice
+          </Link>
+          <Link href="/recyklace" className={ui.buttonSecondary}>
+            Recyklace
+          </Link>
+          <Link href="/lokality" className={ui.buttonSecondary}>
+            Lokality obsluhy
+          </Link>
+        </div>
       </section>
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 text-sm text-zinc-300">

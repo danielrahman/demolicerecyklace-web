@@ -134,17 +134,17 @@ export function CookieConsentManager({ gaMeasurementId }: { gaMeasurementId: str
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className={cx(ui.buttonSecondary, "min-w-40")}
-            onClick={() => writeCookieConsent("rejected")}
-          >
-            Odmítnout analytiku
-          </button>
-          <button
-            type="button"
             className={cx(ui.buttonPrimary, "min-w-40")}
             onClick={() => writeCookieConsent("accepted")}
           >
             Souhlasím
+          </button>
+          <button
+            type="button"
+            className={cx(ui.buttonSecondary, "min-w-40")}
+            onClick={() => writeCookieConsent("rejected")}
+          >
+            Odmítnout analytiku
           </button>
         </div>
       </div>

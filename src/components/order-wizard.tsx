@@ -39,7 +39,7 @@ type WizardData = {
   rentalDays: number;
   deliveryDateRequested: string;
   deliveryDateEndRequested: string;
-  timeWindowRequested: (typeof TIME_WINDOW_VALUES)[number];
+  timeWindowRequested: "" | (typeof TIME_WINDOW_VALUES)[number];
   placementType: "soukromy" | "verejny";
   permitConfirmed: boolean;
   nakladkaOdNas: boolean;
@@ -90,6 +90,36 @@ type CallbackResponse = {
 type PinLocation = {
   lat: number;
   lng: number;
+};
+
+type AdminOrderPrefillResponse = {
+  prefill?: {
+    customerType: WizardData["customerType"];
+    name: string;
+    companyName: string;
+    ico: string;
+    dic: string;
+    email: string;
+    phone: string;
+    postalCode: string;
+    city: string;
+    street: string;
+    houseNumber: string;
+    wasteType: string;
+    containerCount: number;
+    rentalDays: number;
+    deliveryDateRequested: string;
+    deliveryDateEndRequested: string;
+    timeWindowRequested: string;
+    placementType: WizardData["placementType"];
+    permitConfirmed: boolean;
+    note: string;
+    callbackNote: string;
+    marketingConsent: boolean;
+    pinLocation: PinLocation | null;
+    addressInput: string;
+  };
+  error?: string;
 };
 
 type WasteHoverPreview = {
@@ -249,6 +279,15 @@ type WizardDraft = {
   addressEditedByUser: boolean;
 };
 
+type CopyOrderSnapshot = {
+  version: 1;
+  orderId: string;
+  updatedAt: number;
+  data: WizardData;
+  addressInput: string;
+  pinLocation: PinLocation | null;
+};
+
 const stepTitles = ["Adresa", "Kontejner", "Termín + cena", "Kontakt + souhrn"] as const;
 
 const phoneRegex = /^(\+420|\+421|0)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}$/;
@@ -259,6 +298,8 @@ const rentalDayOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 const callbackEtaFallbackMinutes = 15;
 const draftStorageKey = "order-wizard-draft-v3";
 const draftTtlMs = 30 * 24 * 60 * 60 * 1000;
+const copyOrderStorageKey = "order-wizard-copy-order-v1";
+const copyOrderTtlMs = 30 * 24 * 60 * 60 * 1000;
 const wastePreviewWidth = 320;
 const wastePreviewAspectRatio = 1.7;
 const wastePreviewHeight = Math.round(wastePreviewWidth / wastePreviewAspectRatio);
@@ -278,10 +319,10 @@ function buildDefaultData(initialWasteType: WasteTypeId): WizardData {
     houseNumber: "",
     wasteType: initialWasteType,
     containerCount: 1,
-    rentalDays: 1,
+    rentalDays: 0,
     deliveryDateRequested: "",
     deliveryDateEndRequested: "",
-    timeWindowRequested: "08:00-09:00",
+    timeWindowRequested: "",
     placementType: "soukromy",
     permitConfirmed: false,
     nakladkaOdNas: false,
@@ -396,6 +437,10 @@ function normalizeRentalDays(value: unknown) {
   if (value < minimumRentalDays) return minimumRentalDays;
   if (value > maximumRentalDays) return maximumRentalDays;
   return value;
+}
+
+function isTimeWindowValue(value: string): value is (typeof TIME_WINDOW_VALUES)[number] {
+  return TIME_WINDOW_VALUES.includes(value as (typeof TIME_WINDOW_VALUES)[number]);
 }
 
 function calculateDeliveryEndDate(startIso: string, rentalDays: number) {
@@ -596,6 +641,39 @@ function readDraft() {
 
 function clearDraft() {
   localStorage.removeItem(draftStorageKey);
+}
+
+function saveCopyOrderSnapshot(snapshot: CopyOrderSnapshot) {
+  localStorage.setItem(copyOrderStorageKey, JSON.stringify(snapshot));
+}
+
+function readCopyOrderSnapshot(orderId: string) {
+  const rawSnapshot = localStorage.getItem(copyOrderStorageKey);
+  if (!rawSnapshot) return null;
+
+  try {
+    const parsed = JSON.parse(rawSnapshot) as Partial<CopyOrderSnapshot>;
+    if (
+      parsed.version !== 1
+      || typeof parsed.updatedAt !== "number"
+      || typeof parsed.orderId !== "string"
+      || parsed.orderId !== orderId
+      || !parsed.data
+      || typeof parsed.data !== "object"
+    ) {
+      return null;
+    }
+
+    if (Date.now() - parsed.updatedAt > copyOrderTtlMs) {
+      localStorage.removeItem(copyOrderStorageKey);
+      return null;
+    }
+
+    return parsed as CopyOrderSnapshot;
+  } catch {
+    localStorage.removeItem(copyOrderStorageKey);
+    return null;
+  }
 }
 
 type DeliveryDatePickerProps = {
@@ -815,10 +893,14 @@ function buildWasteHoverPreview(waste: ContainerOrderWasteType, event: ReactMous
 export function OrderWizard({
   initialPostalCode = "",
   initialWasteTypeId = "",
+  initialOrderId,
+  prefillOrderId = "",
   wasteTypes,
 }: {
   initialPostalCode?: string;
   initialWasteTypeId?: string;
+  initialOrderId?: string;
+  prefillOrderId?: string;
   wasteTypes: ContainerOrderWasteType[];
 }) {
   const availableWasteTypes = wasteTypes.length > 0 ? wasteTypes : FALLBACK_CONTAINER_ORDER_WASTE_TYPES;
@@ -827,7 +909,7 @@ export function OrderWizard({
   const normalizedInitialWasteTypeId = initialWasteTypeId.trim().toLowerCase();
   const resolvedInitialWasteTypeId = availableWasteTypes.some((wasteType) => wasteType.id === normalizedInitialWasteTypeId)
     ? normalizedInitialWasteTypeId
-    : defaultWasteTypeId;
+    : "";
 
   const [step, setStep] = useState(0);
   const [furthestStep, setFurthestStep] = useState(0);
@@ -853,7 +935,7 @@ export function OrderWizard({
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [orderId, setOrderId] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(initialOrderId || null);
 
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -966,7 +1048,7 @@ export function OrderWizard({
   }, [step]);
 
   useEffect(() => {
-    if (availableWasteTypes.some((wasteType) => wasteType.id === data.wasteType)) {
+    if (!data.wasteType || availableWasteTypes.some((wasteType) => wasteType.id === data.wasteType)) {
       return;
     }
 
@@ -1345,7 +1427,7 @@ export function OrderWizard({
         nextErrors.rentalDays = "Vybraný počet dní vychází na víkend. Zvolte kratší pronájem nebo jiné datum přistavení.";
       }
 
-      if (!TIME_WINDOW_VALUES.includes(data.timeWindowRequested)) {
+      if (!isTimeWindowValue(data.timeWindowRequested)) {
         nextErrors.timeWindowRequested = "Vyberte časové okno přistavení.";
       }
 
@@ -1508,6 +1590,18 @@ export function OrderWizard({
       }
 
       setOrderId(payload.orderId);
+      try {
+        saveCopyOrderSnapshot({
+          version: 1,
+          orderId: payload.orderId,
+          updatedAt: Date.now(),
+          data,
+          addressInput,
+          pinLocation,
+        });
+      } catch {
+        // Ignore storage errors (private mode/quota).
+      }
       clearDraft();
       trackAnalyticsEvent("submit_order_success", {
         step: 4,
@@ -1615,8 +1709,11 @@ export function OrderWizard({
         setData({
           ...buildDefaultData(defaultWasteTypeId),
           ...draft.data,
-          wasteType: resolvedInitialWasteTypeId || draft.data.wasteType || defaultWasteTypeId,
+          wasteType: resolvedInitialWasteTypeId || draft.data.wasteType || "",
           rentalDays: normalizeRentalDays(draft.data.rentalDays),
+          timeWindowRequested: isTimeWindowValue(draft.data.timeWindowRequested)
+            ? draft.data.timeWindowRequested
+            : "",
           deliveryDateRequested:
             typeof draft.data.deliveryDateRequested === "string" ? draft.data.deliveryDateRequested : "",
           deliveryDateEndRequested:
@@ -1641,6 +1738,114 @@ export function OrderWizard({
       }
     }
   }, [defaultWasteTypeId, resolvedInitialWasteTypeId]);
+
+  useEffect(() => {
+    if (!prefillOrderId || orderId) return;
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    const applyPrefill = (prefill: NonNullable<AdminOrderPrefillResponse["prefill"]>) => {
+      const resolvedPrefillWasteType = availableWasteTypes.some((wasteType) => wasteType.id === prefill.wasteType)
+        ? prefill.wasteType
+        : "";
+      const resolvedContainerCount = Number.isInteger(prefill.containerCount)
+        ? Math.max(1, Math.min(CONTAINER_PRODUCT.maxContainerCountPerOrder, prefill.containerCount))
+        : 1;
+      const resolvedRentalDays = normalizeRentalDays(prefill.rentalDays);
+      const resolvedTimeWindow = isTimeWindowValue(prefill.timeWindowRequested) ? prefill.timeWindowRequested : "";
+
+      setData((previous) => ({
+        ...previous,
+        customerType: prefill.customerType,
+        name: prefill.name || "",
+        companyName: prefill.companyName || "",
+        ico: prefill.ico || "",
+        dic: prefill.dic || "",
+        email: prefill.email || "",
+        phone: prefill.phone || "",
+        postalCode: prefill.postalCode || "",
+        city: prefill.city || "",
+        street: prefill.street || "",
+        houseNumber: prefill.houseNumber || "",
+        wasteType: resolvedPrefillWasteType,
+        containerCount: resolvedContainerCount,
+        rentalDays: resolvedRentalDays,
+        deliveryDateRequested: prefill.deliveryDateRequested || "",
+        deliveryDateEndRequested: prefill.deliveryDateEndRequested || "",
+        timeWindowRequested: resolvedTimeWindow,
+        placementType: prefill.placementType === "verejny" ? "verejny" : "soukromy",
+        permitConfirmed: Boolean(prefill.permitConfirmed),
+        note: prefill.note || "",
+        callbackNote: prefill.callbackNote || "",
+        marketingConsent: Boolean(prefill.marketingConsent),
+        gdprConsent: false,
+        website: "",
+      }));
+
+      setAddressInput(prefill.addressInput || "");
+      setAddressEditedByUser(false);
+      setPinLocation(prefill.pinLocation ?? null);
+      setFieldErrors({});
+      setSubmitError(null);
+    };
+
+    const loadPrefill = async () => {
+      try {
+        const response = await fetch(`/api/admin/orders/${encodeURIComponent(prefillOrderId)}/prefill`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (response.ok) {
+          const payload = (await response.json()) as AdminOrderPrefillResponse;
+          const prefill = payload.prefill;
+          if (!prefill || cancelled) return;
+          applyPrefill(prefill);
+          return;
+        }
+
+        if (cancelled) return;
+
+        const snapshot = readCopyOrderSnapshot(prefillOrderId);
+        if (!snapshot) return;
+        applyPrefill({
+          customerType: snapshot.data.customerType,
+          name: snapshot.data.name,
+          companyName: snapshot.data.companyName,
+          ico: snapshot.data.ico,
+          dic: snapshot.data.dic,
+          email: snapshot.data.email,
+          phone: snapshot.data.phone,
+          postalCode: snapshot.data.postalCode,
+          city: snapshot.data.city,
+          street: snapshot.data.street,
+          houseNumber: snapshot.data.houseNumber,
+          wasteType: snapshot.data.wasteType,
+          containerCount: snapshot.data.containerCount,
+          rentalDays: snapshot.data.rentalDays,
+          deliveryDateRequested: snapshot.data.deliveryDateRequested,
+          deliveryDateEndRequested: snapshot.data.deliveryDateEndRequested,
+          timeWindowRequested: snapshot.data.timeWindowRequested,
+          placementType: snapshot.data.placementType,
+          permitConfirmed: snapshot.data.permitConfirmed,
+          note: snapshot.data.note,
+          callbackNote: snapshot.data.callbackNote,
+          marketingConsent: snapshot.data.marketingConsent,
+          pinLocation: snapshot.pinLocation,
+          addressInput: snapshot.addressInput,
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    };
+
+    void loadPrefill();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [availableWasteTypes, orderId, prefillOrderId]);
 
   useEffect(() => {
     if (!draftHydratedRef.current || orderId) return;
@@ -2109,7 +2314,21 @@ export function OrderWizard({
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#F2C400]/20 blur-3xl" />
         <div className="pointer-events-none absolute -left-12 bottom-0 h-44 w-44 rounded-full bg-[#F2C400]/10 blur-3xl" />
 
-        <h2 className="relative z-10 font-heading text-3xl font-bold text-white">Objednávka odeslána</h2>
+        <div className="relative z-10 inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-100">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          Potvrzeno
+        </div>
+        <h2 className="relative z-10 mt-2 font-heading text-3xl font-bold text-white">Objednávka odeslána</h2>
         <p className="relative z-10 mt-2 text-white/90">Objednávku jsme přijali pod číslem {orderId}.</p>
         <p className="relative z-10 mt-1.5 text-white/85">Termín vždy potvrzuje operátor ručně. Ozveme se nejpozději do 1 pracovního dne.</p>
         <p className="relative z-10 mt-1.5 text-white/85">
@@ -2119,6 +2338,9 @@ export function OrderWizard({
           </a>
           .
         </p>
+        <a href={`/kontejnery/objednat?copyOrder=${encodeURIComponent(orderId)}`} className={cx(ui.buttonPrimary, "relative z-10 mt-4 inline-flex")}>
+          Objednat další kontejner
+        </a>
       </div>
     );
   }

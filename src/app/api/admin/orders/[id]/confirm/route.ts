@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminApiSession } from "@/lib/auth/guards";
-import { confirmOrder } from "@/lib/order-store";
+import { confirmOrder, getOrder } from "@/lib/order-store";
 import { sendCustomerConfirmedEmail, sendInternalStatusEmail } from "@/lib/email";
 import type { TimeWindow } from "@/lib/types";
 import { appendOrderEvent } from "@/server/db/repositories/order-events";
@@ -20,9 +20,23 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const formData = await request.formData();
   const date = String(formData.get("date") ?? "");
   const window = String(formData.get("window") ?? "") as TimeWindow;
+  const notifyCustomer = formData.get("notifyCustomer") === "on";
 
   if (!date || !validWindows.has(window)) {
     return NextResponse.json({ error: "Neplatný termín" }, { status: 400 });
+  }
+
+  const existingOrder = await getOrder(id);
+  if (!existingOrder) {
+    return NextResponse.json({ error: "Objednávka nenalezena" }, { status: 404 });
+  }
+
+  if (existingOrder.status === "cancelled") {
+    return NextResponse.json({ error: "Stornovanou objednávku nelze potvrdit." }, { status: 409 });
+  }
+
+  if (existingOrder.status !== "new") {
+    return NextResponse.json({ error: "Potvrdit lze jen novou objednávku." }, { status: 409 });
   }
 
   const order = await confirmOrder(id, date, window);
@@ -31,10 +45,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Objednávka nenalezena" }, { status: 404 });
   }
 
-  const [customerResult, internalResult] = await Promise.allSettled([
-    sendCustomerConfirmedEmail(order, "confirmed"),
-    sendInternalStatusEmail(order, "confirmed"),
-  ]);
+  const customerResult = notifyCustomer
+    ? (await Promise.allSettled([sendCustomerConfirmedEmail(order, "confirmed")]))[0]
+    : null;
+  const internalResult = (await Promise.allSettled([sendInternalStatusEmail(order, "confirmed")]))[0];
 
   await appendOrderEvent({
     orderId: order.id,
@@ -42,6 +56,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     payload: {
       date,
       window,
+      notifyCustomer,
       by: auth.session.user.email,
     },
   });
@@ -50,7 +65,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     eventType: "emailed_customer_received",
     payload: {
       template: "confirmed",
-      success: customerResult.status === "fulfilled",
+      skipped: !notifyCustomer,
+      success: customerResult ? customerResult.status === "fulfilled" : null,
     },
   });
   await appendOrderEvent({

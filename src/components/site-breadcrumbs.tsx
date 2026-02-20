@@ -21,6 +21,8 @@ const segmentLabels: Record<string, string> = {
   kontejnery: "Kontejnery",
   "co-patri-nepatri": "Co patří a nepatří",
   lokality: "Lokality",
+  praha: "Praha",
+  "stredocesky-kraj": "Středočeský kraj",
   objednat: "Objednat",
   "o-nas": "O nás",
   "obchodni-podminky": "Obchodní podmínky",
@@ -43,7 +45,7 @@ function labelForSegment(segment: string) {
     return segmentLabels[segment];
   }
 
-  if (segment.startsWith("ORD-")) {
+  if (segment.startsWith("ORD-") || segment.startsWith("OBJ-")) {
     return "Detail objednávky";
   }
 
