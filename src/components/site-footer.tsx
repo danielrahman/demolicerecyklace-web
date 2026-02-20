@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -60,44 +61,45 @@ export function SiteFooter({ settings }: SiteFooterProps) {
   return (
     <footer className="mt-16 border-t border-zinc-800 bg-zinc-950/70">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <section className={cx(ui.card, "p-6")}>
-          <div className="grid gap-6 xl:grid-cols-[1.3fr_auto] xl:items-start">
+        <section className="border-b border-zinc-800/80 pb-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
-              <h2 className="text-xl font-bold text-zinc-100">{settings.brandName}</h2>
+              <Link href="/" className="inline-flex">
+                <Image
+                  src="/brand/logo-original.png"
+                  alt={`${settings.brandName} logo`}
+                  width={215}
+                  height={58}
+                  className="h-10 w-auto sm:h-11"
+                />
+              </Link>
               <p className="mt-3 text-sm text-zinc-300">
-                Online objednávka kontejneru {CONTAINER_PRODUCT.availableNow} pro oblast {settings.regionsLabel}.
-                Termín vždy potvrzuje operátor ručně.
+                Online objednávka kontejneru {CONTAINER_PRODUCT.availableNow} pro oblast {settings.regionsLabel}. Termín potvrzuje operátor.
               </p>
             </div>
 
-            <div className="space-y-2 xl:text-right">
-              <p className="text-sm text-zinc-400">Rychlý kontakt</p>
-              <a className={cx(ui.buttonPrimary, "w-full xl:w-auto")} href={settings.phoneHref}>
-                Zavolat {settings.phone}
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm lg:justify-end">
+              <a className="font-semibold text-zinc-100 transition hover:text-[var(--color-accent)]" href={settings.phoneHref}>
+                {settings.phone}
               </a>
-              <a className={cx(ui.buttonSecondary, "w-full xl:w-auto")} href={settings.emailHref}>
-                Napsat {settings.email}
+              <a className="text-zinc-300 underline decoration-zinc-600 underline-offset-4 transition hover:text-zinc-100" href={settings.emailHref}>
+                {settings.email}
               </a>
               <a
-                className={cx(ui.buttonSecondary, "w-full xl:w-auto")}
+                className="text-zinc-300 underline decoration-zinc-600 underline-offset-4 transition hover:text-zinc-100"
                 href={settings.mapUrl}
                 target="_blank"
                 rel="noreferrer"
               >
-                Otevřít mapu
+                Otevřít provozovnu na mapě
               </a>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
+          <div className="mt-4 space-y-1 text-sm text-zinc-400">
+            <p>{settings.companyName}, {settings.operatorAddressLine}</p>
             <p>
-              <span className="text-zinc-400">Provozovatel:</span> {settings.companyName}, {settings.operatorAddressLine}
-            </p>
-            <p>
-              <span className="text-zinc-400">Provozovna:</span> {settings.operationAddressLine}
-            </p>
-            <p>
-              <span className="text-zinc-400">IČZ:</span> {settings.icz}
+              {settings.operationAddressLine} <span className="text-zinc-500">·</span> IČZ: {settings.icz}
             </p>
           </div>
         </section>

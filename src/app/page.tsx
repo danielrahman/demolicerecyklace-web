@@ -2,12 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { getHomePageContent } from "@/lib/cms/getters";
-import { WASTE_TYPES } from "@/lib/catalog";
+import { getContainerOrderWasteTypes } from "@/lib/container-order-source";
 import { CONTACT, CONTAINER_PRODUCT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
 export default async function HomePage() {
   const content = await getHomePageContent();
+  const wasteTypes = await getContainerOrderWasteTypes();
 
   return (
     <div className="space-y-14 pb-10">
@@ -140,14 +141,14 @@ export default async function HomePage() {
           </Link>
         </div>
         <div className="mt-5 divide-y divide-zinc-800 rounded-xl bg-zinc-900/40">
-          {WASTE_TYPES.slice(0, 4).map((wasteType) => (
+          {wasteTypes.slice(0, 4).map((wasteType) => (
             <article
               key={wasteType.id}
               className="grid gap-2 px-4 py-4 sm:grid-cols-[1.1fr_2fr_auto] sm:items-center sm:gap-4"
             >
               <h3 className="text-lg font-bold">{wasteType.label}</h3>
-              <p className="text-sm text-zinc-400">{wasteType.shortDescription}</p>
-              <p className="font-semibold text-[#F2C400]">od {wasteType.basePriceCzk.toLocaleString("cs-CZ")} Kč</p>
+              <p className="text-sm text-zinc-400">{wasteType.tag}</p>
+              <p className="font-semibold text-[#F2C400]">{wasteType.priceLabel}</p>
             </article>
           ))}
         </div>

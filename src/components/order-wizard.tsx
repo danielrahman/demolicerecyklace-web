@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import {
@@ -90,6 +91,12 @@ type CallbackResponse = {
 type PinLocation = {
   lat: number;
   lng: number;
+};
+
+type WasteHoverPreview = {
+  waste: ContainerOrderWasteType;
+  x: number;
+  y: number;
 };
 
 type GoogleAddressComponent = {
@@ -255,6 +262,9 @@ const flexibilityDayOptions = [1, 2, 3, 7, 14] as const;
 const callbackEtaFallbackMinutes = 15;
 const draftStorageKey = "order-wizard-draft-v3";
 const draftTtlMs = 30 * 24 * 60 * 60 * 1000;
+const wastePreviewWidth = 320;
+const wastePreviewAspectRatio = 1.7;
+const wastePreviewHeight = Math.round(wastePreviewWidth / wastePreviewAspectRatio);
 
 const extrasDescriptions = {
   nakladkaOdNas: "Posádka pomůže s naložením odpadu přímo na místě.",
@@ -746,6 +756,16 @@ function chevronClipPath(index: number, total: number) {
   return `polygon(${chevronArrowPx}px 0, calc(100% - ${chevronArrowPx}px) 0, 100% 50%, calc(100% - ${chevronArrowPx}px) 100%, ${chevronArrowPx}px 100%, 0 50%)`;
 }
 
+function clampPreviewPosition(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function buildWasteHoverPreview(waste: ContainerOrderWasteType, event: ReactMouseEvent<HTMLElement>): WasteHoverPreview {
+  const x = clampPreviewPosition(event.clientX + 16, 16, window.innerWidth - wastePreviewWidth - 16);
+  const y = clampPreviewPosition(event.clientY + 16, 16, window.innerHeight - wastePreviewHeight - 16);
+  return { waste, x, y };
+}
+
 export function OrderWizard({
   initialPostalCode = "",
   wasteTypes,
@@ -787,6 +807,7 @@ export function OrderWizard({
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricePreview, setPricePreview] = useState<PriceEstimate | null>(null);
+  const [wasteHoverPreview, setWasteHoverPreview] = useState<WasteHoverPreview | null>(null);
 
   const [callbackModalOpen, setCallbackModalOpen] = useState(false);
   const [callbackSubmitting, setCallbackSubmitting] = useState(false);
@@ -903,6 +924,12 @@ export function OrderWizard({
       wasteType: defaultWasteTypeId,
     }));
   }, [availableWasteTypes, data.wasteType, defaultWasteTypeId]);
+
+  useEffect(() => {
+    if (step !== 1) {
+      setWasteHoverPreview(null);
+    }
+  }, [step]);
 
   function goToStep(targetStep: number) {
     if (targetStep === step || targetStep < 0 || targetStep > furthestStep) return;
@@ -1986,13 +2013,17 @@ export function OrderWizard({
 
   if (orderId) {
     return (
-      <div className="rounded-2xl border border-emerald-700 bg-emerald-950/30 p-4">
-        <h2 className="font-heading text-3xl font-bold text-emerald-300">Objednávka odeslána</h2>
-        <p className="mt-2 text-emerald-100">Objednávku jsme přijali pod číslem {orderId}.</p>
-        <p className="mt-1.5 text-emerald-100">Termín vždy potvrzuje operátor ručně. Ozveme se nejpozději do 1 pracovního dne.</p>
-        <p className="mt-1.5 text-emerald-100">
+      <div className="home-hero relative overflow-hidden rounded-2xl border border-zinc-700 px-5 py-5 sm:px-6 sm:py-6">
+        <div className="home-hero-overlay absolute inset-0" />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#F2C400]/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-12 bottom-0 h-44 w-44 rounded-full bg-[#F2C400]/10 blur-3xl" />
+
+        <h2 className="relative z-10 font-heading text-3xl font-bold text-white">Objednávka odeslána</h2>
+        <p className="relative z-10 mt-2 text-white/90">Objednávku jsme přijali pod číslem {orderId}.</p>
+        <p className="relative z-10 mt-1.5 text-white/85">Termín vždy potvrzuje operátor ručně. Ozveme se nejpozději do 1 pracovního dne.</p>
+        <p className="relative z-10 mt-1.5 text-white/85">
           Potřebujete něco upravit hned? Zavolejte na{" "}
-          <a className="underline" href={CONTACT.phoneHref}>
+          <a className="font-semibold text-[#F2C400] underline decoration-[#F2C400]/70 underline-offset-2" href={CONTACT.phoneHref}>
             {CONTACT.phone}
           </a>
           .
@@ -2324,6 +2355,15 @@ export function OrderWizard({
                   key={waste.id}
                   type="button"
                   onClick={() => update("wasteType", waste.id)}
+                  onMouseEnter={(event) => {
+                    setWasteHoverPreview(buildWasteHoverPreview(waste, event));
+                  }}
+                  onMouseMove={(event) => {
+                    setWasteHoverPreview(buildWasteHoverPreview(waste, event));
+                  }}
+                  onMouseLeave={() => {
+                    setWasteHoverPreview(null);
+                  }}
                   className={cx(
                     "rounded-lg border px-3 py-2 text-left sm:rounded-xl sm:p-3",
                     waste.id === data.wasteType
@@ -2339,6 +2379,28 @@ export function OrderWizard({
               ))}
             </div>
             {renderFieldError("wasteType")}
+
+            {wasteHoverPreview ? (
+              <div
+                className="pointer-events-none fixed z-40 hidden overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50 md:block"
+                style={{ left: wasteHoverPreview.x, top: wasteHoverPreview.y }}
+              >
+                <div className="relative h-52 w-80">
+                  <Image
+                    src={wasteHoverPreview.waste.imageUrl}
+                    alt={wasteHoverPreview.waste.imageAlt || wasteHoverPreview.waste.label}
+                    width={1280}
+                    height={720}
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
+                </div>
+                <div className="px-3 py-2">
+                  <p className="text-sm font-semibold text-zinc-100">{wasteHoverPreview.waste.label}</p>
+                  <p className="text-xs text-zinc-300">{wasteHoverPreview.waste.priceLabel}</p>
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <p className="mb-1.5 text-sm font-semibold">Počet kontejnerů</p>

@@ -9,9 +9,40 @@ export type ContainerOrderWasteType = {
   basePriceCzk: number;
   priceLabel: string;
   tag: string;
+  imageUrl: string;
+  imageAlt: string;
 };
 
 const fallbackTag = "Stavební odpad";
+const fallbackImage = "/photos/competitor/competitor-04.jpg";
+const fallbackAlt = "Kontejnery připravené k přistavení";
+
+const containerVisualRules = [
+  {
+    pattern: /(asfalt|živic)/i,
+    image: "/photos/competitor/competitor-07.webp",
+    alt: "Nakládka asfaltové a stavební suti",
+    tag: "Asfalt",
+  },
+  {
+    pattern: /(beton|železobeton)/i,
+    image: "/photos/competitor/competitor-06.jpg",
+    alt: "Demolice a zpracování betonové suti",
+    tag: "Beton",
+  },
+  {
+    pattern: /(cihl|taš|keram|pórobeton|ytong)/i,
+    image: "/legacy/current-web/images_ffgallery_20180320_5ab179c8d5689_recyklace_IMG_2094.jpg",
+    alt: "Třídění stavební suti v recyklačním areálu",
+    tag: "Cihly a keramika",
+  },
+  {
+    pattern: /(zemina|kamen|štěrk)/i,
+    image: "/legacy/current-web/images_ffgallery_20180320_5ab179c8d5689_recyklace_IMG_2105.jpg",
+    alt: "Výkopová zemina a kamenité frakce",
+    tag: "Zemina a kámen",
+  },
+] as const;
 
 function slugify(value: string) {
   return value
@@ -44,6 +75,17 @@ function buildShortDescription(row: CmsPricingRow, tag: string) {
   return `${tag} • ${codePart}`;
 }
 
+function visualForContainerItem(item: string) {
+  const match = containerVisualRules.find((rule) => rule.pattern.test(item));
+  if (match) return match;
+
+  return {
+    image: fallbackImage,
+    alt: fallbackAlt,
+    tag: fallbackTag,
+  };
+}
+
 export function buildContainerOrderWasteTypes(rows: CmsPricingRow[]) {
   const next: ContainerOrderWasteType[] = [];
   const idCollisionCount = new Map<string, number>();
@@ -55,7 +97,8 @@ export function buildContainerOrderWasteTypes(rows: CmsPricingRow[]) {
     const parsedPrice = parseCzkPrice(row.price);
     if (parsedPrice === null) return;
 
-    const tag = row.tag?.trim() || fallbackTag;
+    const visual = visualForContainerItem(label);
+    const tag = row.tag?.trim() || visual.tag;
     const firstId = toWasteTypeId(row, 0);
     const suffix = idCollisionCount.get(firstId) ?? 0;
     idCollisionCount.set(firstId, suffix + 1);
@@ -69,6 +112,8 @@ export function buildContainerOrderWasteTypes(rows: CmsPricingRow[]) {
       basePriceCzk: parsedPrice,
       priceLabel: row.price,
       tag,
+      imageUrl: row.imageUrl || visual.image,
+      imageAlt: row.imageAlt || visual.alt,
     });
   });
 
