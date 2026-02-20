@@ -87,6 +87,33 @@ function buildContainerGroups(rows: CmsPricingRow[]) {
   return [...ordered, ...rest];
 }
 
+const containerCategoryTheme: Record<string, { chip: string; accent: string }> = {
+  beton: {
+    chip: "border-blue-400/40 bg-blue-500/10 text-blue-200",
+    accent: "bg-gradient-to-r from-blue-500/18 to-transparent",
+  },
+  "cihly a keramika": {
+    chip: "border-amber-400/40 bg-amber-500/10 text-amber-200",
+    accent: "bg-gradient-to-r from-amber-500/18 to-transparent",
+  },
+  asfalt: {
+    chip: "border-violet-400/40 bg-violet-500/10 text-violet-200",
+    accent: "bg-gradient-to-r from-violet-500/18 to-transparent",
+  },
+  "zemina a kámen": {
+    chip: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200",
+    accent: "bg-gradient-to-r from-emerald-500/18 to-transparent",
+  },
+};
+
+function getContainerCategoryTheme(label: string) {
+  const key = normalizeCategoryLabel(label);
+  return containerCategoryTheme[key] ?? {
+    chip: "border-zinc-500/40 bg-zinc-500/10 text-zinc-200",
+    accent: "bg-gradient-to-r from-zinc-500/18 to-transparent",
+  };
+}
+
 function PricingTable(props: { title: string; rows: CmsPricingRow[]; subtitle?: string }) {
   const hasNotes = props.rows.some((row) => Boolean(row.note));
 
@@ -154,49 +181,54 @@ export default async function KompletníCeníkPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           {buildContainerGroups(content.containerPricing).map((group) => (
             <section
               key={group.label}
               className={cx(
-                ui.card,
-                "space-y-3 p-3 transition md:p-4",
-                "border-2 border-transparent hover:border-zinc-500/50 hover:shadow-md",
+                "overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/35",
+                "shadow-sm transition",
+                "hover:shadow-[0_10px_40px_-24px_rgba(0,0,0,0.55)]",
               )}
             >
-              <div className="flex flex-wrap items-center gap-3">
-                <div>
-                  <h3 className="text-base font-bold">{group.label}</h3>
-                  <p className="text-xs text-zinc-400">{group.rows.length} položek</p>
-                </div>
+              <div className={`px-4 py-3.5 ${getContainerCategoryTheme(group.label).accent}`}>
+                <p
+                  className={cx(
+                    "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
+                    getContainerCategoryTheme(group.label).chip,
+                  )}
+                >
+                  {group.label}
+                </p>
+                <h3 className="mt-2 text-sm font-semibold text-zinc-300">{group.rows.length} položek</h3>
+                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-400">Nejčastější materiály: {group.label}</p>
               </div>
 
-              <div className="space-y-2 border-t border-zinc-800 pt-3">
-                {group.rows.map((item) => (
-                  <article
-                    key={`${group.label}-${item.item}-${item.code}`}
-                    className="flex min-h-20 items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-3"
-                  >
-                    {(() => {
-                      const rowVisual = containerVisualFor(item.item);
-                      return (
-                        <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md border border-zinc-700">
-                          <Image
-                            src={item.imageUrl || rowVisual.image}
-                            alt={item.imageAlt || rowVisual.alt}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      );
-                    })()}
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold leading-snug">{item.item}</p>
-                      <p className="text-xs text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
-                    </div>
-                    <p className="ml-auto shrink-0 text-sm font-bold text-[var(--color-accent)]">{item.price}</p>
-                  </article>
-                ))}
+              <div className="divide-y divide-zinc-800/80">
+                {group.rows.map((item) => {
+                  const rowVisual = containerVisualFor(item.item);
+
+                  return (
+                    <article
+                      key={`${group.label}-${item.item}-${item.code}`}
+                      className="flex items-center gap-3 bg-zinc-900/20 px-3 py-2.5 transition hover:bg-zinc-900/40"
+                    >
+                      <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-md border border-zinc-700/80">
+                        <Image
+                          src={item.imageUrl || rowVisual.image}
+                          alt={item.imageAlt || rowVisual.alt}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold leading-tight">{item.item}</p>
+                        <p className="text-xs text-zinc-400">Kód odpadu: {item.code ?? "-"}</p>
+                      </div>
+                      <p className="ml-auto shrink-0 text-sm font-bold text-[var(--color-accent)]">{item.price}</p>
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ))}
