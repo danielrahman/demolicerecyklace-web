@@ -3,7 +3,6 @@ import type { PriceEstimate } from "@/lib/types";
 const EXPRES_SURCHARGE = 900;
 const NAKLADKA_SURCHARGE = 1200;
 const OPAKOVANY_ODVOZ_SURCHARGE = 700;
-const TRANSPORT_BASE = 1200;
 
 export function estimatePrice(input: {
   basePriceCzk: number;
@@ -18,7 +17,8 @@ export function estimatePrice(input: {
   const rentalDays = Math.max(1, input.rentalDays);
   const basePriceCzk = Math.max(0, Math.round(input.basePriceCzk));
   const base = basePriceCzk * input.containerCount * rentalDays;
-  const transport = TRANSPORT_BASE * input.containerCount;
+  // Keep the online estimate aligned with the public container price list row.
+  const transport = 0;
 
   let surchargePerDay = 0;
   if (input.extras.expresniPristaveni) surchargePerDay += EXPRES_SURCHARGE;
