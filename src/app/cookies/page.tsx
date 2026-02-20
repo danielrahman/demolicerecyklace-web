@@ -2,19 +2,20 @@ import type { Metadata } from "next";
 
 import { CookieConsentSettings } from "@/components/cookie-consent-settings";
 import { getMarketingPageContent } from "@/lib/cms/getters";
+import { createPageMetadata } from "@/lib/seo-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("cookies");
+  const title = marketing?.seoTitle || "Zásady používání cookies | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Přehled používání cookies na webu služby pronájmu kontejnerů, včetně Google Analytics a možností správy souhlasu.";
 
-  return {
-    title: marketing?.seoTitle || "Zásady používání cookies | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Přehled používání cookies na webu služby pronájmu kontejnerů, včetně Google Analytics a možností správy souhlasu.",
-    alternates: {
-      canonical: "/cookies",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/cookies",
+  });
 }
 
 export default async function CookiesPage() {

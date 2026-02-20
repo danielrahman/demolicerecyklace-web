@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -10,14 +11,12 @@ const useCases = [
   "Dovoz/odvoz kontejneru podle dostupnosti lokality a harmonogramu.",
 ] as const;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Demolice a kontejnery Praha | Demolice Recyklace",
   description:
     "Služby pro Prahu: kontejnery na odpad, demolice, odvoz suti a recyklace stavebního materiálu.",
-  alternates: {
-    canonical: "/lokality/praha",
-  },
-};
+  canonicalPath: "/lokality/praha",
+});
 
 export default function PrahaLocationPage() {
   return (

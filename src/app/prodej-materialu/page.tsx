@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
 import { MATERIAL_SALES_PRICING } from "@/lib/full-pricing";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -38,16 +39,16 @@ function rowsForCategory(category: MaterialCategory) {
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("prodej-materialu");
+  const title = marketing?.seoTitle || "Prodej materiálu | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Prodej písků, kameniva a recyklátů pro stavební práce v Praze a Středočeském kraji.";
 
-  return {
-    title: marketing?.seoTitle || "Prodej materiálu | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Prodej písků, kameniva a recyklátů pro stavební práce v Praze a Středočeském kraji.",
-    alternates: {
-      canonical: "/prodej-materialu",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/prodej-materialu",
+  });
 }
 
 export default async function ProdejMaterialuPage() {

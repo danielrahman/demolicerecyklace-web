@@ -235,7 +235,7 @@ type GoogleMapsApi = {
 
 declare global {
   interface Window {
-    google?: GoogleMapsApi;
+    google?: unknown;
   }
 }
 
@@ -482,7 +482,8 @@ function buildAvailableDeliveryDayOptions(todayDate: Date, limit = 120) {
 }
 
 function hasGooglePlacesLoaded() {
-  return Boolean(window.google?.maps?.places?.Autocomplete);
+  const googleMaps = window.google as GoogleMapsApi | undefined;
+  return Boolean(googleMaps?.maps?.places?.Autocomplete);
 }
 
 function loadGoogleMapsApi(apiKey: string) {
@@ -1196,9 +1197,10 @@ export function OrderWizard({
   }
 
   function getGeocoder() {
-    if (!window.google?.maps?.Geocoder) return null;
+    const googleMaps = window.google as GoogleMapsApi | undefined;
+    if (!googleMaps?.maps?.Geocoder) return null;
     if (!geocoderRef.current) {
-      geocoderRef.current = new window.google.maps.Geocoder();
+      geocoderRef.current = new googleMaps.maps.Geocoder();
     }
     return geocoderRef.current;
   }
@@ -1935,11 +1937,12 @@ export function OrderWizard({
   }, [mapsRequested]);
 
   useEffect(() => {
-    if (mapsStatus !== "ready" || !addressInputRef.current || autocompleteRef.current || !window.google?.maps?.places) {
+    const googleMaps = window.google as GoogleMapsApi | undefined;
+    if (mapsStatus !== "ready" || !addressInputRef.current || autocompleteRef.current || !googleMaps?.maps?.places) {
       return;
     }
 
-    const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+    const autocomplete = new googleMaps.maps.places.Autocomplete(addressInputRef.current, {
       types: ["address"],
       componentRestrictions: { country: "cz" },
       fields: ["formatted_address", "address_components", "geometry"],
@@ -2015,6 +2018,8 @@ export function OrderWizard({
   }, [addressInput, mapsStatus, pinLocation, shouldShowAddressMap]);
 
   useEffect(() => {
+    const googleMaps = window.google as GoogleMapsApi | undefined;
+
     if (step !== 0) {
       markerDragListenerRef.current?.remove();
       markerDragListenerRef.current = null;
@@ -2030,8 +2035,8 @@ export function OrderWizard({
       !shouldShowAddressMap ||
       mapsStatus !== "ready" ||
       !mapContainerRef.current ||
-      !window.google?.maps?.Map ||
-      !window.google?.maps?.Marker ||
+      !googleMaps?.maps?.Map ||
+      !googleMaps?.maps?.Marker ||
       !pinLocation
     ) {
       markerDragListenerRef.current?.remove();
@@ -2051,7 +2056,7 @@ export function OrderWizard({
 
     const center = pinLocation;
 
-    const map = new window.google.maps.Map(mapContainerRef.current, {
+    const map = new googleMaps.maps.Map(mapContainerRef.current, {
       center,
       zoom: 17,
       mapTypeControl: false,
@@ -2059,7 +2064,7 @@ export function OrderWizard({
       fullscreenControl: false,
     });
 
-    const marker = new window.google.maps.Marker({
+    const marker = new googleMaps.maps.Marker({
       map,
       position: center,
       draggable: true,

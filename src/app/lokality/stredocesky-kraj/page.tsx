@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -10,14 +11,12 @@ const useCases = [
   "Návaznost demolice a recyklace na jednom dodavateli.",
 ] as const;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Demolice a kontejnery Středočeský kraj | Demolice Recyklace",
   description:
     "Služby pro Středočeský kraj: kontejnery na odpad, demolice objektů, odvoz suti a recyklace materiálu.",
-  alternates: {
-    canonical: "/lokality/stredocesky-kraj",
-  },
-};
+  canonicalPath: "/lokality/stredocesky-kraj",
+});
 
 export default function StredoceskyKrajLocationPage() {
   return (

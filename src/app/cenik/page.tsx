@@ -6,6 +6,7 @@ import { PricingHoverTable } from "@/components/pricing-hover-table";
 import { buildContainerOrderWasteTypes } from "@/lib/container-order-catalog";
 import { getPricingPageContent } from "@/lib/cms/getters";
 import type { CmsPricingRow } from "@/lib/cms/mappers";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTAINER_PRODUCT } from "@/lib/site-config";
 import { ui } from "@/lib/ui";
 
@@ -30,14 +31,12 @@ const operatingNotes = [
   "Platba je prováděna v hotovosti přímo na váze, pokud není předem zajištěný jiný způsob.",
 ];
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Ceník služeb | Demolice Recyklace",
   description:
     "Kompletní ceník kontejnerů, recyklace, materiálů a pronájmu strojů pro Prahu a Středočeský kraj.",
-  alternates: {
-    canonical: "/cenik",
-  },
-};
+  canonicalPath: "/cenik",
+});
 
 const containerVisualRules = [
   {

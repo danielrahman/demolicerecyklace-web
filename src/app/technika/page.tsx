@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MachineRentalGrid } from "@/components/machine-rental-grid";
 import { getMarketingPageContent } from "@/lib/cms/getters";
 import { MACHINE_RENTAL_PRICING } from "@/lib/full-pricing";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT, SERVICE_AREA } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -23,16 +24,16 @@ const planningPoints = [
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("technika");
+  const title = marketing?.seoTitle || "Technika | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Přehled strojní techniky pro demolice, recyklaci a navazující práce v Praze a okolí.";
 
-  return {
-    title: marketing?.seoTitle || "Technika | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Přehled strojní techniky pro demolice, recyklaci a navazující práce v Praze a okolí.",
-    alternates: {
-      canonical: "/technika",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/technika",
+  });
 }
 
 export default async function TechnikaPage() {

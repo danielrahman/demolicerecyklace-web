@@ -3,17 +3,16 @@ import Link from "next/link";
 
 import { FaqSection } from "@/components/faq-section";
 import { getFaqContent } from "@/lib/cms/getters";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "FAQ kontejnery | Demolice Recyklace",
   description:
     "Nejčastější dotazy k objednávce kontejneru, pravidlům odpadu a potvrzení termínu přistavení.",
-  alternates: {
-    canonical: "/kontejnery/faq",
-  },
-};
+  canonicalPath: "/kontejnery/faq",
+});
 
 export default async function KontejneryFaqPage() {
   const faqContent = await getFaqContent();

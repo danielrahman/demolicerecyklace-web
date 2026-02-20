@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { SiteHeader } from "@/components/site-header";
 import { getSiteSettings } from "@/lib/cms/getters";
+import { createOgImageUrl } from "@/lib/seo-metadata";
 import { CONTACT, SERVICE_AREA, SITE_URL } from "@/lib/site-config";
 
 import "./globals.css";
@@ -30,6 +31,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
   const metadataBase = getMetadataBase();
   const canonicalUrl = new URL("/", metadataBase).toString();
+  const ogImageUrl = createOgImageUrl({
+    title: settings.metaTitle,
+    subtitle: settings.metaDescription,
+  });
 
   return {
     metadataBase,
@@ -42,6 +47,20 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: settings.brandName,
       locale: "cs_CZ",
       type: "website",
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: settings.brandName,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: settings.metaTitle,
+      description: settings.metaDescription,
+      images: [ogImageUrl],
     },
   };
 }

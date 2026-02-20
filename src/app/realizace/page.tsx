@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { ui } from "@/lib/ui";
 
@@ -74,16 +75,16 @@ const serviceBadgeClasses: Record<Project["service"], string> = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("realizace");
+  const title = marketing?.seoTitle || "Realizace | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Ukázky realizací v oblasti demolice, recyklace a kontejnerové dopravy v Praze a okolí.";
 
-  return {
-    title: marketing?.seoTitle || "Realizace | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Ukázky realizací v oblasti demolice, recyklace a kontejnerové dopravy v Praze a okolí.",
-    alternates: {
-      canonical: "/realizace",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/realizace",
+  });
 }
 
 export default async function RealizacePage() {

@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT, SITE_META } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("gdpr");
+  const title = marketing?.seoTitle || "Zásady zpracování osobních údajů | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Informace o zpracování osobních údajů při online objednávce kontejneru a souvisejících službách společnosti MINUTY a.s.";
 
-  return {
-    title: marketing?.seoTitle || "Zásady zpracování osobních údajů | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Informace o zpracování osobních údajů při online objednávce kontejneru a souvisejících službách společnosti MINUTY a.s.",
-    alternates: {
-      canonical: "/gdpr",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/gdpr",
+  });
 }
 
 export default async function GdprPage() {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT, SERVICE_AREA, SITE_META } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -57,16 +58,16 @@ const audiences = ["Soukromé osoby", "Řemeslníci a menší stavební firmy", 
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("o-nas");
+  const title = marketing?.seoTitle || "O nás | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Informace o společnosti, službách a způsobu spolupráce pro demolice, recyklaci a kontejnery.";
 
-  return {
-    title: marketing?.seoTitle || "O nás | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Informace o společnosti, službách a způsobu spolupráce pro demolice, recyklaci a kontejnery.",
-    alternates: {
-      canonical: "/o-nas",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/o-nas",
+  });
 }
 
 export default async function ONasPage() {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FaqSection } from "@/components/faq-section";
 import { getMarketingPageContent } from "@/lib/cms/getters";
 import { RECYCLING_FAQ } from "@/lib/faq-content";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -41,16 +42,16 @@ const intakeSteps = [
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("recyklace");
+  const title = marketing?.seoTitle || "Recyklace | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Příjem, třídění a zpracování stavebních materiálů v recyklačním středisku pro Prahu a okolí.";
 
-  return {
-    title: marketing?.seoTitle || "Recyklace | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Příjem, třídění a zpracování stavebních materiálů v recyklačním středisku pro Prahu a okolí.",
-    alternates: {
-      canonical: "/recyklace",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/recyklace",
+  });
 }
 
 export default async function RecyklacePage() {

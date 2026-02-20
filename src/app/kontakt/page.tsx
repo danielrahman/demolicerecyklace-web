@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT, SERVICE_AREA, SITE_META } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -49,16 +50,16 @@ const contactFlow = [
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("kontakt");
+  const title = marketing?.seoTitle || "Kontakt | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Kontakty, provozní doba a servisní oblast pro kontejnery, demolice a recyklaci v Praze a okolí.";
 
-  return {
-    title: marketing?.seoTitle || "Kontakt | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Kontakty, provozní doba a servisní oblast pro kontejnery, demolice a recyklaci v Praze a okolí.",
-    alternates: {
-      canonical: "/kontakt",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/kontakt",
+  });
 }
 
 export default async function KontaktPage() {

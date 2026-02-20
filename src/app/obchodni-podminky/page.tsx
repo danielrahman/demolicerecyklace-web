@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT, SERVICE_AREA, SITE_META } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("obchodni-podminky");
+  const title = marketing?.seoTitle || "Obchodní podmínky | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Obchodní podmínky služby pronájmu a odvozu kontejneru 3m³ společnosti MINUTY a.s. pro Prahu a Středočeský kraj.";
 
-  return {
-    title: marketing?.seoTitle || "Obchodní podmínky | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Obchodní podmínky služby pronájmu a odvozu kontejneru 3m³ společnosti MINUTY a.s. pro Prahu a Středočeský kraj.",
-    alternates: {
-      canonical: "/obchodni-podminky",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/obchodni-podminky",
+  });
 }
 
 export default async function ObchodniPodminkyPage() {

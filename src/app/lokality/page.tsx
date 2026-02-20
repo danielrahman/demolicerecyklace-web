@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -17,14 +18,12 @@ const locationCards = [
   },
 ] as const;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Lokality obsluhy | Demolice Recyklace",
   description:
     "Přehled oblastí obsluhy pro kontejnery, demolice a recyklaci: Praha a Středočeský kraj.",
-  alternates: {
-    canonical: "/lokality",
-  },
-};
+  canonicalPath: "/lokality",
+});
 
 export default function LokalityPage() {
   return (

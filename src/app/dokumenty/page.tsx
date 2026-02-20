@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { ui } from "@/lib/ui";
 
 type DocumentLink = {
@@ -29,13 +30,11 @@ const docs: DocumentLink[] = [
   },
 ];
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Dokumenty ke stažení | Demolice Recyklace",
   description: "Přehled dokumentů ke stažení včetně iČP, ZPO a PDF ceníku.",
-  alternates: {
-    canonical: "/dokumenty",
-  },
-};
+  canonicalPath: "/dokumenty",
+});
 
 export default function DokumentyPage() {
   return (

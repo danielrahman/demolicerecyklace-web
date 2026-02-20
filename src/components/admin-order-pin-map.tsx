@@ -84,7 +84,7 @@ type GoogleMapsApi = {
 
 declare global {
   interface Window {
-    google?: GoogleMapsApi;
+    google?: unknown;
   }
 }
 
@@ -105,7 +105,8 @@ const fallbackCenter: PinLocation = { lat: 50.0755, lng: 14.4378 };
 let googleMapsLoadPromise: Promise<void> | null = null;
 
 function hasGoogleMapsLoaded() {
-  return Boolean(window.google?.maps?.Map && window.google?.maps?.Marker && window.google?.maps?.Geocoder);
+  const googleMaps = window.google as GoogleMapsApi | undefined;
+  return Boolean(googleMaps?.maps?.Map && googleMaps?.maps?.Marker && googleMaps?.maps?.Geocoder);
 }
 
 async function resolveGoogleMapsApiKey() {
@@ -251,10 +252,11 @@ export function AdminOrderPinMap({
   }, []);
 
   useEffect(() => {
-    if (mapsStatus !== "ready" || !mapContainerRef.current || !window.google?.maps?.Map) return;
+    const googleMaps = window.google as GoogleMapsApi | undefined;
+    if (mapsStatus !== "ready" || !mapContainerRef.current || !googleMaps?.maps?.Map) return;
     if (mapRef.current) return;
 
-    const map = new window.google.maps.Map(mapContainerRef.current, {
+    const map = new googleMaps.maps.Map(mapContainerRef.current, {
       center: pinLocation ?? fallbackCenter,
       zoom: pinLocation ? 16 : 11,
       mapTypeControl: false,
@@ -289,14 +291,15 @@ export function AdminOrderPinMap({
   }, [editable, mapsStatus, pinLocation]);
 
   useEffect(() => {
-    if (mapsStatus !== "ready" || pinLocation || !address.trim() || !window.google?.maps?.Geocoder) return;
+    const googleMaps = window.google as GoogleMapsApi | undefined;
+    if (mapsStatus !== "ready" || pinLocation || !address.trim() || !googleMaps?.maps?.Geocoder) return;
 
     const normalizedAddress = address.trim();
     if (geocodedAddressRef.current === normalizedAddress) return;
     geocodedAddressRef.current = normalizedAddress;
 
     if (!geocoderRef.current) {
-      geocoderRef.current = new window.google.maps.Geocoder();
+      geocoderRef.current = new googleMaps.maps.Geocoder();
     }
 
     geocoderRef.current.geocode(
@@ -311,7 +314,8 @@ export function AdminOrderPinMap({
   }, [address, mapsStatus, pinLocation]);
 
   useEffect(() => {
-    if (mapsStatus !== "ready" || !mapRef.current || !window.google?.maps?.Marker) return;
+    const googleMaps = window.google as GoogleMapsApi | undefined;
+    if (mapsStatus !== "ready" || !mapRef.current || !googleMaps?.maps?.Marker) return;
 
     if (!pinLocation) {
       markerDragListenerRef.current?.remove();
@@ -322,7 +326,7 @@ export function AdminOrderPinMap({
     }
 
     if (!markerRef.current) {
-      const marker = new window.google.maps.Marker({
+      const marker = new googleMaps.maps.Marker({
         map: mapRef.current,
         position: pinLocation,
         draggable: editable,

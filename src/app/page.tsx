@@ -5,14 +5,15 @@ import Link from "next/link";
 
 import { HomePricingPreview, HomePricingPreviewFallback } from "@/components/home-pricing-preview";
 import { getHomePageContent } from "@/lib/cms/getters";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
-export const metadata: Metadata = {
-  alternates: {
-    canonical: "/",
-  },
-};
+export const metadata: Metadata = createPageMetadata({
+  title: "Demolice Recyklace - Praha 6",
+  description: "Demolice, recyklace a online objednávka kontejneru pro Prahu a Středočeský kraj.",
+  canonicalPath: "/",
+});
 
 export default async function HomePage() {
   const content = await getHomePageContent();

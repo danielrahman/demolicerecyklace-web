@@ -6,6 +6,7 @@ import { FaqSection } from "@/components/faq-section";
 import { MachineRentalGrid } from "@/components/machine-rental-grid";
 import { getMarketingPageContent, getPricingPageContent } from "@/lib/cms/getters";
 import { DEMOLITION_FAQ } from "@/lib/faq-content";
+import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT, SERVICE_AREA } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
@@ -51,16 +52,16 @@ const requirements = [
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("demolice");
+  const title = marketing?.seoTitle || "Demolice | Demolice Recyklace";
+  const description =
+    marketing?.seoDescription ||
+    "Demolice objektů a navazující recyklace materiálu pro Prahu a Středočeský kraj.";
 
-  return {
-    title: marketing?.seoTitle || "Demolice | Demolice Recyklace",
-    description:
-      marketing?.seoDescription ||
-      "Demolice objektů a navazující recyklace materiálu pro Prahu a Středočeský kraj.",
-    alternates: {
-      canonical: "/demolice",
-    },
-  };
+  return createPageMetadata({
+    title,
+    description,
+    canonicalPath: "/demolice",
+  });
 }
 
 export default async function DemolicePage() {

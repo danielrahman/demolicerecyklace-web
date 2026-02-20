@@ -3,19 +3,15 @@ import { Suspense } from "react";
 
 import { OrderWizardLazy } from "@/components/order-wizard-lazy";
 import { getContainerOrderWasteTypes } from "@/lib/container-order-source";
+import { createPageMetadata } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Objednat kontejner | Demolice Recyklace",
   description:
     "Objednávkový formulář kontejneru pro Prahu a Středočeský kraj. Termín přistavení potvrzuje operátor.",
-  alternates: {
-    canonical: "/kontejnery/objednat",
-  },
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+  canonicalPath: "/kontejnery/objednat",
+  noindex: true,
+});
 
 export default async function ObjednatPage() {
   const wasteTypes = await getContainerOrderWasteTypes();
