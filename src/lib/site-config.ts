@@ -1,5 +1,9 @@
 import { PRAHA_POSTAL_CODES, STREDOCESKY_POSTAL_CODES } from "@/lib/service-area";
 
+const siteUrlFromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+export const SITE_URL = (siteUrlFromEnv || "https://www.demolicerecyklace.cz").replace(/\/+$/, "");
+
 export const SITE_META = {
   brandName: "Demolice Recyklace",
   companyName: "MINUTY a.s.",

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
+import { AdminSignOutButton } from "@/components/admin-signout-button";
 import { formatCzechDayCount } from "@/lib/czech";
+import { requireAdminPageSession } from "@/lib/auth/guards";
 import { listOrders } from "@/lib/order-store";
 import type { OrderStatus } from "@/lib/types";
 import { cx, ui } from "@/lib/ui";
@@ -26,13 +28,17 @@ export default async function AdminOrdersPage({
 }) {
   const params = searchParams ? await searchParams : undefined;
   const status = params?.status;
-  const orders = listOrders(status);
+  await requireAdminPageSession();
+  const orders = await listOrders(status);
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold">Objednávky</h1>
-        <p className="text-zinc-300">Postup: vyberte objednávku ze seznamu, otevřete detail a použijte jedno ze 3 tlačítek.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold">Objednávky</h1>
+          <p className="text-zinc-300">Postup: vyberte objednávku ze seznamu, otevřete detail a použijte jedno ze 3 tlačítek.</p>
+        </div>
+        <AdminSignOutButton className="text-sm" />
       </div>
 
       <div className="flex flex-wrap gap-2">

@@ -11,6 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       marketing?.seoDescription ||
       "Informace o zpracování osobních údajů při online objednávce kontejneru a souvisejících službách společnosti MINUTY a.s.",
+    alternates: {
+      canonical: "/gdpr",
+    },
   };
 }
 

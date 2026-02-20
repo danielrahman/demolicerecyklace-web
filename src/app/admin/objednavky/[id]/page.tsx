@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdminSignOutButton } from "@/components/admin-signout-button";
+import { requireAdminPageSession } from "@/lib/auth/guards";
 import { getContainerOrderWasteTypeById } from "@/lib/container-order-source";
 import { formatCzechDayCount } from "@/lib/czech";
 import { getOrder } from "@/lib/order-store";
-import type { OrderStatus } from "@/lib/types";
+import type { OrderEventType, OrderStatus } from "@/lib/types";
+import { listOrderEvents } from "@/server/db/repositories/order-events";
 import { TIME_WINDOW_VALUES } from "@/lib/time-windows";
 import { cx, ui } from "@/lib/ui";
 
@@ -22,10 +25,24 @@ const statusBadgeClass: Record<OrderStatus, string> = {
   cancelled: "border-red-500/60 bg-red-950/50 text-red-200",
 };
 
+const eventLabels: Record<OrderEventType, string> = {
+  created: "Objednávka vytvořena",
+  emailed_customer_received: "Odeslán e-mail zákazníkovi (přijato)",
+  emailed_internal_new: "Odeslán interní e-mail (nová objednávka)",
+  status_confirmed: "Objednávka potvrzena",
+  status_rescheduled: "Objednávka přeplánována",
+  status_cancelled: "Objednávka stornována",
+  internal_note_updated: "Aktualizována interní poznámka",
+  rate_limited_rejected: "Blokováno rate-limitem",
+  honeypot_rejected: "Blokováno honeypot ochranou",
+};
+
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPageSession();
   const { id } = await params;
-  const order = getOrder(id);
+  const order = await getOrder(id);
   const wasteType = order ? await getContainerOrderWasteTypeById(order.wasteType) : null;
+  const events = order ? await listOrderEvents(order.id) : [];
 
   if (!order) {
     notFound();
@@ -33,9 +50,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/objednavky" className="text-sm text-zinc-400 underline">
-        Zpět na seznam
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href="/admin/objednavky" className="text-sm text-zinc-400 underline">
+          Zpět na seznam
+        </Link>
+        <AdminSignOutButton className="text-sm" />
+      </div>
 
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -215,6 +235,27 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           Uložit poznámku
         </button>
       </form>
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+        <h2 className="text-xl font-bold">Historie objednávky</h2>
+        {events.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-400">Zatím bez událostí.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {events.map((event) => (
+              <li key={event.id} className="rounded-lg border border-zinc-800 bg-zinc-950/70 p-3 text-sm">
+                <p className="font-semibold text-zinc-100">{eventLabels[event.eventType] ?? event.eventType}</p>
+                <p className="text-xs text-zinc-400">{new Date(event.createdAt).toLocaleString("cs-CZ")}</p>
+                {Object.keys(event.payload).length > 0 ? (
+                  <pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs text-zinc-300">
+                    {JSON.stringify(event.payload, null, 2)}
+                  </pre>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

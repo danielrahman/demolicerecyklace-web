@@ -1,40 +1,48 @@
 import type { Metadata } from "next";
-import { Barlow_Condensed, IBM_Plex_Mono, Source_Sans_3 } from "next/font/google";
+import { Source_Sans_3 } from "next/font/google";
 
 import { CookieConsentManager } from "@/components/cookie-consent-manager";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { SiteHeader } from "@/components/site-header";
 import { getSiteSettings } from "@/lib/cms/getters";
+import { CONTACT, SERVICE_AREA, SITE_URL } from "@/lib/site-config";
 
 import "./globals.css";
-
-const headingFont = Barlow_Condensed({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  weight: ["600", "700"],
-});
 
 const bodyFont = Source_Sans_3({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["400", "500", "600", "700"],
-});
-
-const monoFont = IBM_Plex_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  weight: ["400", "500"],
+  weight: ["400", "600"],
 });
 
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
 
+function getMetadataBase() {
+  try {
+    return new URL(SITE_URL);
+  } catch {
+    return new URL("https://www.demolicerecyklace.cz");
+  }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
+  const metadataBase = getMetadataBase();
+  const canonicalUrl = new URL("/", metadataBase).toString();
 
   return {
+    metadataBase,
     title: settings.metaTitle,
     description: settings.metaDescription,
+    openGraph: {
+      title: settings.metaTitle,
+      description: settings.metaDescription,
+      url: canonicalUrl,
+      siteName: settings.brandName,
+      locale: "cs_CZ",
+      type: "website",
+    },
   };
 }
 
@@ -44,10 +52,37 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const settings = await getSiteSettings();
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": ["Organization", "LocalBusiness"],
+    name: settings.brandName,
+    legalName: settings.companyName,
+    url: SITE_URL,
+    telephone: CONTACT.phone,
+    email: CONTACT.email,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: CONTACT.operationAddressLine,
+      addressCountry: "CZ",
+    },
+    areaServed: [
+      {
+        "@type": "AdministrativeArea",
+        name: SERVICE_AREA.regionsLabel,
+      },
+    ],
+    openingHours: ["Mo-Fr 07:00-17:00", "Sa 08:00-14:00"],
+  };
 
   return (
     <html lang="cs">
-      <body className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable}`}>
+      <body className={bodyFont.variable}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(localBusinessSchema),
+          }}
+        />
         <CookieConsentManager gaMeasurementId={gaMeasurementId} />
         <SiteHeader settings={settings} />
         <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">

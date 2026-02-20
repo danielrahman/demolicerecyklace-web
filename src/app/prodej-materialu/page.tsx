@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
@@ -33,6 +34,20 @@ function rowsForCategory(category: MaterialCategory) {
   return MATERIAL_SALES_PRICING.filter((row) =>
     category.keywords.some((keyword) => row.item.toLowerCase().includes(keyword.toLowerCase())),
   );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("prodej-materialu");
+
+  return {
+    title: marketing?.seoTitle || "Prodej materiálu | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Prodej písků, kameniva a recyklátů pro stavební práce v Praze a Středočeském kraji.",
+    alternates: {
+      canonical: "/prodej-materialu",
+    },
+  };
 }
 
 export default async function ProdejMaterialuPage() {

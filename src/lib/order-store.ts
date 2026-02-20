@@ -1,17 +1,20 @@
 import type { ContainerOrder, OrderStatus, TimeWindow } from "@/lib/types";
-
-const globalStore = globalThis as unknown as {
-  orders?: ContainerOrder[];
-};
-
-const orders = globalStore.orders ?? [];
-globalStore.orders = orders;
+import {
+  cancelOrderInDb,
+  confirmOrderInDb,
+  createOrderInDb,
+  getOrderFromDb,
+  listOrdersFromDb,
+  rescheduleOrderInDb,
+  setInternalNoteInDb,
+  updateOrderStatusInDb,
+} from "@/server/db/repositories/orders";
 
 function generateOrderId() {
   return `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
-export function createOrder(order: Omit<ContainerOrder, "id" | "createdAt" | "status">) {
+export async function createOrder(order: Omit<ContainerOrder, "id" | "createdAt" | "status">) {
   const next: ContainerOrder = {
     id: generateOrderId(),
     createdAt: new Date().toISOString(),
@@ -19,71 +22,33 @@ export function createOrder(order: Omit<ContainerOrder, "id" | "createdAt" | "st
     ...order,
   };
 
-  orders.unshift(next);
-  return next;
+  return createOrderInDb(next);
 }
 
-export function listOrders(status?: OrderStatus) {
-  if (!status) return orders;
-  return orders.filter((order) => order.status === status);
+export async function listOrders(status?: OrderStatus) {
+  return listOrdersFromDb(status);
 }
 
-export function getOrder(id: string) {
-  return orders.find((order) => order.id === id) ?? null;
+export async function getOrder(id: string) {
+  return getOrderFromDb(id);
 }
 
-export function updateOrderStatus(id: string, status: OrderStatus) {
-  const order = getOrder(id);
-  if (!order) return null;
-  order.status = status;
-  return order;
+export async function updateOrderStatus(id: string, status: OrderStatus) {
+  return updateOrderStatusInDb(id, status);
 }
 
-export function confirmOrder(id: string, confirmedDate: string, confirmedWindow: TimeWindow) {
-  const order = getOrder(id);
-  if (!order) return null;
-
-  order.deliveryDateConfirmed = confirmedDate;
-  order.timeWindowConfirmed = confirmedWindow;
-  order.status = "confirmed";
-
-  return order;
+export async function confirmOrder(id: string, confirmedDate: string, confirmedWindow: TimeWindow) {
+  return confirmOrderInDb(id, confirmedDate, confirmedWindow);
 }
 
-export function rescheduleOrder(id: string, confirmedDate: string, confirmedWindow: TimeWindow) {
-  const order = getOrder(id);
-  if (!order) return null;
-
-  order.deliveryDateConfirmed = confirmedDate;
-  order.timeWindowConfirmed = confirmedWindow;
-
-  if (order.status === "new") {
-    order.status = "confirmed";
-  }
-
-  return order;
+export async function rescheduleOrder(id: string, confirmedDate: string, confirmedWindow: TimeWindow) {
+  return rescheduleOrderInDb(id, confirmedDate, confirmedWindow);
 }
 
-export function setInternalNote(id: string, note: string) {
-  const order = getOrder(id);
-  if (!order) return null;
-  order.internalNote = note;
-  return order;
+export async function setInternalNote(id: string, note: string) {
+  return setInternalNoteInDb(id, note);
 }
 
-export function cancelOrder(id: string, reason: string) {
-  const order = getOrder(id);
-  if (!order) return null;
-
-  order.status = "cancelled";
-  order.cancelReason = reason;
-  order.cancelledAt = new Date().toISOString();
-
-  if (reason.trim()) {
-    const existingNote = order.internalNote?.trim();
-    const reasonLine = `Storno důvod: ${reason.trim()}`;
-    order.internalNote = existingNote ? `${existingNote}\n${reasonLine}` : reasonLine;
-  }
-
-  return order;
+export async function cancelOrder(id: string, reason: string) {
+  return cancelOrderInDb(id, reason);
 }

@@ -58,6 +58,7 @@ export const createOrderSchema = z
     }),
     note: z.string().optional(),
     callbackNote: z.string().trim().max(1000).optional(),
+    website: z.string().trim().max(0).optional(),
     pinLocation: z
       .object({
         lat: z.number().min(-90).max(90),

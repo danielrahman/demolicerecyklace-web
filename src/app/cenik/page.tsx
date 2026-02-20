@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { MachineRentalGrid } from "@/components/machine-rental-grid";
@@ -28,6 +29,15 @@ const operatingNotes = [
   "Materiály mohou být pouze bez příměsí a v jedné dodávce vždy jen jeden druh dle katalogu odpadů.",
   "Platba je prováděna v hotovosti přímo na váze, pokud není předem zajištěný jiný způsob.",
 ];
+
+export const metadata: Metadata = {
+  title: "Ceník služeb | Demolice Recyklace",
+  description:
+    "Kompletní ceník kontejnerů, recyklace, materiálů a pronájmu strojů pro Prahu a Středočeský kraj.",
+  alternates: {
+    canonical: "/cenik",
+  },
+};
 
 const containerVisualRules = [
   {

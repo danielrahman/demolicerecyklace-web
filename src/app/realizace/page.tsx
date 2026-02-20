@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -70,6 +71,20 @@ const serviceBadgeClasses: Record<Project["service"], string> = {
   Recyklace: "bg-emerald-900/60 text-emerald-200 border-emerald-700/60",
   Kontejnery: "bg-amber-900/60 text-amber-200 border-amber-700/60",
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("realizace");
+
+  return {
+    title: marketing?.seoTitle || "Realizace | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Ukázky realizací v oblasti demolice, recyklace a kontejnerové dopravy v Praze a okolí.",
+    alternates: {
+      canonical: "/realizace",
+    },
+  };
+}
 
 export default async function RealizacePage() {
   const marketing = await getMarketingPageContent("realizace");

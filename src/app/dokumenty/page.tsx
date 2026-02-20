@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ui } from "@/lib/ui";
@@ -27,6 +28,14 @@ const docs: DocumentLink[] = [
     external: true,
   },
 ];
+
+export const metadata: Metadata = {
+  title: "Dokumenty ke stažení | Demolice Recyklace",
+  description: "Přehled dokumentů ke stažení včetně iČP, ZPO a PDF ceníku.",
+  alternates: {
+    canonical: "/dokumenty",
+  },
+};
 
 export default function DokumentyPage() {
   return (

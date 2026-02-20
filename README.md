@@ -20,6 +20,9 @@ Skeleton projektu pro nový web `demolicerecyklace.cz` podle PRD.
   - `/admin/objednavky/[id]`
 - API routy pro katalog, pricing, objednávky a admin akce
 - Datové schéma Drizzle (`src/server/db/schema.ts`)
+- Auth.js credentials login pro admin + guard na `/admin/objednavky*` a `/api/admin/*`
+- Anti-spam ochrana: rate-limit (`5/30 min`) + honeypot pole
+- Auditní event log (`order_events`) + timeline v detailu admin objednávky
 - E-mail flow:
   - po submitu zákazník + interní tým
   - po potvrzení termínu zákazník
@@ -34,9 +37,21 @@ npm run dev
 Web poběží na `http://localhost:3000`.
 
 ## Poznámky k MVP
-- Aktuální uložení objednávek je in-memory (`src/lib/order-store.ts`) pro rychlý prototyp.
-- Pro produkci napojit API na PostgreSQL přes Drizzle.
-- Admin auth je připravená jako struktura, ale bez finální implementace session/role guardu.
+- Objednávky a admin akce používají PostgreSQL přes Drizzle.
+- Pro lokální test je nutný běžící PostgreSQL server na `DATABASE_URL`.
+- Admin účet je nutné vytvořit seed skriptem před prvním přihlášením.
+
+## Admin seed
+Vytvoření/upsert admin uživatele:
+
+```bash
+npm run admin:seed
+```
+
+Potřebné env:
+- `ADMIN_SEED_EMAIL`
+- `ADMIN_SEED_PASSWORD`
+- `ADMIN_SEED_ROLE` (`admin` nebo `operator`)
 
 ## CMS (Sanity)
 

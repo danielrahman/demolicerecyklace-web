@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
@@ -53,6 +54,20 @@ const cooperationSteps = [
 ] as const;
 
 const audiences = ["Soukromé osoby", "Řemeslníci a menší stavební firmy", "Developerské a průmyslové projekty"] as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("o-nas");
+
+  return {
+    title: marketing?.seoTitle || "O nás | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Informace o společnosti, službách a způsobu spolupráce pro demolice, recyklaci a kontejnery.",
+    alternates: {
+      canonical: "/o-nas",
+    },
+  };
+}
 
 export default async function ONasPage() {
   const marketing = await getMarketingPageContent("o-nas");

@@ -11,6 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       marketing?.seoDescription ||
       "Obchodní podmínky služby pronájmu a odvozu kontejneru 3m³ společnosti MINUTY a.s. pro Prahu a Středočeský kraj.",
+    alternates: {
+      canonical: "/obchodni-podminky",
+    },
   };
 }
 

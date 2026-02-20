@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { SITE_URL } from "@/lib/site-config";
+
 const segmentLabels: Record<string, string> = {
   admin: "Admin",
   objednavky: "Objednávky",
@@ -73,27 +75,45 @@ export function SiteBreadcrumbs() {
       label: labelForSegment(segment),
     })),
   ];
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((crumb, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: crumb.label,
+      item: `${SITE_URL}${crumb.href}`,
+    })),
+  };
 
   return (
-    <nav aria-label="Drobečková navigace" className="mb-6 text-sm">
-      <ol className="flex flex-wrap items-center gap-1 text-zinc-400">
-        {crumbs.map((crumb, index) => {
-          const isCurrent = index === crumbs.length - 1;
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbSchema),
+        }}
+      />
+      <nav aria-label="Drobečková navigace" className="mb-6 text-sm">
+        <ol className="flex flex-wrap items-center gap-1 text-zinc-400">
+          {crumbs.map((crumb, index) => {
+            const isCurrent = index === crumbs.length - 1;
 
-          return (
-            <li key={crumb.href} className="flex items-center gap-1">
-              {isCurrent ? (
-                <span className="font-semibold text-zinc-100">{crumb.label}</span>
-              ) : (
-                <Link href={crumb.href} className="rounded px-1 py-0.5 transition hover:text-[var(--color-accent)]">
-                  {crumb.label}
-                </Link>
-              )}
-              {isCurrent ? null : <span aria-hidden="true" className="px-1 text-zinc-600">/</span>}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+            return (
+              <li key={crumb.href} className="flex items-center gap-1">
+                {isCurrent ? (
+                  <span className="font-semibold text-zinc-100">{crumb.label}</span>
+                ) : (
+                  <Link href={crumb.href} className="rounded px-1 py-0.5 transition hover:text-[var(--color-accent)]">
+                    {crumb.label}
+                  </Link>
+                )}
+                {isCurrent ? null : <span aria-hidden="true" className="px-1 text-zinc-600">/</span>}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+    </>
   );
 }

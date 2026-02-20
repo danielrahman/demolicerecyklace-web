@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getMarketingPageContent } from "@/lib/cms/getters";
@@ -45,6 +46,20 @@ const contactFlow = [
     href: "/recyklace",
   },
 ] as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("kontakt");
+
+  return {
+    title: marketing?.seoTitle || "Kontakt | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Kontakty, provozní doba a servisní oblast pro kontejnery, demolice a recyklaci v Praze a okolí.",
+    alternates: {
+      canonical: "/kontakt",
+    },
+  };
+}
 
 export default async function KontaktPage() {
   const marketing = await getMarketingPageContent("kontakt");

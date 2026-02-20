@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -19,6 +20,20 @@ const planningPoints = [
   "Lokalita a podmínky přístupu na místo",
   "Požadovaná technika a případná obsluha",
 ] as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("technika");
+
+  return {
+    title: marketing?.seoTitle || "Technika | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Přehled strojní techniky pro demolice, recyklaci a navazující práce v Praze a okolí.",
+    alternates: {
+      canonical: "/technika",
+    },
+  };
+}
 
 export default async function TechnikaPage() {
   const marketing = await getMarketingPageContent("technika");

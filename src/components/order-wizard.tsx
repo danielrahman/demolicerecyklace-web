@@ -47,6 +47,7 @@ type WizardData = {
   opakovanyOdvoz: boolean;
   note: string;
   callbackNote: string;
+  website: string;
   gdprConsent: boolean;
   marketingConsent: boolean;
 };
@@ -288,6 +289,7 @@ function buildDefaultData(initialWasteType: WasteTypeId): WizardData {
     opakovanyOdvoz: false,
     note: "",
     callbackNote: "",
+    website: "",
     gdprConsent: false,
     marketingConsent: false,
   };
@@ -1476,6 +1478,7 @@ export function OrderWizard({
           },
           note: data.note.trim() || undefined,
           callbackNote: data.callbackNote || undefined,
+          website: data.website,
           pinLocation: pinLocation
             ? {
                 lat: Number(pinLocation.lat.toFixed(7)),
@@ -2149,6 +2152,7 @@ export function OrderWizard({
                 <button
                   type="button"
                   onClick={() => goToStep(index)}
+                  aria-current={index === step ? "step" : undefined}
                   className={cx(
                     "h-full w-full truncate text-left",
                     index <= furthestStep ? "cursor-pointer" : "cursor-not-allowed",
@@ -2170,6 +2174,7 @@ export function OrderWizard({
                   type="button"
                   onClick={() => goToStep(index)}
                   disabled={index > furthestStep}
+                  aria-current={index === step ? "step" : undefined}
                   className={cx(
                     "flex h-7 w-7 items-center justify-center rounded-full border",
                     index <= furthestStep ? "cursor-pointer" : "cursor-not-allowed opacity-50",
@@ -2421,6 +2426,7 @@ export function OrderWizard({
                     ))}
                   </div>
                 </div>
+                {pinError ? <p className="mt-2 text-xs text-amber-300">{pinError}</p> : null}
               </div>
             </div>
 
@@ -2942,6 +2948,17 @@ export function OrderWizard({
             </label>
           </div>
         ) : null}
+
+        <input
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          value={data.website}
+          onChange={(event) => update("website", event.target.value)}
+          className="sr-only"
+          aria-hidden="true"
+        />
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <div className="flex flex-wrap items-center gap-3">

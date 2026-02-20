@@ -6,7 +6,6 @@ import Link from "next/link";
 
 import type { SiteSettingsContent } from "@/lib/cms/mappers";
 import { CONTAINER_PRODUCT } from "@/lib/site-config";
-import { cx, ui } from "@/lib/ui";
 
 type SiteFooterProps = {
   settings: Pick<

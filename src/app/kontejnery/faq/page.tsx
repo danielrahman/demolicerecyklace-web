@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FaqSection } from "@/components/faq-section";
 import { getFaqContent } from "@/lib/cms/getters";
 import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
+
+export const metadata: Metadata = {
+  title: "FAQ kontejnery | Demolice Recyklace",
+  description:
+    "Nejčastější dotazy k objednávce kontejneru, pravidlům odpadu a potvrzení termínu přistavení.",
+  alternates: {
+    canonical: "/kontejnery/faq",
+  },
+};
 
 export default async function KontejneryFaqPage() {
   const faqContent = await getFaqContent();

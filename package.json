@@ -10,12 +10,14 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
+    "admin:seed": "node scripts/admin-seed.mts",
     "cms:seed:phase1": "node scripts/sanity-seed-phase1.mts",
     "cms:seed:phase2": "node scripts/sanity-seed-phase2.mts",
     "cms:fix:pricing-images": "node scripts/sanity-fix-pricing-images.mts"
   },
   "dependencies": {
     "@sanity/image-url": "^2.0.3",
+    "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.45.1",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

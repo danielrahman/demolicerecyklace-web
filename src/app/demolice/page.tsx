@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -47,6 +48,20 @@ const requirements = [
   "U napojení objektu vyžadujeme potvrzení o stavu inženýrských sítí.",
   "V husté zástavbě řešíme individuálně hlukový režim a časové okno prací.",
 ] as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("demolice");
+
+  return {
+    title: marketing?.seoTitle || "Demolice | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Demolice objektů a navazující recyklace materiálu pro Prahu a Středočeský kraj.",
+    alternates: {
+      canonical: "/demolice",
+    },
+  };
+}
 
 export default async function DemolicePage() {
   const [marketing, pricing] = await Promise.all([

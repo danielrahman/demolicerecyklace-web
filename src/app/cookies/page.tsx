@@ -11,6 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       marketing?.seoDescription ||
       "Přehled používání cookies na webu služby pronájmu kontejnerů, včetně Google Analytics a možností správy souhlasu.",
+    alternates: {
+      canonical: "/cookies",
+    },
   };
 }
 

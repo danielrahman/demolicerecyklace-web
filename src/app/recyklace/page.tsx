@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -37,6 +38,20 @@ const intakeSteps = [
     description: "Po převzetí materiál zvážíme, zaevidujeme a zařadíme do odpovídajícího způsobu zpracování.",
   },
 ] as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const marketing = await getMarketingPageContent("recyklace");
+
+  return {
+    title: marketing?.seoTitle || "Recyklace | Demolice Recyklace",
+    description:
+      marketing?.seoDescription ||
+      "Příjem, třídění a zpracování stavebních materiálů v recyklačním středisku pro Prahu a okolí.",
+    alternates: {
+      canonical: "/recyklace",
+    },
+  };
+}
 
 export default async function RecyklacePage() {
   const marketing = await getMarketingPageContent("recyklace");

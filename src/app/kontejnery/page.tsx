@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -6,6 +7,17 @@ import { getContainersPageContent, getFaqContent } from "@/lib/cms/getters";
 import { CONTAINER_OPTIONS, WASTE_TYPES } from "@/lib/catalog";
 import { SERVICE_AREA } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
+
+export function generateMetadata(): Metadata {
+  return {
+    title: "Kontejnery na odpad | Demolice Recyklace",
+    description:
+      "Online objednávka kontejnerů na stavební odpad, suť a další typy odpadu pro Prahu a Středočeský kraj.",
+    alternates: {
+      canonical: "/kontejnery",
+    },
+  };
+}
 
 export default async function KontejneryPage() {
   const [content, faqContent] = await Promise.all([getContainersPageContent(), getFaqContent()]);

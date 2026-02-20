@@ -1,8 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CONTAINER_RULE_WARNINGS } from "@/lib/container-content";
 import { WASTE_TYPES } from "@/lib/catalog";
 import { cx, ui } from "@/lib/ui";
+
+export const metadata: Metadata = {
+  title: "Co patří a nepatří do kontejneru | Demolice Recyklace",
+  description:
+    "Přehled toho, co patří a nepatří do kontejneru, včetně upozornění k typům odpadu a možným doplatkům.",
+  alternates: {
+    canonical: "/kontejnery/co-patri-nepatri",
+  },
+};
 
 export default function WasteRulesPage() {
   return (

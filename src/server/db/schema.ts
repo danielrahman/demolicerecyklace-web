@@ -22,6 +22,7 @@ export const containerOrders = pgTable("container_orders", {
   containerCount: integer("container_count").notNull(),
   rentalDays: integer("rental_days").notNull(),
   deliveryDateRequested: text("delivery_date_requested").notNull(),
+  deliveryDateEndRequested: text("delivery_date_end_requested"),
   deliveryFlexibilityDays: integer("delivery_flexibility_days"),
   timeWindowRequested: text("time_window_requested").notNull(),
   deliveryDateConfirmed: text("delivery_date_confirmed"),
@@ -33,6 +34,8 @@ export const containerOrders = pgTable("container_orders", {
   note: text("note"),
   callbackNote: text("callback_note"),
   internalNote: text("internal_note"),
+  cancelReason: text("cancel_reason"),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   gdprConsent: boolean("gdpr_consent").notNull(),
   marketingConsent: boolean("marketing_consent").notNull(),
   source: text("source").notNull(),
@@ -44,4 +47,18 @@ export const adminUsers = pgTable("admin_users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull(),
   active: boolean("active").notNull(),
+});
+
+export const orderEvents = pgTable("order_events", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id"),
+  eventType: text("event_type").notNull(),
+  payload: text("payload").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+});
+
+export const rateLimitBuckets = pgTable("rate_limit_buckets", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
 });

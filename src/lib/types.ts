@@ -2,6 +2,19 @@ import type { TimeWindowValue } from "@/lib/time-windows";
 
 export type OrderStatus = "new" | "confirmed" | "done" | "cancelled";
 
+export type AdminRole = "admin" | "operator";
+
+export type OrderEventType =
+  | "created"
+  | "emailed_customer_received"
+  | "emailed_internal_new"
+  | "status_confirmed"
+  | "status_rescheduled"
+  | "status_cancelled"
+  | "internal_note_updated"
+  | "rate_limited_rejected"
+  | "honeypot_rejected";
+
 export type TimeWindow = TimeWindowValue;
 
 export type PlacementType = "soukromy" | "verejny";
@@ -64,4 +77,12 @@ export type ContainerOrder = {
   gdprConsent: boolean;
   marketingConsent: boolean;
   source: "web";
+};
+
+export type OrderEvent = {
+  id: string;
+  orderId?: string;
+  eventType: OrderEventType;
+  payload: Record<string, unknown>;
+  createdAt: string;
 };
