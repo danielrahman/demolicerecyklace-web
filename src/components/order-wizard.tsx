@@ -672,6 +672,47 @@ function localityWithoutPostalCode(value: string) {
   return normalizeAddressSpacing(value.replace(/\b\d{3}\s?\d{2}\b/g, "").replace(/\s+/g, " "));
 }
 
+function normalizeSuggestionLocalityLabel(value: string) {
+  const normalized = normalizeAddressSpacing(
+    value
+      .replace(/\bčesko\b/giu, "")
+      .replace(/\bcesko\b/giu, "")
+      .replace(/\s+,/g, ",")
+      .replace(/,+/g, ",")
+      .replace(/\s+/g, " "),
+  );
+  if (!normalized) return "";
+
+  const withoutPostalCode = normalizeAddressSpacing(normalized.replace(/\b\d{3}\s?\d{2}\b/g, "").replace(/\s+,/g, ","));
+  const localityParts = withoutPostalCode
+    .split(",")
+    .map((part) => normalizeAddressSpacing(part))
+    .filter(Boolean);
+  if (localityParts.length === 0) return "";
+
+  let primaryLocality = localityParts[0] ?? "";
+  if (!/\d/.test(primaryLocality) && primaryLocality.includes("-")) {
+    const parts = primaryLocality.split("-").map((part) => normalizeAddressSpacing(part)).filter(Boolean);
+    if (parts.length > 1) {
+      primaryLocality = parts[parts.length - 1] ?? primaryLocality;
+    }
+  }
+
+  return [primaryLocality, ...localityParts.slice(1)].join(", ");
+}
+
+function formatSuggestionMainText(suggestion: Pick<AddressAutocompleteSuggestion, "mainText" | "streetLabel" | "houseNumber">) {
+  const streetLabel = normalizeAddressSpacing(suggestion.streetLabel);
+  const houseNumber = parseHouseNumberToken(suggestion.houseNumber);
+  if (streetLabel && houseNumber) {
+    return `${streetLabel} ${houseNumber}`;
+  }
+  if (streetLabel) {
+    return streetLabel;
+  }
+  return normalizeAddressSpacing(suggestion.mainText);
+}
+
 function uniqueNonEmpty(values: string[]) {
   return Array.from(new Set(values.map((value) => normalizeAddressSpacing(value)).filter(Boolean)));
 }
@@ -783,31 +824,41 @@ function splitStreetAndHouseNumber(value: string) {
 }
 
 function createAddressAutocompleteSuggestion(prediction: GoogleAutocompletePrediction): AddressAutocompleteSuggestion {
-  const mainText = normalizeAddressSpacing(prediction.structured_formatting?.main_text?.trim() || prediction.description.trim());
-  const secondaryText = normalizeAddressSpacing(prediction.structured_formatting?.secondary_text?.trim() || "");
-  let { streetLabel, houseNumber } = splitStreetAndHouseNumber(mainText);
+  const rawMainText = normalizeAddressSpacing(prediction.structured_formatting?.main_text?.trim() || prediction.description.trim());
+  const rawSecondaryText = normalizeAddressSpacing(prediction.structured_formatting?.secondary_text?.trim() || "");
+  let { streetLabel, houseNumber } = splitStreetAndHouseNumber(rawMainText);
 
   const descriptionPrefix = normalizeAddressSpacing(prediction.description.split(",")[0] ?? "");
   const parsedFromDescriptionPrefix = splitStreetAndHouseNumber(descriptionPrefix);
   if (!houseNumber && parsedFromDescriptionPrefix.houseNumber) {
     streetLabel = parsedFromDescriptionPrefix.streetLabel;
     houseNumber = parsedFromDescriptionPrefix.houseNumber;
+  } else if (parsedFromDescriptionPrefix.houseNumber) {
+    houseNumber = pickMoreSpecificHouseNumber(houseNumber, parsedFromDescriptionPrefix.houseNumber);
   }
 
-  if (!houseNumber) {
-    const leadingNumberMatch = prediction.description.match(/^(\d+[a-zA-Z0-9/.-]*)\s*,\s*([^,]+)/u);
-    if (leadingNumberMatch && containsAddressLetters(leadingNumberMatch[2])) {
-      houseNumber = leadingNumberMatch[1].trim();
+  const leadingNumberMatch = prediction.description.match(/^(\d+[a-zA-Z0-9/.-]*)\s*,\s*([^,]+)/u);
+  if (leadingNumberMatch && containsAddressLetters(leadingNumberMatch[2])) {
+    houseNumber = pickMoreSpecificHouseNumber(houseNumber, leadingNumberMatch[1].trim());
+    if (!containsAddressLetters(streetLabel)) {
       streetLabel = normalizeAddressSpacing(leadingNumberMatch[2]);
     }
   }
 
   if (!containsAddressLetters(streetLabel)) {
-    const secondaryStreetCandidate = normalizeAddressSpacing((secondaryText.split(",")[0] ?? "").replace(/\b\d{3}\s?\d{2}\b/g, ""));
+    const secondaryStreetCandidate = normalizeAddressSpacing((rawSecondaryText.split(",")[0] ?? "").replace(/\b\d{3}\s?\d{2}\b/g, ""));
     if (containsAddressLetters(secondaryStreetCandidate)) {
       streetLabel = secondaryStreetCandidate;
     }
   }
+
+  const descriptionSecondaryText = normalizeAddressSpacing(prediction.description.split(",").slice(1).join(","));
+  const secondaryText = normalizeSuggestionLocalityLabel(rawSecondaryText || descriptionSecondaryText);
+  const mainText = formatSuggestionMainText({
+    mainText: rawMainText,
+    streetLabel,
+    houseNumber,
+  });
 
   return {
     id: prediction.place_id || prediction.description,
@@ -918,12 +969,6 @@ function groupAddressSuggestionsByStreet(suggestions: AddressAutocompleteSuggest
       }
       return a.streetLabel.localeCompare(b.streetLabel, "cs-CZ", { sensitivity: "base" });
     });
-}
-
-function formatHouseNumberCount(count: number) {
-  if (count === 1) return "1 číslo";
-  if (count >= 2 && count <= 4) return `${count} čísla`;
-  return `${count} čísel`;
 }
 
 function normalizeAddressSearchText(value: string) {
@@ -1387,7 +1432,6 @@ export function OrderWizard({
   const [addressSuggestionCursor, setAddressSuggestionCursor] = useState(-1);
   const [addressSuggestions, setAddressSuggestions] = useState<AddressAutocompleteSuggestion[]>([]);
   const [addressStreetGroups, setAddressStreetGroups] = useState<AddressStreetGroup[]>([]);
-  const [addressStreetNumberCounts, setAddressStreetNumberCounts] = useState<Record<string, number | null>>({});
   const [activeAddressStreetGroupKey, setActiveAddressStreetGroupKey] = useState<string | null>(null);
   const [resolvingAddress, setResolvingAddress] = useState(false);
   const [resolvingPin, setResolvingPin] = useState(false);
@@ -1440,7 +1484,6 @@ export function OrderWizard({
   const autocompleteServiceRef = useRef<GoogleAutocompleteService | null>(null);
   const addressSuggestionsRequestRef = useRef(0);
   const addressSuggestionsCloseTimeoutRef = useRef<number | null>(null);
-  const addressStreetCountRequestRef = useRef<Record<string, boolean>>({});
   const addressSuggestionModeRef = useRef<"streets" | "addresses">("streets");
   const activeAddressStreetGroupKeyRef = useRef<string | null>(null);
   const geocoderRef = useRef<GoogleGeocoder | null>(null);
@@ -1676,12 +1719,10 @@ export function OrderWizard({
   const resetAddressSuggestions = useCallback(() => {
     setAddressSuggestions([]);
     setAddressStreetGroups([]);
-    setAddressStreetNumberCounts({});
     setActiveAddressStreetGroupKey(null);
     setAddressSuggestionMode("streets");
     setAddressSuggestionLoading(false);
     setAddressSuggestionCursor(-1);
-    addressStreetCountRequestRef.current = {};
   }, []);
 
   const closeAddressSuggestionsPanel = useCallback(() => {
@@ -1820,11 +1861,24 @@ export function OrderWizard({
     return autocompleteServiceRef.current;
   }, []);
 
-  const autocompletePredictionsRequest = useCallback(async (input: string, options?: { types?: string[] }) => {
+  const autocompletePredictionsRequest = useCallback(async (
+    input: string,
+    options?: { types?: string[]; timeoutMs?: number },
+  ) => {
     const service = getAutocompleteService();
     if (!service || !input.trim()) return [];
 
     return new Promise<AddressAutocompleteSuggestion[]>((resolve) => {
+      let settled = false;
+      const finish = (value: AddressAutocompleteSuggestion[]) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const timeoutId = window.setTimeout(() => {
+        finish([]);
+      }, Math.max(250, options?.timeoutMs ?? 800));
+
       service.getPlacePredictions(
         {
           input,
@@ -1832,12 +1886,13 @@ export function OrderWizard({
           types: options?.types,
         },
         (predictions, status) => {
+          window.clearTimeout(timeoutId);
           if (status !== "OK" || !predictions || predictions.length === 0) {
-            resolve([]);
+            finish([]);
             return;
           }
 
-          resolve(predictions.map(createAddressAutocompleteSuggestion));
+          finish(predictions.map(createAddressAutocompleteSuggestion));
         },
       );
     });
@@ -1846,98 +1901,40 @@ export function OrderWizard({
   const resolveNumberSuggestionsForStreetGroup = useCallback(async (
     group: Pick<AddressStreetGroup, "streetLabel" | "localityLabel">,
     options?: {
-      maxSeed?: number;
-      stopAfterNoGrowth?: number;
       initialSuggestions?: AddressAutocompleteSuggestion[];
     },
   ) => {
     const locality = normalizeLocalityQuery(group.localityLabel);
     const localityWithoutDistrict = localityWithoutDistrictNumber(locality);
-    const hasLocalityConstraint = Boolean(normalizeAddressSearchText(group.localityLabel));
     const localityVariants = uniqueNonEmpty([
       locality,
       localityWithoutDistrict,
       locality.split("-")[0] ?? "",
     ]);
-    const maxSeed = Math.max(20, Math.min(220, options?.maxSeed ?? 40));
-    const stopAfterNoGrowth = Math.max(6, options?.stopAfterNoGrowth ?? 12);
-    const numberSeeds = Array.from({ length: maxSeed }, (_, index) => String(index + 1));
-    const baseQueryCandidates = uniqueNonEmpty([
-      group.streetLabel,
+    const queryCandidates = uniqueNonEmpty([
       ...localityVariants.map((variant) => `${group.streetLabel}, ${variant}`),
-      ...localityVariants.map((variant) => `${group.streetLabel}, ${variant}, Cesko`),
-    ]);
-    const primaryLocality = localityVariants[0] ?? "";
-    const secondaryLocality = localityVariants[1] ?? "";
-    const fallbackSeedCount = Math.min(20, numberSeeds.length);
-    const fallbackSeeds = numberSeeds.slice(0, fallbackSeedCount);
-    const numberQueryCandidates = uniqueNonEmpty(
-      [
-        ...numberSeeds.map((seed) =>
-          primaryLocality ? `${group.streetLabel} ${seed}, ${primaryLocality}` : `${group.streetLabel} ${seed}`),
-        ...fallbackSeeds.map((seed) =>
-          secondaryLocality ? `${group.streetLabel} ${seed}, ${secondaryLocality}` : ""),
-        ...fallbackSeeds.map((seed) => `${group.streetLabel} ${seed}`),
-      ],
+      ...localityVariants.map((variant) => `${group.streetLabel} ${variant}`),
+      group.streetLabel,
+    ]).slice(0, 5);
+    if (queryCandidates.length === 0) return [];
+
+    const queryResults = await Promise.all(
+      queryCandidates.map(async (query) => {
+        let suggestions = await autocompletePredictionsRequest(query, { types: ["address"], timeoutMs: 900 });
+        if (suggestions.length === 0) {
+          suggestions = await autocompletePredictionsRequest(query, { timeoutMs: 900 });
+        }
+        return suggestions;
+      }),
     );
 
-    const queryPhases = [baseQueryCandidates, numberQueryCandidates];
-    const seenQueries = new Set<string>();
-    const collectedSuggestions: AddressAutocompleteSuggestion[] = [...(options?.initialSuggestions ?? [])];
-    const collectedNumberSuggestions: AddressAutocompleteSuggestion[] = extractNumberSuggestions(options?.initialSuggestions ?? []);
-
-    for (const queryCandidates of queryPhases) {
-      let noGrowthCount = 0;
-
-      for (const queryCandidate of queryCandidates) {
-        const normalizedQuery = normalizeAddressSearchText(queryCandidate);
-        if (!normalizedQuery || seenQueries.has(normalizedQuery)) continue;
-        seenQueries.add(normalizedQuery);
-
-        let querySuggestions = await autocompletePredictionsRequest(queryCandidate, { types: ["address"] });
-        if (querySuggestions.length === 0) {
-          querySuggestions = await autocompletePredictionsRequest(queryCandidate);
-        }
-        if (querySuggestions.length === 0) continue;
-
-        const matchingSuggestions = querySuggestions.filter((suggestion) => isSuggestionMatchingStreetGroup(suggestion, group));
-        if (matchingSuggestions.length === 0 && hasLocalityConstraint) {
-          continue;
-        }
-
-        const sourceSuggestions = matchingSuggestions.length > 0 ? matchingSuggestions : querySuggestions;
-        collectedSuggestions.push(...sourceSuggestions);
-
-        const currentCount = extractNumberSuggestions(collectedNumberSuggestions).length;
-        const matchingNumberSuggestions = extractNumberSuggestions(sourceSuggestions);
-        if (matchingNumberSuggestions.length > 0) {
-          collectedNumberSuggestions.push(...matchingNumberSuggestions);
-        }
-
-        const updatedCount = extractNumberSuggestions(collectedNumberSuggestions).length;
-        if (updatedCount > currentCount) {
-          noGrowthCount = 0;
-        } else {
-          noGrowthCount += 1;
-        }
-
-        if (queryCandidates === numberQueryCandidates && updatedCount > 0 && noGrowthCount >= stopAfterNoGrowth) {
-          break;
-        }
-      }
-
-      const phaseNumberSuggestions = extractNumberSuggestions(collectedNumberSuggestions);
-      if (phaseNumberSuggestions.length > 0 && queryCandidates === numberQueryCandidates) {
-        return phaseNumberSuggestions;
-      }
-    }
-
-    const fallbackNumberSuggestions = extractNumberSuggestions(collectedSuggestions);
-    if (fallbackNumberSuggestions.length > 0) {
-      return fallbackNumberSuggestions;
-    }
-
-    return [];
+    const allSuggestions = deduplicateAddressSuggestions([
+      ...(options?.initialSuggestions ?? []),
+      ...queryResults.flat(),
+    ]);
+    const matchingSuggestions = allSuggestions.filter((suggestion) => isSuggestionMatchingStreetGroup(suggestion, group));
+    const sourceSuggestions = matchingSuggestions.length > 0 ? matchingSuggestions : allSuggestions;
+    return extractNumberSuggestions(sourceSuggestions);
   }, [autocompletePredictionsRequest]);
 
   async function resolveAddressFromInputText(
@@ -1981,34 +1978,26 @@ export function OrderWizard({
     setAddressSuggestionMode("addresses");
     setActiveAddressStreetGroupKey(group.key);
     setShowAddressSuggestions(true);
+    setAddressSuggestionCursor(-1);
 
     if (inlineNumberSuggestions.length > 0) {
       setAddressStreetGroups((previous) =>
         previous.map((candidate) =>
           candidate.key === group.key ? { ...candidate, suggestions: inlineNumberSuggestions } : candidate),
       );
-      setAddressStreetNumberCounts((previous) => ({ ...previous, [group.key]: inlineNumberSuggestions.length }));
     }
 
-    if (!getAutocompleteService()) {
-      setAddressSuggestionCursor(-1);
+    const shouldResolveMoreSuggestions = inlineNumberSuggestions.length < 6 && Boolean(getAutocompleteService());
+    if (!shouldResolveMoreSuggestions) {
       return;
     }
 
-    addressStreetCountRequestRef.current[group.key] = true;
     setAddressSuggestionLoading(true);
-    setAddressSuggestionCursor(-1);
 
     try {
       const resolvedNumberSuggestions = await resolveNumberSuggestionsForStreetGroup(group, {
-        maxSeed: 180,
-        stopAfterNoGrowth: 36,
         initialSuggestions: inlineNumberSuggestions,
       });
-      const resolvedCount = resolvedNumberSuggestions.length > 0
-        ? resolvedNumberSuggestions.length
-        : inlineNumberSuggestions.length;
-      setAddressStreetNumberCounts((previous) => ({ ...previous, [group.key]: resolvedCount }));
 
       if (resolvedNumberSuggestions.length > 0) {
         setAddressStreetGroups((previous) =>
@@ -2017,7 +2006,6 @@ export function OrderWizard({
         );
       }
     } finally {
-      addressStreetCountRequestRef.current[group.key] = false;
       setAddressSuggestionLoading(false);
       setAddressSuggestionCursor(-1);
     }
@@ -2751,110 +2739,53 @@ export function OrderWizard({
       return;
     }
 
-    const autocompleteService = getAutocompleteService();
-    if (!autocompleteService) return;
-
     const requestId = addressSuggestionsRequestRef.current + 1;
     addressSuggestionsRequestRef.current = requestId;
     setAddressSuggestionLoading(true);
+    void (async () => {
+      const nextSuggestions = await autocompletePredictionsRequest(inputValue, { types: ["address"], timeoutMs: 900 });
+      if (addressSuggestionsRequestRef.current !== requestId) return;
 
-    autocompleteService.getPlacePredictions(
-      {
-        input: inputValue,
-        componentRestrictions: { country: "cz" },
-        types: ["address"],
-      },
-      (predictions, status) => {
-        if (addressSuggestionsRequestRef.current !== requestId) return;
+      setAddressSuggestionLoading(false);
+      if (nextSuggestions.length === 0) {
+        setAddressSuggestions([]);
+        setAddressStreetGroups([]);
+        setActiveAddressStreetGroupKey(null);
+        setAddressSuggestionMode("streets");
+        return;
+      }
 
-        setAddressSuggestionLoading(false);
-        const nextSuggestions = (predictions ?? []).map(createAddressAutocompleteSuggestion);
-        if (status !== "OK" || nextSuggestions.length === 0) {
-          setAddressSuggestions([]);
-          setAddressStreetGroups([]);
-          setAddressStreetNumberCounts({});
-          setActiveAddressStreetGroupKey(null);
-          setAddressSuggestionMode("streets");
-          addressStreetCountRequestRef.current = {};
-          return;
-        }
+      const nextStreetGroups = groupAddressSuggestionsByStreet(nextSuggestions);
+      const shouldShowStreets = !hasAddressNumberInInput && nextStreetGroups.length > 0;
 
-        const nextStreetGroups = groupAddressSuggestionsByStreet(nextSuggestions);
-        const shouldShowStreets = !hasAddressNumberInInput && nextStreetGroups.length > 0;
-        const nextStreetGroupKeys = new Set(nextStreetGroups.map((group) => group.key));
-        addressStreetCountRequestRef.current = Object.fromEntries(
-          Object.entries(addressStreetCountRequestRef.current).filter(([groupKey]) => nextStreetGroupKeys.has(groupKey)),
-        );
+      setAddressSuggestions(nextSuggestions);
+      setAddressStreetGroups(nextStreetGroups);
 
-        setAddressSuggestions(nextSuggestions);
-        setAddressStreetGroups(nextStreetGroups);
-        setAddressStreetNumberCounts((previous) => {
-          const nextStreetNumberCounts: Record<string, number | null> = {};
-          for (const group of nextStreetGroups) {
-            const knownCount = extractNumberSuggestions(group.suggestions).length;
-            const previousCount = previous[group.key];
-            nextStreetNumberCounts[group.key] = knownCount > 0 ? knownCount : previousCount ?? null;
-          }
-          return nextStreetNumberCounts;
-        });
-        const activeStreetKey = activeAddressStreetGroupKeyRef.current;
-        const activeStreetStillAvailable = Boolean(
-          activeStreetKey && nextStreetGroups.some((group) => group.key === activeStreetKey),
-        );
-        if (shouldShowStreets) {
-          if (addressSuggestionModeRef.current === "addresses" && activeStreetStillAvailable) {
-            setAddressSuggestionMode("addresses");
-            setActiveAddressStreetGroupKey(activeStreetKey);
-          } else {
-            setAddressSuggestionMode("streets");
-            setActiveAddressStreetGroupKey(null);
-          }
-        } else {
+      const activeStreetKey = activeAddressStreetGroupKeyRef.current;
+      const activeStreetStillAvailable = Boolean(
+        activeStreetKey && nextStreetGroups.some((group) => group.key === activeStreetKey),
+      );
+      if (shouldShowStreets) {
+        if (addressSuggestionModeRef.current === "addresses" && activeStreetStillAvailable) {
           setAddressSuggestionMode("addresses");
+          setActiveAddressStreetGroupKey(activeStreetKey);
+        } else {
+          setAddressSuggestionMode("streets");
           setActiveAddressStreetGroupKey(null);
         }
-      },
-    );
-  }, [addressInput, getAutocompleteService, hasAddressNumberInInput, mapsStatus, resetAddressSuggestions, step]);
-
-  useEffect(() => {
-    if (step !== 0 || mapsStatus !== "ready" || addressSuggestionMode !== "streets") return;
-
-    let cancelled = false;
-    const groupsNeedingCounts = addressStreetGroups.filter(
-      (group) => addressStreetNumberCounts[group.key] === null && !addressStreetCountRequestRef.current[group.key],
-    );
-
-    for (const group of groupsNeedingCounts) {
-      addressStreetCountRequestRef.current[group.key] = true;
-      void (async () => {
-        const resolvedNumberSuggestions = await resolveNumberSuggestionsForStreetGroup(group, {
-          maxSeed: 48,
-          stopAfterNoGrowth: 14,
-          initialSuggestions: group.suggestions,
-        });
-        addressStreetCountRequestRef.current[group.key] = false;
-        if (cancelled) return;
-
-        setAddressStreetNumberCounts((previous) => {
-          if (!(group.key in previous)) return previous;
-          if (previous[group.key] !== null) return previous;
-          return { ...previous, [group.key]: resolvedNumberSuggestions.length };
-        });
-
-        if (resolvedNumberSuggestions.length > 0) {
-          setAddressStreetGroups((previous) =>
-            previous.map((candidate) =>
-              candidate.key === group.key ? { ...candidate, suggestions: resolvedNumberSuggestions } : candidate),
-          );
-        }
-      })();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [addressStreetGroups, addressStreetNumberCounts, addressSuggestionMode, mapsStatus, resolveNumberSuggestionsForStreetGroup, step]);
+      } else {
+        setAddressSuggestionMode("addresses");
+        setActiveAddressStreetGroupKey(null);
+      }
+    })();
+  }, [
+    addressInput,
+    autocompletePredictionsRequest,
+    hasAddressNumberInInput,
+    mapsStatus,
+    resetAddressSuggestions,
+    step,
+  ]);
 
   useEffect(() => {
     if (!shouldShowAddressSuggestionPanel || addressSuggestionLoading || !hasAddressSuggestionItems) {
@@ -3520,19 +3451,12 @@ export function OrderWizard({
                         : "Vyberte přesnou adresu přistavení kontejneru."}
                     </div>
                     {addressSuggestionLoading ? (
-                      <p className="px-3 py-3 text-sm text-zinc-400">Hledám adresy...</p>
+                      <p className="border-b border-zinc-800 px-3 py-2 text-xs text-zinc-500">Upřesňuji adresy...</p>
                     ) : null}
-                    {!addressSuggestionLoading && addressSuggestionMode === "streets" ? (
+                    {addressSuggestionMode === "streets" ? (
                       <ul className="max-h-56 overflow-y-auto">
                         {addressStreetGroups.map((group, index) => (
                           <li key={group.key}>
-                            {(() => {
-                              const numberCount = addressStreetNumberCounts[group.key];
-                              const numberCountLabel =
-                                numberCount === null
-                                  ? "Zjišťuji..."
-                                  : formatHouseNumberCount(numberCount);
-                              return (
                             <button
                               type="button"
                               onMouseDown={(event) => event.preventDefault()}
@@ -3543,22 +3467,22 @@ export function OrderWizard({
                                 void selectAddressStreetGroup(group);
                               }}
                               className={cx(
-                                "flex w-full items-start justify-between gap-3 border-b border-zinc-800 px-3 py-2.5 text-left text-sm text-zinc-200 transition last:border-b-0",
+                                "w-full border-b border-zinc-800 px-3 py-2.5 text-left text-sm text-zinc-200 transition last:border-b-0",
                                 index === addressSuggestionCursor
                                   ? "bg-zinc-800/20"
                                   : "hover:bg-zinc-800/15",
                               )}
                             >
-                              <span className="font-medium">{group.streetLabel}{group.localityLabel ? `, ${group.localityLabel}` : ""}</span>
-                              <span className="shrink-0 text-xs text-zinc-400">{numberCountLabel}</span>
+                              <span className="block font-medium">{group.streetLabel}</span>
+                              {group.localityLabel ? (
+                                <span className="mt-0.5 block text-xs text-zinc-400">{group.localityLabel}</span>
+                              ) : null}
                             </button>
-                              );
-                            })()}
                           </li>
                         ))}
                       </ul>
                     ) : null}
-                    {!addressSuggestionLoading && addressSuggestionMode === "addresses" ? (
+                    {addressSuggestionMode === "addresses" ? (
                       <div>
                         {activeAddressStreetGroup ? (
                           <button
@@ -3637,7 +3561,7 @@ export function OrderWizard({
                 ) : null}
 
                 {showManualAddress ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-x-3 gap-y-4 sm:grid-cols-2">
                     <FloatingFieldGroup
                       id={stepFieldInputIds.postalCode}
                       label="PSČ"
