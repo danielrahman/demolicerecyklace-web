@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent as ReactMouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import {
@@ -144,12 +144,6 @@ type GoogleGeometry = {
   location?: GoogleLatLng | PinLocation;
 };
 
-type GooglePlaceResult = {
-  formatted_address?: string;
-  address_components?: GoogleAddressComponent[];
-  geometry?: GoogleGeometry;
-};
-
 type GoogleGeocoderResult = {
   formatted_address: string;
   address_components: GoogleAddressComponent[];
@@ -194,23 +188,27 @@ type GoogleMarkerConstructor = new (options: {
   draggable?: boolean;
 }) => GoogleMarker;
 
-type GoogleAutocompleteField = "formatted_address" | "address_components" | "geometry";
-
-type GoogleAutocompleteOptions = {
-  types: string[];
-  componentRestrictions: { country: string };
-  fields: GoogleAutocompleteField[];
+type GoogleAutocompletePrediction = {
+  description: string;
+  place_id?: string;
+  structured_formatting?: {
+    main_text?: string;
+    secondary_text?: string;
+  };
 };
 
-type GoogleAutocomplete = {
-  getPlace: () => GooglePlaceResult;
-  addListener: (eventName: string, handler: () => void) => GoogleMapsListener;
+type GoogleAutocompleteService = {
+  getPlacePredictions: (
+    request: {
+      input: string;
+      componentRestrictions?: { country: string };
+      types?: string[];
+    },
+    callback: (predictions: GoogleAutocompletePrediction[] | null, status: string) => void,
+  ) => void;
 };
 
-type GoogleAutocompleteConstructor = new (
-  input: HTMLInputElement,
-  options: GoogleAutocompleteOptions,
-) => GoogleAutocomplete;
+type GoogleAutocompleteServiceConstructor = new () => GoogleAutocompleteService;
 
 type GoogleGeocoder = {
   geocode: (
@@ -228,7 +226,7 @@ type GoogleMapsApi = {
     Map: GoogleMapConstructor;
     Marker: GoogleMarkerConstructor;
     places: {
-      Autocomplete: GoogleAutocompleteConstructor;
+      AutocompleteService: GoogleAutocompleteServiceConstructor;
     };
     Geocoder: new () => GoogleGeocoder;
   };
@@ -247,6 +245,22 @@ type ParsedAddress = {
   street: string;
   houseNumber: string;
   pinLocation?: PinLocation;
+};
+
+type AddressAutocompleteSuggestion = {
+  id: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
+  streetLabel: string;
+  houseNumber: string;
+};
+
+type AddressStreetGroup = {
+  key: string;
+  streetLabel: string;
+  localityLabel: string;
+  suggestions: AddressAutocompleteSuggestion[];
 };
 
 type StepFieldKey =
@@ -392,6 +406,27 @@ const stepFieldInputIds: Record<StepFieldKey, string> = {
   gdprConsent: "order-gdpr-consent",
 };
 
+const stepFieldStepIndex: Record<StepFieldKey, number> = {
+  addressInput: 0,
+  postalCode: 0,
+  city: 0,
+  street: 0,
+  houseNumber: 0,
+  wasteType: 1,
+  containerCount: 1,
+  deliveryDateRequested: 2,
+  deliveryDateEndRequested: 2,
+  rentalDays: 2,
+  timeWindowRequested: 2,
+  permitConfirmed: 2,
+  name: 3,
+  companyName: 3,
+  ico: 3,
+  email: 3,
+  phone: 3,
+  gdprConsent: 3,
+};
+
 let googleMapsLoadPromise: Promise<void> | null = null;
 
 function formatPrice(amount: number) {
@@ -486,7 +521,7 @@ function buildAvailableDeliveryDayOptions(todayDate: Date, limit = 120) {
 
 function hasGooglePlacesLoaded() {
   const googleMaps = window.google as GoogleMapsApi | undefined;
-  return Boolean(googleMaps?.maps?.places?.Autocomplete);
+  return Boolean(googleMaps?.maps?.places?.AutocompleteService);
 }
 
 function loadGoogleMapsApi(apiKey: string) {
@@ -562,6 +597,104 @@ function componentValue(components: GoogleAddressComponent[], types: string[]) {
   return found?.long_name ?? "";
 }
 
+function containsAddressLetters(value: string) {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return /[a-z]/i.test(normalized);
+}
+
+function normalizeAddressSpacing(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseHouseNumberToken(value: string) {
+  return normalizeAddressSpacing(value).replace(/^[,.\-/\s]+|[,.\-/\s]+$/g, "").trim();
+}
+
+function pickMoreSpecificHouseNumber(primary: string, candidate: string) {
+  const base = parseHouseNumberToken(primary);
+  const alternative = parseHouseNumberToken(candidate);
+
+  if (!alternative) return base;
+  if (!base) return alternative;
+  if (base === alternative) return base;
+
+  const baseHasSlash = base.includes("/");
+  const alternativeHasSlash = alternative.includes("/");
+  if (alternativeHasSlash && !baseHasSlash) return alternative;
+  if (baseHasSlash && !alternativeHasSlash) return base;
+
+  if (alternative.length > base.length) return alternative;
+  return base;
+}
+
+function resolveHouseNumberFromFormattedAddress(formattedAddress: string, street: string) {
+  const normalizedAddress = normalizeAddressSpacing(formattedAddress);
+  if (!normalizedAddress) return "";
+
+  const firstPart = normalizedAddress.split(",")[0]?.trim() ?? "";
+  if (!firstPart) return "";
+
+  if (street) {
+    const escapedStreet = escapeRegExp(street);
+    const exactStreetPrefixPattern = new RegExp(`^${escapedStreet}\\s+(.+)$`, "iu");
+    const exactStreetMatch = firstPart.match(exactStreetPrefixPattern);
+    if (exactStreetMatch?.[1]) {
+      return parseHouseNumberToken(exactStreetMatch[1]);
+    }
+  }
+
+  const genericStreetMatch = firstPart.match(/^.+?\s+(\d+[a-zA-Z0-9/.-]*)$/u);
+  if (!genericStreetMatch?.[1]) return "";
+  return parseHouseNumberToken(genericStreetMatch[1]);
+}
+
+function normalizeLocalityQuery(value: string) {
+  return normalizeAddressSpacing(
+    value
+      .replace(/\b\d{3}\s?\d{2}\b/g, "")
+      .replace(/\s+-\s+/g, " ")
+      .replace(/\s*\/\s*/g, " ")
+      .replace(/\s+/g, " "),
+  );
+}
+
+function localityWithoutDistrictNumber(value: string) {
+  return normalizeAddressSpacing(value.replace(/\b\d+\b/g, "").replace(/\s+/g, " "));
+}
+
+function localityWithoutPostalCode(value: string) {
+  return normalizeAddressSpacing(value.replace(/\b\d{3}\s?\d{2}\b/g, "").replace(/\s+/g, " "));
+}
+
+function uniqueNonEmpty(values: string[]) {
+  return Array.from(new Set(values.map((value) => normalizeAddressSpacing(value)).filter(Boolean)));
+}
+
+function resolveHouseNumberFromComponents(components: GoogleAddressComponent[]) {
+  const streetNumber = componentValue(components, ["street_number"]).trim();
+  const premise = componentValue(components, ["premise"]).trim();
+  const subpremise = componentValue(components, ["subpremise"]).trim();
+
+  if (streetNumber.includes("/")) return streetNumber;
+
+  if (premise && streetNumber) {
+    if (premise === streetNumber) return streetNumber;
+    return `${premise}/${streetNumber}`;
+  }
+
+  if (streetNumber && subpremise && subpremise !== streetNumber) {
+    return `${streetNumber}/${subpremise}`;
+  }
+
+  return streetNumber || premise || subpremise;
+}
+
 function normalizePinLocation(location?: GoogleLatLng | PinLocation): PinLocation | null {
   if (!location) return null;
 
@@ -590,7 +723,10 @@ function parseAddress(
   const postalCode = componentValue(components, ["postal_code"]).replace(/\D/g, "").slice(0, 5);
   const city = componentValue(components, ["locality", "postal_town", "administrative_area_level_2", "sublocality"]);
   const street = componentValue(components, ["route"]);
-  const houseNumber = componentValue(components, ["street_number", "premise", "subpremise"]);
+  const houseNumber = pickMoreSpecificHouseNumber(
+    resolveHouseNumberFromComponents(components),
+    resolveHouseNumberFromFormattedAddress(formattedAddress, street),
+  );
 
   if (!postalCode || !city || !street || !houseNumber) {
     return null;
@@ -604,6 +740,225 @@ function parseAddress(
     houseNumber,
     pinLocation: normalizePinLocation(location) ?? undefined,
   };
+}
+
+function splitStreetAndHouseNumber(value: string) {
+  const normalized = normalizeAddressSpacing(value);
+  if (!normalized) {
+    return {
+      streetLabel: "",
+      houseNumber: "",
+    };
+  }
+
+  const withNormalizedMarker = normalized.replace(/\b(?:c\.?\s*p\.?|č\.?\s*p\.?)\s*/giu, "");
+  const markerMatch = withNormalizedMarker.match(/^(.+?)\s+(\d+[a-zA-Z0-9/.-]*)$/u);
+  if (markerMatch) {
+    return {
+      streetLabel: markerMatch[1].trim(),
+      houseNumber: markerMatch[2].trim(),
+    };
+  }
+
+  const reversedMatch = withNormalizedMarker.match(/^(\d+[a-zA-Z0-9/.-]*)\s*,\s*(.+)$/u);
+  if (reversedMatch) {
+    return {
+      streetLabel: reversedMatch[2].trim(),
+      houseNumber: reversedMatch[1].trim(),
+    };
+  }
+
+  const match = normalized.match(/^(.+?)\s+(\d+[a-zA-Z0-9/.-]*)$/u);
+  if (!match) {
+    return {
+      streetLabel: normalized,
+      houseNumber: "",
+    };
+  }
+
+  return {
+    streetLabel: match[1].trim(),
+    houseNumber: match[2].trim(),
+  };
+}
+
+function createAddressAutocompleteSuggestion(prediction: GoogleAutocompletePrediction): AddressAutocompleteSuggestion {
+  const mainText = normalizeAddressSpacing(prediction.structured_formatting?.main_text?.trim() || prediction.description.trim());
+  const secondaryText = normalizeAddressSpacing(prediction.structured_formatting?.secondary_text?.trim() || "");
+  let { streetLabel, houseNumber } = splitStreetAndHouseNumber(mainText);
+
+  const descriptionPrefix = normalizeAddressSpacing(prediction.description.split(",")[0] ?? "");
+  const parsedFromDescriptionPrefix = splitStreetAndHouseNumber(descriptionPrefix);
+  if (!houseNumber && parsedFromDescriptionPrefix.houseNumber) {
+    streetLabel = parsedFromDescriptionPrefix.streetLabel;
+    houseNumber = parsedFromDescriptionPrefix.houseNumber;
+  }
+
+  if (!houseNumber) {
+    const leadingNumberMatch = prediction.description.match(/^(\d+[a-zA-Z0-9/.-]*)\s*,\s*([^,]+)/u);
+    if (leadingNumberMatch && containsAddressLetters(leadingNumberMatch[2])) {
+      houseNumber = leadingNumberMatch[1].trim();
+      streetLabel = normalizeAddressSpacing(leadingNumberMatch[2]);
+    }
+  }
+
+  if (!containsAddressLetters(streetLabel)) {
+    const secondaryStreetCandidate = normalizeAddressSpacing((secondaryText.split(",")[0] ?? "").replace(/\b\d{3}\s?\d{2}\b/g, ""));
+    if (containsAddressLetters(secondaryStreetCandidate)) {
+      streetLabel = secondaryStreetCandidate;
+    }
+  }
+
+  return {
+    id: prediction.place_id || prediction.description,
+    description: prediction.description,
+    mainText,
+    secondaryText,
+    streetLabel,
+    houseNumber,
+  };
+}
+
+function normalizeAddressSuggestionId(suggestion: AddressAutocompleteSuggestion) {
+  return (suggestion.id || suggestion.description).toLowerCase();
+}
+
+function deduplicateAddressSuggestions(suggestions: AddressAutocompleteSuggestion[]) {
+  const deduplicated = new Map<string, AddressAutocompleteSuggestion>();
+  for (const suggestion of suggestions) {
+    const key = normalizeAddressSuggestionId(suggestion);
+    if (!deduplicated.has(key)) {
+      deduplicated.set(key, suggestion);
+    }
+  }
+  return Array.from(deduplicated.values());
+}
+
+function numberSuggestionDedupLocality(value: string) {
+  const normalized = normalizeAddressSearchText(localityWithoutPostalCode(value));
+  if (!normalized) return "";
+  const localityHead = normalized.split(",")[0]?.trim() ?? normalized;
+  return localityHead.replace(/\s*-\s*.*$/g, "").trim();
+}
+
+function extractNumberSuggestions(suggestions: AddressAutocompleteSuggestion[]) {
+  const deduplicatedByAddress = new Map<string, AddressAutocompleteSuggestion>();
+  const sourceSuggestions = deduplicateAddressSuggestions(
+    suggestions.filter((suggestion) => Boolean(suggestion.houseNumber)),
+  );
+
+  for (const suggestion of sourceSuggestions) {
+    const streetKey = normalizeAddressSearchText(suggestion.streetLabel);
+    const houseNumberKey = normalizeAddressSearchText(suggestion.houseNumber);
+    const localityRaw = suggestion.secondaryText || suggestion.description;
+    const localityKey = numberSuggestionDedupLocality(localityRaw);
+    const dedupKey = `${streetKey}|${houseNumberKey}|${localityKey}`;
+    const existing = deduplicatedByAddress.get(dedupKey);
+
+    if (!existing) {
+      deduplicatedByAddress.set(dedupKey, suggestion);
+      continue;
+    }
+
+    const existingLocality = normalizeAddressSpacing(existing.secondaryText || existing.description);
+    const candidateLocality = normalizeAddressSpacing(suggestion.secondaryText || suggestion.description);
+    const existingHasLocalitySuffix = existingLocality.includes("-");
+    const candidateHasLocalitySuffix = candidateLocality.includes("-");
+
+    if (existingHasLocalitySuffix && !candidateHasLocalitySuffix) {
+      deduplicatedByAddress.set(dedupKey, suggestion);
+      continue;
+    }
+
+    if (existingHasLocalitySuffix === candidateHasLocalitySuffix && candidateLocality.length < existingLocality.length) {
+      deduplicatedByAddress.set(dedupKey, suggestion);
+    }
+  }
+
+  return Array.from(deduplicatedByAddress.values()).sort((a, b) => {
+    const numberCompare = a.houseNumber.localeCompare(b.houseNumber, "cs-CZ", { numeric: true, sensitivity: "base" });
+    if (numberCompare !== 0) return numberCompare;
+    return (a.secondaryText || "").localeCompare(b.secondaryText || "", "cs-CZ", { sensitivity: "base" });
+  });
+}
+
+function groupAddressSuggestionsByStreet(suggestions: AddressAutocompleteSuggestion[]) {
+  const groups = new Map<string, AddressStreetGroup>();
+
+  for (const suggestion of suggestions) {
+    if (!suggestion.streetLabel) continue;
+
+    const localityLabel = suggestion.secondaryText;
+    const key = `${suggestion.streetLabel.toLowerCase()}|${localityLabel.toLowerCase()}`;
+    const existingGroup = groups.get(key);
+
+    if (existingGroup) {
+      existingGroup.suggestions.push(suggestion);
+      continue;
+    }
+
+    groups.set(key, {
+      key,
+      streetLabel: suggestion.streetLabel,
+      localityLabel,
+      suggestions: [suggestion],
+    });
+  }
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      suggestions: deduplicateAddressSuggestions(group.suggestions),
+    }))
+    .sort((a, b) => {
+      const aNumberCount = extractNumberSuggestions(a.suggestions).length;
+      const bNumberCount = extractNumberSuggestions(b.suggestions).length;
+      if (bNumberCount !== aNumberCount) {
+        return bNumberCount - aNumberCount;
+      }
+      return a.streetLabel.localeCompare(b.streetLabel, "cs-CZ", { sensitivity: "base" });
+    });
+}
+
+function formatHouseNumberCount(count: number) {
+  if (count === 1) return "1 číslo";
+  if (count >= 2 && count <= 4) return `${count} čísla`;
+  return `${count} čísel`;
+}
+
+function normalizeAddressSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isSuggestionMatchingStreetGroup(
+  suggestion: AddressAutocompleteSuggestion,
+  group: Pick<AddressStreetGroup, "streetLabel" | "localityLabel">,
+) {
+  const suggestionStreet = normalizeAddressSearchText(suggestion.streetLabel);
+  const groupStreet = normalizeAddressSearchText(group.streetLabel);
+  if (!suggestionStreet || !groupStreet) return false;
+
+  const streetMatches = suggestionStreet.includes(groupStreet) || groupStreet.includes(suggestionStreet);
+  if (!streetMatches) return false;
+
+  const groupLocality = normalizeAddressSearchText(group.localityLabel);
+  if (!groupLocality) return true;
+
+  const suggestionLocality = normalizeAddressSearchText(suggestion.secondaryText || suggestion.description);
+  if (!suggestionLocality) return false;
+  if (suggestionLocality.includes(groupLocality) || groupLocality.includes(suggestionLocality)) {
+    return true;
+  }
+
+  const groupLocalityCore = localityWithoutPostalCode(groupLocality);
+  const suggestionLocalityCore = localityWithoutPostalCode(suggestionLocality);
+  if (!groupLocalityCore || !suggestionLocalityCore) return false;
+  return suggestionLocalityCore.includes(groupLocalityCore) || groupLocalityCore.includes(suggestionLocalityCore);
 }
 
 function saveDraft(draft: WizardDraft) {
@@ -673,6 +1028,84 @@ function readCopyOrderSnapshot(orderId: string) {
     localStorage.removeItem(copyOrderStorageKey);
     return null;
   }
+}
+
+type FloatingFieldProps = {
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: boolean;
+  filled?: boolean;
+  className?: string;
+  children: ReactNode;
+};
+
+function FloatingField({
+  id,
+  label,
+  required = false,
+  error = false,
+  filled = false,
+  className,
+  children,
+}: FloatingFieldProps) {
+  return (
+    <div className={className}>
+      <div
+        className={cx(
+          "floating-field",
+          filled ? "floating-field--filled" : "",
+          error ? "floating-field--error" : "",
+        )}
+      >
+        {children}
+        <label htmlFor={id} className="floating-field__label">
+          <span>{label}</span>
+          {required ? <span className="floating-field__required" aria-hidden="true">*</span> : null}
+        </label>
+      </div>
+    </div>
+  );
+}
+
+type FloatingFieldGroupProps = {
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: boolean;
+  filled?: boolean;
+  wrapperClassName?: string;
+  fieldClassName?: string;
+  errorMessage?: ReactNode;
+  children: ReactNode;
+};
+
+function FloatingFieldGroup({
+  id,
+  label,
+  required = false,
+  error = false,
+  filled = false,
+  wrapperClassName,
+  fieldClassName,
+  errorMessage = null,
+  children,
+}: FloatingFieldGroupProps) {
+  return (
+    <div className={cx("space-y-2", wrapperClassName)}>
+      <FloatingField
+        id={id}
+        label={label}
+        required={required}
+        error={error}
+        filled={filled}
+        className={fieldClassName}
+      >
+        {children}
+      </FloatingField>
+      {errorMessage}
+    </div>
+  );
 }
 
 type DeliveryDatePickerProps = {
@@ -948,8 +1381,14 @@ export function OrderWizard({
   const [mapsRequested, setMapsRequested] = useState(false);
   const [mapsStatus, setMapsStatus] = useState<"idle" | "loading" | "ready" | "missing-key" | "error">("idle");
   const [mapsErrorDetail, setMapsErrorDetail] = useState<string | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [locationHelperText, setLocationHelperText] = useState<string | null>(null);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [addressSuggestionMode, setAddressSuggestionMode] = useState<"streets" | "addresses">("streets");
+  const [addressSuggestionLoading, setAddressSuggestionLoading] = useState(false);
+  const [addressSuggestionCursor, setAddressSuggestionCursor] = useState(-1);
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressAutocompleteSuggestion[]>([]);
+  const [addressStreetGroups, setAddressStreetGroups] = useState<AddressStreetGroup[]>([]);
+  const [addressStreetNumberCounts, setAddressStreetNumberCounts] = useState<Record<string, number | null>>({});
+  const [activeAddressStreetGroupKey, setActiveAddressStreetGroupKey] = useState<string | null>(null);
   const [resolvingAddress, setResolvingAddress] = useState(false);
   const [resolvingPin, setResolvingPin] = useState(false);
   const [resolvingAddressForMap, setResolvingAddressForMap] = useState(false);
@@ -972,6 +1411,7 @@ export function OrderWizard({
   const [callbackSubmitting, setCallbackSubmitting] = useState(false);
   const [callbackError, setCallbackError] = useState<string | null>(null);
   const [callbackSuccess, setCallbackSuccess] = useState<string | null>(null);
+  const [callbackPhoneFieldError, setCallbackPhoneFieldError] = useState<string | null>(null);
   const [callbackForm, setCallbackForm] = useState<CallbackForm>({
     phone: "",
     name: "",
@@ -989,9 +1429,20 @@ export function OrderWizard({
   const [dicEditedByUser, setDicEditedByUser] = useState(false);
   const [addressEditedByUser, setAddressEditedByUser] = useState(false);
 
+  const closeCallbackModal = useCallback(() => {
+    setCallbackModalOpen(false);
+    setCallbackError(null);
+    setCallbackPhoneFieldError(null);
+  }, []);
+
   const draftHydratedRef = useRef(false);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
-  const autocompleteRef = useRef<GoogleAutocomplete | null>(null);
+  const autocompleteServiceRef = useRef<GoogleAutocompleteService | null>(null);
+  const addressSuggestionsRequestRef = useRef(0);
+  const addressSuggestionsCloseTimeoutRef = useRef<number | null>(null);
+  const addressStreetCountRequestRef = useRef<Record<string, boolean>>({});
+  const addressSuggestionModeRef = useRef<"streets" | "addresses">("streets");
+  const activeAddressStreetGroupKeyRef = useRef<string | null>(null);
   const geocoderRef = useRef<GoogleGeocoder | null>(null);
   const mapRef = useRef<GoogleMap | null>(null);
   const mapMarkerRef = useRef<GoogleMarker | null>(null);
@@ -1008,6 +1459,40 @@ export function OrderWizard({
     [availableWasteTypes, data.wasteType],
   );
   const shouldShowAddressMap = isAddressInputReadyForMap(addressInput) || Boolean(pinLocation);
+  const activeAddressStreetGroup = useMemo(
+    () => addressStreetGroups.find((group) => group.key === activeAddressStreetGroupKey) ?? null,
+    [activeAddressStreetGroupKey, addressStreetGroups],
+  );
+  const hasAddressNumberInInput = /\d/.test(addressInput);
+  const addressInputQueryReady = useMemo(() => {
+    const trimmed = addressInput.trim();
+    return step === 0 && mapsStatus === "ready" && trimmed.length >= 3 && isAddressInputReadyForMap(trimmed);
+  }, [addressInput, mapsStatus, step]);
+  const visibleAddressSuggestions = useMemo(() => {
+    if (addressSuggestionMode === "addresses" && activeAddressStreetGroup) {
+      return extractNumberSuggestions(
+        activeAddressStreetGroup.suggestions.filter((suggestion) =>
+          isSuggestionMatchingStreetGroup(suggestion, activeAddressStreetGroup)),
+      );
+    }
+    return extractNumberSuggestions(addressSuggestions);
+  }, [activeAddressStreetGroup, addressSuggestionMode, addressSuggestions]);
+  const visibleAddressItemCount =
+    addressSuggestionMode === "streets" ? addressStreetGroups.length : visibleAddressSuggestions.length;
+  const hasAddressSuggestionItems = visibleAddressItemCount > 0;
+  const shouldShowAddressSuggestionPanel =
+    step === 0
+    && showAddressSuggestions
+    && mapsStatus === "ready"
+    && addressInputQueryReady;
+
+  useEffect(() => {
+    addressSuggestionModeRef.current = addressSuggestionMode;
+  }, [addressSuggestionMode]);
+
+  useEffect(() => {
+    activeAddressStreetGroupKeyRef.current = activeAddressStreetGroupKey;
+  }, [activeAddressStreetGroupKey]);
 
   const postalCodeOk = useMemo(() => {
     if (data.postalCode.length !== 5) return false;
@@ -1053,8 +1538,42 @@ export function OrderWizard({
     });
   }, []);
 
-  function fieldClass(fieldName: StepFieldKey) {
-    return cx(ui.field, fieldErrors[fieldName] ? "border-red-500 focus-visible:outline-red-400" : "");
+  function setFieldErrorMessage(fieldName: StepFieldKey, message?: string) {
+    setFieldErrors((previous) => {
+      const currentMessage = previous[fieldName];
+      if (!message) {
+        if (!currentMessage) return previous;
+        const next = { ...previous };
+        delete next[fieldName];
+        return next;
+      }
+
+      if (currentMessage === message) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [fieldName]: message,
+      };
+    });
+  }
+
+  function validateFieldOnBlur(
+    fieldName: StepFieldKey,
+    options?: {
+      data?: WizardData;
+      addressInput?: string;
+    },
+  ) {
+    const fieldStep = stepFieldStepIndex[fieldName];
+    const sourceData = options?.data ?? data;
+    const sourceAddressInput = options?.addressInput ?? (addressInputRef.current?.value ?? addressInput);
+    const validationResult = validateStep(fieldStep, {
+      data: sourceData,
+      addressInput: sourceAddressInput,
+    });
+    setFieldErrorMessage(fieldName, validationResult[fieldName]);
   }
 
   function fieldErrorId(fieldName: StepFieldKey) {
@@ -1135,10 +1654,18 @@ export function OrderWizard({
     if (!message) return null;
 
     return (
-      <p id={fieldErrorId(fieldName)} className="text-sm text-red-300">
+      <p id={fieldErrorId(fieldName)} className="order-field-error text-sm">
         <span className="font-semibold">Chyba:</span> {message}
       </p>
     );
+  }
+
+  function validateCallbackPhone(value: string) {
+    if (!phoneRegex.test(value.trim())) {
+      return "Telefon je povinný a musí být ve správném formátu.";
+    }
+
+    return "";
   }
 
   function clearPinLocation() {
@@ -1146,30 +1673,52 @@ export function OrderWizard({
     setPinError(null);
   }
 
+  const resetAddressSuggestions = useCallback(() => {
+    setAddressSuggestions([]);
+    setAddressStreetGroups([]);
+    setAddressStreetNumberCounts({});
+    setActiveAddressStreetGroupKey(null);
+    setAddressSuggestionMode("streets");
+    setAddressSuggestionLoading(false);
+    setAddressSuggestionCursor(-1);
+    addressStreetCountRequestRef.current = {};
+  }, []);
+
+  const closeAddressSuggestionsPanel = useCallback(() => {
+    if (addressSuggestionsCloseTimeoutRef.current) {
+      window.clearTimeout(addressSuggestionsCloseTimeoutRef.current);
+      addressSuggestionsCloseTimeoutRef.current = null;
+    }
+    setShowAddressSuggestions(false);
+  }, []);
+
   function clearAddress() {
-    const nextData = {
-      ...data,
-      postalCode: "",
-      city: "",
-      street: "",
-      houseNumber: "",
-    };
+    const hasManualAddressData = Boolean(
+      data.postalCode.trim()
+      || data.city.trim()
+      || data.street.trim()
+      || data.houseNumber.trim(),
+    );
 
     setAddressInput("");
-    setData(nextData);
     setAddressEditedByUser(true);
-    setShowManualAddress(false);
-    clearPinLocation();
-    setPostalAreaStatusVisible(false);
-    setFurthestStep(0);
+    closeAddressSuggestionsPanel();
+    resetAddressSuggestions();
+    clearFieldError("addressInput");
+    setSubmitError(null);
+
+    if (!hasManualAddressData) {
+      clearPinLocation();
+      setPostalAreaStatusVisible(false);
+    }
 
     try {
       saveDraft({
         version: 1,
         updatedAt: Date.now(),
-        data: nextData,
+        data,
         addressInput: "",
-        pinLocation: null,
+        pinLocation: hasManualAddressData ? pinLocation : null,
         addressEditedByUser: true,
       });
     } catch {
@@ -1178,6 +1727,8 @@ export function OrderWizard({
   }
 
   const applyParsedAddress = useCallback((parsed: ParsedAddress, options?: { keepPinLocation?: boolean }) => {
+    closeAddressSuggestionsPanel();
+    resetAddressSuggestions();
     setAddressInput(parsed.formattedAddress);
     setData((previous) => ({
       ...previous,
@@ -1196,13 +1747,14 @@ export function OrderWizard({
     }
 
     setAddressEditedByUser(false);
+    setShowManualAddress(true);
     setPostalAreaStatusVisible(true);
     clearFieldError("addressInput");
     clearFieldError("postalCode");
     clearFieldError("city");
     clearFieldError("street");
     clearFieldError("houseNumber");
-  }, [clearFieldError]);
+  }, [clearFieldError, closeAddressSuggestionsPanel, resetAddressSuggestions]);
 
   function waitForGeocoderReady(timeoutMs = 8000) {
     return new Promise<boolean>((resolve) => {
@@ -1259,18 +1811,162 @@ export function OrderWizard({
     });
   }
 
-  async function resolveAddressFromInputText() {
-    if (!addressInput.trim() || !isAddressInputReadyForMap(addressInput) || mapsStatus !== "ready") return null;
+  const getAutocompleteService = useCallback(() => {
+    const googleMaps = window.google as GoogleMapsApi | undefined;
+    if (!googleMaps?.maps?.places?.AutocompleteService) return null;
+    if (!autocompleteServiceRef.current) {
+      autocompleteServiceRef.current = new googleMaps.maps.places.AutocompleteService();
+    }
+    return autocompleteServiceRef.current;
+  }, []);
+
+  const autocompletePredictionsRequest = useCallback(async (input: string, options?: { types?: string[] }) => {
+    const service = getAutocompleteService();
+    if (!service || !input.trim()) return [];
+
+    return new Promise<AddressAutocompleteSuggestion[]>((resolve) => {
+      service.getPlacePredictions(
+        {
+          input,
+          componentRestrictions: { country: "cz" },
+          types: options?.types,
+        },
+        (predictions, status) => {
+          if (status !== "OK" || !predictions || predictions.length === 0) {
+            resolve([]);
+            return;
+          }
+
+          resolve(predictions.map(createAddressAutocompleteSuggestion));
+        },
+      );
+    });
+  }, [getAutocompleteService]);
+
+  const resolveNumberSuggestionsForStreetGroup = useCallback(async (
+    group: Pick<AddressStreetGroup, "streetLabel" | "localityLabel">,
+    options?: {
+      maxSeed?: number;
+      stopAfterNoGrowth?: number;
+      initialSuggestions?: AddressAutocompleteSuggestion[];
+    },
+  ) => {
+    const locality = normalizeLocalityQuery(group.localityLabel);
+    const localityWithoutDistrict = localityWithoutDistrictNumber(locality);
+    const hasLocalityConstraint = Boolean(normalizeAddressSearchText(group.localityLabel));
+    const localityVariants = uniqueNonEmpty([
+      locality,
+      localityWithoutDistrict,
+      locality.split("-")[0] ?? "",
+    ]);
+    const maxSeed = Math.max(20, Math.min(220, options?.maxSeed ?? 40));
+    const stopAfterNoGrowth = Math.max(6, options?.stopAfterNoGrowth ?? 12);
+    const numberSeeds = Array.from({ length: maxSeed }, (_, index) => String(index + 1));
+    const baseQueryCandidates = uniqueNonEmpty([
+      group.streetLabel,
+      ...localityVariants.map((variant) => `${group.streetLabel}, ${variant}`),
+      ...localityVariants.map((variant) => `${group.streetLabel}, ${variant}, Cesko`),
+    ]);
+    const primaryLocality = localityVariants[0] ?? "";
+    const secondaryLocality = localityVariants[1] ?? "";
+    const fallbackSeedCount = Math.min(20, numberSeeds.length);
+    const fallbackSeeds = numberSeeds.slice(0, fallbackSeedCount);
+    const numberQueryCandidates = uniqueNonEmpty(
+      [
+        ...numberSeeds.map((seed) =>
+          primaryLocality ? `${group.streetLabel} ${seed}, ${primaryLocality}` : `${group.streetLabel} ${seed}`),
+        ...fallbackSeeds.map((seed) =>
+          secondaryLocality ? `${group.streetLabel} ${seed}, ${secondaryLocality}` : ""),
+        ...fallbackSeeds.map((seed) => `${group.streetLabel} ${seed}`),
+      ],
+    );
+
+    const queryPhases = [baseQueryCandidates, numberQueryCandidates];
+    const seenQueries = new Set<string>();
+    const collectedSuggestions: AddressAutocompleteSuggestion[] = [...(options?.initialSuggestions ?? [])];
+    const collectedNumberSuggestions: AddressAutocompleteSuggestion[] = extractNumberSuggestions(options?.initialSuggestions ?? []);
+
+    for (const queryCandidates of queryPhases) {
+      let noGrowthCount = 0;
+
+      for (const queryCandidate of queryCandidates) {
+        const normalizedQuery = normalizeAddressSearchText(queryCandidate);
+        if (!normalizedQuery || seenQueries.has(normalizedQuery)) continue;
+        seenQueries.add(normalizedQuery);
+
+        let querySuggestions = await autocompletePredictionsRequest(queryCandidate, { types: ["address"] });
+        if (querySuggestions.length === 0) {
+          querySuggestions = await autocompletePredictionsRequest(queryCandidate);
+        }
+        if (querySuggestions.length === 0) continue;
+
+        const matchingSuggestions = querySuggestions.filter((suggestion) => isSuggestionMatchingStreetGroup(suggestion, group));
+        if (matchingSuggestions.length === 0 && hasLocalityConstraint) {
+          continue;
+        }
+
+        const sourceSuggestions = matchingSuggestions.length > 0 ? matchingSuggestions : querySuggestions;
+        collectedSuggestions.push(...sourceSuggestions);
+
+        const currentCount = extractNumberSuggestions(collectedNumberSuggestions).length;
+        const matchingNumberSuggestions = extractNumberSuggestions(sourceSuggestions);
+        if (matchingNumberSuggestions.length > 0) {
+          collectedNumberSuggestions.push(...matchingNumberSuggestions);
+        }
+
+        const updatedCount = extractNumberSuggestions(collectedNumberSuggestions).length;
+        if (updatedCount > currentCount) {
+          noGrowthCount = 0;
+        } else {
+          noGrowthCount += 1;
+        }
+
+        if (queryCandidates === numberQueryCandidates && updatedCount > 0 && noGrowthCount >= stopAfterNoGrowth) {
+          break;
+        }
+      }
+
+      const phaseNumberSuggestions = extractNumberSuggestions(collectedNumberSuggestions);
+      if (phaseNumberSuggestions.length > 0 && queryCandidates === numberQueryCandidates) {
+        return phaseNumberSuggestions;
+      }
+    }
+
+    const fallbackNumberSuggestions = extractNumberSuggestions(collectedSuggestions);
+    if (fallbackNumberSuggestions.length > 0) {
+      return fallbackNumberSuggestions;
+    }
+
+    return [];
+  }, [autocompletePredictionsRequest]);
+
+  async function resolveAddressFromInputText(
+    sourceAddressInput = addressInput,
+    options?: { preferredHouseNumber?: string },
+  ) {
+    const trimmedAddress = sourceAddressInput.trim();
+    if (!trimmedAddress || !isAddressInputReadyForMap(trimmedAddress)) return null;
+
+    setMapsRequested(true);
+    if (!getGeocoder()) {
+      if (mapsStatus === "missing-key" || mapsStatus === "error") return null;
+      const hasGeocoder = await waitForGeocoderReady(3500);
+      if (!hasGeocoder) return null;
+    }
 
     setResolvingAddress(true);
     try {
       const parsed = await geocodeRequest({
-        address: addressInput.trim(),
+        address: trimmedAddress,
         componentRestrictions: { country: "CZ" },
       });
 
       if (parsed) {
-        applyParsedAddress(parsed);
+        const resolvedHouseNumber = pickMoreSpecificHouseNumber(parsed.houseNumber, options?.preferredHouseNumber ?? "");
+        applyParsedAddress({
+          ...parsed,
+          houseNumber: resolvedHouseNumber,
+        });
       }
 
       return parsed;
@@ -1279,63 +1975,80 @@ export function OrderWizard({
     }
   }
 
-  async function fillAddressFromCurrentLocation() {
-    setMapsRequested(true);
-    setLocationHelperText("Načítám mapové podklady...");
-    setSubmitError(null);
+  async function selectAddressStreetGroup(group: AddressStreetGroup) {
+    const inlineNumberSuggestions = extractNumberSuggestions(group.suggestions);
 
-    if (!navigator.geolocation) {
-      setSubmitError("Tento prohlížeč nepodporuje geolokaci.");
-      setLocating(false);
-      setLocationHelperText(null);
+    setAddressSuggestionMode("addresses");
+    setActiveAddressStreetGroupKey(group.key);
+    setShowAddressSuggestions(true);
+
+    if (inlineNumberSuggestions.length > 0) {
+      setAddressStreetGroups((previous) =>
+        previous.map((candidate) =>
+          candidate.key === group.key ? { ...candidate, suggestions: inlineNumberSuggestions } : candidate),
+      );
+      setAddressStreetNumberCounts((previous) => ({ ...previous, [group.key]: inlineNumberSuggestions.length }));
+    }
+
+    if (!getAutocompleteService()) {
+      setAddressSuggestionCursor(-1);
       return;
     }
 
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        void (async () => {
-          setLocationHelperText("Vyhledávám adresu podle polohy...");
-          const hasGeocoder = await waitForGeocoderReady();
+    addressStreetCountRequestRef.current[group.key] = true;
+    setAddressSuggestionLoading(true);
+    setAddressSuggestionCursor(-1);
 
-          if (!hasGeocoder) {
-            setSubmitError("Nepodařilo se načíst Google Maps, zkuste to prosím znovu.");
-            setLocating(false);
-            setLocationHelperText(null);
-            return;
-          }
+    try {
+      const resolvedNumberSuggestions = await resolveNumberSuggestionsForStreetGroup(group, {
+        maxSeed: 180,
+        stopAfterNoGrowth: 36,
+        initialSuggestions: inlineNumberSuggestions,
+      });
+      const resolvedCount = resolvedNumberSuggestions.length > 0
+        ? resolvedNumberSuggestions.length
+        : inlineNumberSuggestions.length;
+      setAddressStreetNumberCounts((previous) => ({ ...previous, [group.key]: resolvedCount }));
 
-          const parsed = await geocodeRequest({
-            location: {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            },
-          });
+      if (resolvedNumberSuggestions.length > 0) {
+        setAddressStreetGroups((previous) =>
+          previous.map((candidate) =>
+            candidate.key === group.key ? { ...candidate, suggestions: resolvedNumberSuggestions } : candidate),
+        );
+      }
+    } finally {
+      addressStreetCountRequestRef.current[group.key] = false;
+      setAddressSuggestionLoading(false);
+      setAddressSuggestionCursor(-1);
+    }
+  }
 
-          if (!parsed) {
-            setSubmitError("Nepodařilo se načíst adresu z aktuální polohy.");
-            setLocating(false);
-            setLocationHelperText(null);
-            return;
-          }
+  async function selectAddressSuggestion(suggestion: AddressAutocompleteSuggestion) {
+    closeAddressSuggestionsPanel();
+    setAddressInput(suggestion.description);
+    setAddressEditedByUser(false);
+    setAddressSuggestionMode("streets");
+    setActiveAddressStreetGroupKey(null);
+    setAddressSuggestionCursor(-1);
+    setShowManualAddress(true);
+    setSubmitError(null);
+    clearFieldError("addressInput");
+    await resolveAddressFromInputText(suggestion.description, { preferredHouseNumber: suggestion.houseNumber });
+  }
 
-          applyParsedAddress(parsed);
-          setLocating(false);
-          setSubmitError(null);
-          setLocationHelperText(null);
-        })();
-      },
-      () => {
-        setSubmitError("Přístup k poloze byl zamítnut nebo se polohu nepodařilo načíst.");
-        setLocating(false);
-        setLocationHelperText(null);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
-    );
+  function selectAddressSuggestionByCursor(index: number) {
+    if (index < 0) return;
+
+    if (addressSuggestionMode === "streets") {
+      const selectedStreetGroup = addressStreetGroups[index];
+      if (!selectedStreetGroup) return;
+      void selectAddressStreetGroup(selectedStreetGroup);
+      return;
+    }
+
+    const selectedAddress = visibleAddressSuggestions[index];
+    if (!selectedAddress) return;
+    void selectAddressSuggestion(selectedAddress);
   }
 
   async function resolveAddressFromPin(nextPinLocation: PinLocation) {
@@ -1393,16 +2106,24 @@ export function OrderWizard({
     clearFieldError("ico");
   }, [addressEditedByUser, clearFieldError, companyNameEditedByUser, dicEditedByUser]);
 
-  function validateStep(stepToValidate: number): ValidationErrors {
+  function validateStep(
+    stepToValidate: number,
+    options?: {
+      data?: WizardData;
+      addressInput?: string;
+    },
+  ): ValidationErrors {
+    const sourceData = options?.data ?? data;
+    const sourceAddressInput = options?.addressInput ?? addressInput;
     const nextErrors: ValidationErrors = {};
 
     if (stepToValidate === 0) {
-      const postalCode = data.postalCode.trim();
-      const city = data.city.trim();
-      const street = data.street.trim();
-      const houseNumber = data.houseNumber.trim();
+      const postalCode = sourceData.postalCode.trim();
+      const city = sourceData.city.trim();
+      const street = sourceData.street.trim();
+      const houseNumber = sourceData.houseNumber.trim();
 
-      if (!addressInput.trim() && !postalCode && !city && !street && !houseNumber) {
+      if (!sourceAddressInput.trim() && !postalCode && !city && !street && !houseNumber) {
         nextErrors.addressInput = "Zadejte adresu a vyberte ji z nabídky, nebo ji vyplňte ručně.";
       }
 
@@ -1428,65 +2149,65 @@ export function OrderWizard({
     }
 
     if (stepToValidate === 1) {
-      if (!availableWasteTypes.some((wasteType) => wasteType.id === data.wasteType)) {
+      if (!availableWasteTypes.some((wasteType) => wasteType.id === sourceData.wasteType)) {
         nextErrors.wasteType = "Vyberte platný typ odpadu.";
       }
 
-      const containerCount = Number(data.containerCount);
+      const containerCount = Number(sourceData.containerCount);
       if (!Number.isInteger(containerCount) || containerCount < 1 || containerCount > CONTAINER_PRODUCT.maxContainerCountPerOrder) {
         nextErrors.containerCount = `Počet kontejnerů musí být 1 až ${CONTAINER_PRODUCT.maxContainerCountPerOrder}.`;
       }
     }
 
     if (stepToValidate === 2) {
-      const deliveryDateError = validateDeliveryDateRequested(data.deliveryDateRequested);
+      const deliveryDateError = validateDeliveryDateRequested(sourceData.deliveryDateRequested);
       if (deliveryDateError) {
         nextErrors.deliveryDateRequested = `${deliveryDateError}.`;
       }
 
-      const normalizedRentalDays = normalizeRentalDays(data.rentalDays);
-      if (!Number.isInteger(data.rentalDays) || normalizedRentalDays !== data.rentalDays) {
+      const normalizedRentalDays = normalizeRentalDays(sourceData.rentalDays);
+      if (!Number.isInteger(sourceData.rentalDays) || normalizedRentalDays !== sourceData.rentalDays) {
         nextErrors.rentalDays = `Počet dní pronájmu musí být ${rentalDayOptions[0]} až ${rentalDayOptions[rentalDayOptions.length - 1]}.`;
       }
 
-      const deliveryDateEnd = calculateDeliveryEndDate(data.deliveryDateRequested, normalizedRentalDays);
+      const deliveryDateEnd = calculateDeliveryEndDate(sourceData.deliveryDateRequested, normalizedRentalDays);
       const deliveryDateEndError = deliveryDateEnd ? validateDeliveryDateRequested(deliveryDateEnd) : null;
       if (deliveryDateEndError) {
         nextErrors.rentalDays = "Vybraný počet dní vychází na víkend. Zvolte kratší pronájem nebo jiné datum přistavení.";
       }
 
-      if (!isTimeWindowValue(data.timeWindowRequested)) {
+      if (!isTimeWindowValue(sourceData.timeWindowRequested)) {
         nextErrors.timeWindowRequested = "Vyberte časové okno přistavení.";
       }
 
-      if (data.placementType === "verejny" && !data.permitConfirmed) {
+      if (sourceData.placementType === "verejny" && !sourceData.permitConfirmed) {
         nextErrors.permitConfirmed = "Pro umístění na veřejnou komunikaci potvrďte povolení.";
       }
     }
 
     if (stepToValidate === 3) {
-      if (data.customerType === "firma" && data.companyName.trim().length < 2) {
+      if (sourceData.customerType === "firma" && sourceData.companyName.trim().length < 2) {
         nextErrors.companyName = "Doplňte název firmy.";
       }
 
-      if (data.name.trim().length < 2) {
+      if (sourceData.name.trim().length < 2) {
         nextErrors.name = "Doplňte jméno a příjmení.";
       }
 
-      const normalizedIco = data.ico.replace(/\D/g, "");
-      if (data.customerType === "firma" && !icoRegex.test(normalizedIco)) {
+      const normalizedIco = sourceData.ico.replace(/\D/g, "");
+      if (sourceData.customerType === "firma" && !icoRegex.test(normalizedIco)) {
         nextErrors.ico = "Doplňte platné IČO (8 číslic).";
       }
 
-      if (!emailRegex.test(data.email.trim())) {
+      if (!emailRegex.test(sourceData.email.trim())) {
         nextErrors.email = "Zadejte platný e-mail.";
       }
 
-      if (!phoneRegex.test(data.phone.trim())) {
+      if (!phoneRegex.test(sourceData.phone.trim())) {
         nextErrors.phone = "Zadejte platné telefonní číslo.";
       }
 
-      if (!data.gdprConsent) {
+      if (!sourceData.gdprConsent) {
         nextErrors.gdprConsent = "Bez souhlasu GDPR nelze objednávku odeslat.";
       }
     }
@@ -1494,8 +2215,49 @@ export function OrderWizard({
     return nextErrors;
   }
 
+  const currentAddressInputForContinue = addressInputRef.current?.value ?? addressInput;
+  const canContinueCurrentStep = Object.keys(
+    validateStep(step, {
+      data,
+      addressInput: step === 0 ? currentAddressInputForContinue : addressInput,
+    }),
+  ).length === 0;
+
   async function next() {
-    const nextErrors = validateStep(step);
+    const currentAddressInput = addressInputRef.current?.value ?? addressInput;
+    if (step === 0 && currentAddressInput !== addressInput) {
+      setAddressInput(currentAddressInput);
+      setAddressEditedByUser(true);
+    }
+
+    let parsedAddress: ParsedAddress | null = null;
+    if (step === 0) {
+      const hasAddressData =
+        Boolean(data.postalCode.trim())
+        && Boolean(data.city.trim())
+        && Boolean(data.street.trim())
+        && Boolean(data.houseNumber.trim());
+
+      if (!hasAddressData && currentAddressInput.trim()) {
+        parsedAddress = await resolveAddressFromInputText(currentAddressInput);
+      }
+    }
+
+    const validationData =
+      step === 0 && parsedAddress
+        ? {
+            ...data,
+            postalCode: parsedAddress.postalCode,
+            city: parsedAddress.city,
+            street: parsedAddress.street,
+            houseNumber: parsedAddress.houseNumber,
+          }
+        : data;
+    const validationAddressInput = step === 0 ? parsedAddress?.formattedAddress ?? currentAddressInput : addressInput;
+    const nextErrors = validateStep(step, {
+      data: validationData,
+      addressInput: validationAddressInput,
+    });
 
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
@@ -1506,10 +2268,6 @@ export function OrderWizard({
         fields: Object.keys(nextErrors).join(","),
       });
       return;
-    }
-
-    if (step === 0 && mapsStatus === "ready" && !addressEditedByUser) {
-      await resolveAddressFromInputText();
     }
 
     trackAnalyticsEvent("order_step_complete", {
@@ -1650,9 +2408,12 @@ export function OrderWizard({
     event.preventDefault();
     setCallbackError(null);
     setCallbackSuccess(null);
+    setCallbackPhoneFieldError(null);
 
-    if (!phoneRegex.test(callbackForm.phone.trim())) {
-      setCallbackError("Telefon je povinný a musí být ve správném formátu.");
+    const callbackPhoneError = validateCallbackPhone(callbackForm.phone);
+    if (callbackPhoneError) {
+      setCallbackPhoneFieldError(callbackPhoneError);
+      setCallbackError(callbackPhoneError);
       return;
     }
 
@@ -1696,7 +2457,7 @@ export function OrderWizard({
 
       const etaMinutes = payload.etaMinutes ?? callbackEtaFallbackMinutes;
       setCallbackSuccess(`Děkujeme. Náš operátor vám zavolá do ${etaMinutes} minut.`);
-      setCallbackModalOpen(false);
+      closeCallbackModal();
       setData((previous) => ({
         ...previous,
         callbackNote: [
@@ -1899,6 +2660,21 @@ export function OrderWizard({
     };
   }, [addressEditedByUser, addressInput, data, orderId, pinLocation]);
 
+  useEffect(
+    () => () => {
+      if (addressSuggestionsCloseTimeoutRef.current) {
+        window.clearTimeout(addressSuggestionsCloseTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (step !== 0) {
+      closeAddressSuggestionsPanel();
+    }
+  }, [closeAddressSuggestionsPanel, step]);
+
   useEffect(() => {
     if (errorSummaryItems.length === 0 && !submitError) return;
     errorSummaryRef.current?.focus();
@@ -1964,36 +2740,135 @@ export function OrderWizard({
   }, [mapsRequested]);
 
   useEffect(() => {
-    const googleMaps = window.google as GoogleMapsApi | undefined;
-    if (mapsStatus !== "ready" || !addressInputRef.current || autocompleteRef.current || !googleMaps?.maps?.places) {
+    if (step !== 0 || mapsStatus !== "ready") {
+      resetAddressSuggestions();
       return;
     }
 
-    const autocomplete = new googleMaps.maps.places.Autocomplete(addressInputRef.current, {
-      types: ["address"],
-      componentRestrictions: { country: "cz" },
-      fields: ["formatted_address", "address_components", "geometry"],
-    });
+    const inputValue = addressInput.trim();
+    if (inputValue.length < 3 || !isAddressInputReadyForMap(inputValue)) {
+      resetAddressSuggestions();
+      return;
+    }
 
-    autocompleteRef.current = autocomplete;
+    const autocompleteService = getAutocompleteService();
+    if (!autocompleteService) return;
 
-    const listener = autocomplete.addListener("place_changed", () => {
-      const place = autocomplete.getPlace();
-      const parsed = parseAddress(place.address_components, place.formatted_address ?? "", place.geometry?.location);
+    const requestId = addressSuggestionsRequestRef.current + 1;
+    addressSuggestionsRequestRef.current = requestId;
+    setAddressSuggestionLoading(true);
 
-      if (!parsed) {
-        return;
-      }
+    autocompleteService.getPlacePredictions(
+      {
+        input: inputValue,
+        componentRestrictions: { country: "cz" },
+        types: ["address"],
+      },
+      (predictions, status) => {
+        if (addressSuggestionsRequestRef.current !== requestId) return;
 
-      applyParsedAddress(parsed);
-      clearErrors();
-    });
+        setAddressSuggestionLoading(false);
+        const nextSuggestions = (predictions ?? []).map(createAddressAutocompleteSuggestion);
+        if (status !== "OK" || nextSuggestions.length === 0) {
+          setAddressSuggestions([]);
+          setAddressStreetGroups([]);
+          setAddressStreetNumberCounts({});
+          setActiveAddressStreetGroupKey(null);
+          setAddressSuggestionMode("streets");
+          addressStreetCountRequestRef.current = {};
+          return;
+        }
+
+        const nextStreetGroups = groupAddressSuggestionsByStreet(nextSuggestions);
+        const shouldShowStreets = !hasAddressNumberInInput && nextStreetGroups.length > 0;
+        const nextStreetGroupKeys = new Set(nextStreetGroups.map((group) => group.key));
+        addressStreetCountRequestRef.current = Object.fromEntries(
+          Object.entries(addressStreetCountRequestRef.current).filter(([groupKey]) => nextStreetGroupKeys.has(groupKey)),
+        );
+
+        setAddressSuggestions(nextSuggestions);
+        setAddressStreetGroups(nextStreetGroups);
+        setAddressStreetNumberCounts((previous) => {
+          const nextStreetNumberCounts: Record<string, number | null> = {};
+          for (const group of nextStreetGroups) {
+            const knownCount = extractNumberSuggestions(group.suggestions).length;
+            const previousCount = previous[group.key];
+            nextStreetNumberCounts[group.key] = knownCount > 0 ? knownCount : previousCount ?? null;
+          }
+          return nextStreetNumberCounts;
+        });
+        const activeStreetKey = activeAddressStreetGroupKeyRef.current;
+        const activeStreetStillAvailable = Boolean(
+          activeStreetKey && nextStreetGroups.some((group) => group.key === activeStreetKey),
+        );
+        if (shouldShowStreets) {
+          if (addressSuggestionModeRef.current === "addresses" && activeStreetStillAvailable) {
+            setAddressSuggestionMode("addresses");
+            setActiveAddressStreetGroupKey(activeStreetKey);
+          } else {
+            setAddressSuggestionMode("streets");
+            setActiveAddressStreetGroupKey(null);
+          }
+        } else {
+          setAddressSuggestionMode("addresses");
+          setActiveAddressStreetGroupKey(null);
+        }
+      },
+    );
+  }, [addressInput, getAutocompleteService, hasAddressNumberInInput, mapsStatus, resetAddressSuggestions, step]);
+
+  useEffect(() => {
+    if (step !== 0 || mapsStatus !== "ready" || addressSuggestionMode !== "streets") return;
+
+    let cancelled = false;
+    const groupsNeedingCounts = addressStreetGroups.filter(
+      (group) => addressStreetNumberCounts[group.key] === null && !addressStreetCountRequestRef.current[group.key],
+    );
+
+    for (const group of groupsNeedingCounts) {
+      addressStreetCountRequestRef.current[group.key] = true;
+      void (async () => {
+        const resolvedNumberSuggestions = await resolveNumberSuggestionsForStreetGroup(group, {
+          maxSeed: 48,
+          stopAfterNoGrowth: 14,
+          initialSuggestions: group.suggestions,
+        });
+        addressStreetCountRequestRef.current[group.key] = false;
+        if (cancelled) return;
+
+        setAddressStreetNumberCounts((previous) => {
+          if (!(group.key in previous)) return previous;
+          if (previous[group.key] !== null) return previous;
+          return { ...previous, [group.key]: resolvedNumberSuggestions.length };
+        });
+
+        if (resolvedNumberSuggestions.length > 0) {
+          setAddressStreetGroups((previous) =>
+            previous.map((candidate) =>
+              candidate.key === group.key ? { ...candidate, suggestions: resolvedNumberSuggestions } : candidate),
+          );
+        }
+      })();
+    }
 
     return () => {
-      listener.remove();
-      autocompleteRef.current = null;
+      cancelled = true;
     };
-  }, [applyParsedAddress, mapsStatus]);
+  }, [addressStreetGroups, addressStreetNumberCounts, addressSuggestionMode, mapsStatus, resolveNumberSuggestionsForStreetGroup, step]);
+
+  useEffect(() => {
+    if (!shouldShowAddressSuggestionPanel || addressSuggestionLoading || !hasAddressSuggestionItems) {
+      setAddressSuggestionCursor(-1);
+      return;
+    }
+
+    setAddressSuggestionCursor((previous) => {
+      if (previous >= 0 && previous < visibleAddressItemCount) {
+        return previous;
+      }
+      return -1;
+    });
+  }, [addressSuggestionLoading, hasAddressSuggestionItems, shouldShowAddressSuggestionPanel, visibleAddressItemCount]);
 
   useEffect(() => {
     if (shouldShowAddressMap) {
@@ -2419,7 +3294,7 @@ export function OrderWizard({
     <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80 p-2.5 sm:p-3 md:p-4">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(242,196,0,0.12),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(242,196,0,0.06),transparent_45%)]" />
 
-      <div className="relative space-y-3">
+      <div className="relative space-y-4">
         <div className="hidden overflow-hidden rounded-lg border border-zinc-700 bg-zinc-950/80 md:block">
           <ol className="flex items-stretch">
             {stepTitles.map((title, index) => (
@@ -2497,52 +3372,114 @@ export function OrderWizard({
             ref={errorSummaryRef}
             tabIndex={-1}
             role="alert"
-            className="rounded-xl border border-red-700 bg-red-950/40 p-3 text-sm"
+            className="order-error-summary rounded-xl p-3 text-sm"
           >
-            <h3 className="text-sm font-bold text-red-200">Formulář obsahuje chyby</h3>
+            <h3 className="order-error-summary__title text-sm font-bold">Formulář obsahuje chyby</h3>
             {errorSummaryItems.length > 0 ? (
-              <ul className="mt-1.5 list-disc space-y-1 pl-5 text-red-100">
+              <ul className="order-error-summary__list mt-1.5 list-disc space-y-1 pl-5">
                 {errorSummaryItems.map((item) => (
                   <li key={item.fieldName}>
-                    <a href={`#${item.id}`} className="underline underline-offset-2">
+                    <a href={`#${item.id}`} className="order-error-summary__link underline underline-offset-2">
                       {item.label}: {item.message}
                     </a>
                   </li>
                 ))}
               </ul>
             ) : null}
-            {submitError ? <p className="mt-2 text-red-100">{submitError}</p> : null}
+            {submitError ? <p className="order-error-summary__message mt-2">{submitError}</p> : null}
           </div>
         ) : null}
 
         {step === 0 ? (
-          <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
-            <p className="text-sm text-zinc-300">Zadejte adresu přistavení.</p>
+          <div className="space-y-4 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-4">
+            <p className="text-sm leading-relaxed text-zinc-300">Zadejte adresu přistavení. Nejprve vyberte ulici, potom číslo popisné.</p>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-3">
-                <label className="relative flex flex-col gap-2 text-sm">
-                  Adresa přistavení
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-4">
+                <FloatingFieldGroup
+                  id={stepFieldInputIds.addressInput}
+                  label="Adresa přistavení"
+                  required
+                  error={Boolean(fieldErrors.addressInput)}
+                  filled={Boolean(addressInput.trim())}
+                  fieldClassName="floating-field-has-leading-icon"
+                  errorMessage={renderFieldError("addressInput")}
+                >
                   <div className="relative">
                     <input
                       {...fieldA11yProps("addressInput")}
                       ref={addressInputRef}
                       value={addressInput}
                       onFocus={() => {
-                        setShowManualAddress(false);
+                        if (addressSuggestionsCloseTimeoutRef.current) {
+                          window.clearTimeout(addressSuggestionsCloseTimeoutRef.current);
+                          addressSuggestionsCloseTimeoutRef.current = null;
+                        }
                         setMapsRequested(true);
+                        if (addressInput.trim().length >= 3) {
+                          setShowAddressSuggestions(true);
+                        }
                       }}
                       onChange={(event) => {
                         setAddressInput(event.target.value);
                         setAddressEditedByUser(true);
+                        setAddressSuggestionMode("streets");
+                        setActiveAddressStreetGroupKey(null);
+                        setAddressSuggestionCursor(-1);
+                        setShowAddressSuggestions(true);
                         if (!isAddressInputReadyForMap(event.target.value)) {
                           setPinLocation(null);
                         }
                         clearFieldError("addressInput");
                         setSubmitError(null);
                       }}
-                      className={cx(fieldClass("addressInput"), "pr-10")}
-                      placeholder="Např. Ruzyně, ul. Na Hůrce"
+                      onBlur={(event) => {
+                        const nextAddressInput = event.target.value;
+                        if (nextAddressInput !== addressInput) {
+                          setAddressInput(nextAddressInput);
+                          setAddressEditedByUser(true);
+                        }
+                        if (addressSuggestionsCloseTimeoutRef.current) {
+                          window.clearTimeout(addressSuggestionsCloseTimeoutRef.current);
+                        }
+                        addressSuggestionsCloseTimeoutRef.current = window.setTimeout(() => {
+                          setShowAddressSuggestions(false);
+                        }, 120);
+                        validateFieldOnBlur("addressInput", { addressInput: nextAddressInput });
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          shouldShowAddressSuggestionPanel
+                          && !addressSuggestionLoading
+                          && hasAddressSuggestionItems
+                          && (event.key === "ArrowDown" || event.key === "ArrowUp")
+                        ) {
+                          event.preventDefault();
+                          const direction = event.key === "ArrowDown" ? 1 : -1;
+                          setAddressSuggestionCursor((previous) => {
+                            const base = previous < 0 ? (direction > 0 ? -1 : 0) : previous;
+                            return (base + direction + visibleAddressItemCount) % visibleAddressItemCount;
+                          });
+                          return;
+                        }
+
+                        if (
+                          shouldShowAddressSuggestionPanel
+                          && !addressSuggestionLoading
+                          && hasAddressSuggestionItems
+                          && event.key === "Enter"
+                        ) {
+                          event.preventDefault();
+                          const targetIndex = addressSuggestionCursor >= 0 ? addressSuggestionCursor : 0;
+                          selectAddressSuggestionByCursor(targetIndex);
+                          return;
+                        }
+
+                        if (event.key === "Escape") {
+                          closeAddressSuggestionsPanel();
+                        }
+                      }}
+                      className="floating-field__control pl-10 pr-10"
                       autoComplete="off"
                       autoCorrect="off"
                       autoCapitalize="off"
@@ -2552,6 +3489,9 @@ export function OrderWizard({
                       data-lpignore="true"
                       data-1p-ignore="true"
                     />
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-zinc-500" aria-hidden="true">
+                      ⌕
+                    </span>
                     {addressInput.trim() ? (
                       <button
                         type="button"
@@ -2563,26 +3503,117 @@ export function OrderWizard({
                       </button>
                     ) : null}
                   </div>
-                  {renderFieldError("addressInput")}
-                </label>
-
-                <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void fillAddressFromCurrentLocation();
-                      }}
-                      disabled={locating}
-                      className="text-xs font-semibold text-zinc-300 underline decoration-zinc-500 underline-offset-4 hover:text-[var(--color-accent)]"
-                    >
-                      {locating ? "Načítám polohu..." : "Použít aktuální polohu"}
-                    </button>
-                </div>
+                </FloatingFieldGroup>
+                {shouldShowAddressSuggestionPanel ? (
+                  <div className="overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950/95 shadow-[0_8px_24px_-14px_rgba(0,0,0,0.55)]">
+                    <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                        {addressSuggestionMode === "streets" ? "Vyberte ulici" : "Vyberte číslo popisné"}
+                      </p>
+                      <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-400">
+                        Nalezeno: {visibleAddressItemCount}
+                      </span>
+                    </div>
+                    <div className="border-b border-zinc-800 px-3 py-2 text-xs text-zinc-500">
+                      {addressSuggestionMode === "streets"
+                        ? "Vyberte ulici ze seznamu. Poté zvolíte konkrétní číslo popisné."
+                        : "Vyberte přesnou adresu přistavení kontejneru."}
+                    </div>
+                    {addressSuggestionLoading ? (
+                      <p className="px-3 py-3 text-sm text-zinc-400">Hledám adresy...</p>
+                    ) : null}
+                    {!addressSuggestionLoading && addressSuggestionMode === "streets" ? (
+                      <ul className="max-h-56 overflow-y-auto">
+                        {addressStreetGroups.map((group, index) => (
+                          <li key={group.key}>
+                            {(() => {
+                              const numberCount = addressStreetNumberCounts[group.key];
+                              const numberCountLabel =
+                                numberCount === null
+                                  ? "Zjišťuji..."
+                                  : formatHouseNumberCount(numberCount);
+                              return (
+                            <button
+                              type="button"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onMouseEnter={() => {
+                                setAddressSuggestionCursor(index);
+                              }}
+                              onClick={() => {
+                                void selectAddressStreetGroup(group);
+                              }}
+                              className={cx(
+                                "flex w-full items-start justify-between gap-3 border-b border-zinc-800 px-3 py-2.5 text-left text-sm text-zinc-200 transition last:border-b-0",
+                                index === addressSuggestionCursor
+                                  ? "bg-zinc-800/20"
+                                  : "hover:bg-zinc-800/15",
+                              )}
+                            >
+                              <span className="font-medium">{group.streetLabel}{group.localityLabel ? `, ${group.localityLabel}` : ""}</span>
+                              <span className="shrink-0 text-xs text-zinc-400">{numberCountLabel}</span>
+                            </button>
+                              );
+                            })()}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {!addressSuggestionLoading && addressSuggestionMode === "addresses" ? (
+                      <div>
+                        {activeAddressStreetGroup ? (
+                          <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setAddressSuggestionMode("streets");
+                              setActiveAddressStreetGroupKey(null);
+                              setAddressSuggestionCursor(-1);
+                            }}
+                            className="w-full border-b border-zinc-800 px-3 py-2 text-left text-xs font-semibold text-zinc-400 transition hover:bg-zinc-800"
+                          >
+                            ← Zpět na výběr ulice
+                          </button>
+                        ) : null}
+                        <ul className="max-h-56 overflow-y-auto">
+                          {visibleAddressSuggestions.map((suggestion, index) => (
+                            <li key={suggestion.id}>
+                              <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onMouseEnter={() => {
+                                  setAddressSuggestionCursor(index);
+                                }}
+                                onClick={() => {
+                                  void selectAddressSuggestion(suggestion);
+                                }}
+                                className={cx(
+                                  "w-full border-b border-zinc-800 px-3 py-2.5 text-left text-sm text-zinc-200 transition last:border-b-0",
+                                  index === addressSuggestionCursor
+                                    ? "bg-zinc-800/20"
+                                    : "hover:bg-zinc-800/15",
+                                )}
+                              >
+                                <span className="block font-medium">{suggestion.mainText}</span>
+                                {suggestion.secondaryText ? (
+                                  <span className="block text-xs text-zinc-400">{suggestion.secondaryText}</span>
+                                ) : null}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {!addressSuggestionLoading && !hasAddressSuggestionItems ? (
+                      <p className="px-3 py-3 text-sm text-zinc-500">
+                        Adresu jsme nenašli. Zkuste přesnější název ulice nebo doplňte číslo popisné.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {mapsStatus === "loading" ? (
                   <p className="text-xs text-zinc-400">Načítám Google adresní našeptávač...</p>
                 ) : null}
-                {locationHelperText && <p className="text-xs text-zinc-400">{locationHelperText}</p>}
                 {mapsStatus === "missing-key" ? (
                   <p className="text-xs text-amber-300">
                     Chybí Google API klíč. Nastavte `GOOGLE_MAPS_API_KEY`.
@@ -2595,18 +3626,26 @@ export function OrderWizard({
                   </p>
                 ) : null}
 
-                <button
-                  type="button"
-                  onClick={() => setShowManualAddress((previous) => !previous)}
-                  className="text-xs font-semibold text-zinc-300 underline decoration-zinc-500 underline-offset-4 hover:text-[var(--color-accent)]"
-                >
-                  {showManualAddress ? "Skrýt ruční zadání" : "Ručně zadat adresu"}
-                </button>
+                {!showManualAddress ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowManualAddress(true)}
+                    className="text-xs font-semibold text-zinc-300 underline decoration-zinc-500 underline-offset-4 hover:text-[var(--color-accent)]"
+                  >
+                    Zadat adresu ručně
+                  </button>
+                ) : null}
 
                 {showManualAddress ? (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <label className="flex flex-col gap-2 text-sm">
-                      PSČ
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <FloatingFieldGroup
+                      id={stepFieldInputIds.postalCode}
+                      label="PSČ"
+                      required
+                      error={Boolean(fieldErrors.postalCode)}
+                      filled={Boolean(data.postalCode.trim())}
+                      errorMessage={renderFieldError("postalCode")}
+                    >
                       <input
                         {...fieldA11yProps("postalCode")}
                         value={data.postalCode}
@@ -2620,15 +3659,21 @@ export function OrderWizard({
                           if (data.postalCode.length === 5) {
                             revealPostalAreaStatusIfAddressComplete();
                           }
+                          validateFieldOnBlur("postalCode");
                         }}
-                        className={fieldClass("postalCode")}
+                        className="floating-field__control"
                         inputMode="numeric"
                       />
-                      {renderFieldError("postalCode")}
-                    </label>
+                    </FloatingFieldGroup>
 
-                    <label className="flex flex-col gap-2 text-sm">
-                      Město
+                    <FloatingFieldGroup
+                      id={stepFieldInputIds.city}
+                      label="Město"
+                      required
+                      error={Boolean(fieldErrors.city)}
+                      filled={Boolean(data.city.trim())}
+                      errorMessage={renderFieldError("city")}
+                    >
                       <input
                         {...fieldA11yProps("city")}
                         value={data.city}
@@ -2638,14 +3683,22 @@ export function OrderWizard({
                           clearFieldError("city");
                           setSubmitError(null);
                         }}
-                        onBlur={revealPostalAreaStatusIfAddressComplete}
-                        className={fieldClass("city")}
+                        onBlur={() => {
+                          revealPostalAreaStatusIfAddressComplete();
+                          validateFieldOnBlur("city");
+                        }}
+                        className="floating-field__control"
                       />
-                      {renderFieldError("city")}
-                    </label>
+                    </FloatingFieldGroup>
 
-                    <label className="flex flex-col gap-2 text-sm">
-                      Ulice
+                    <FloatingFieldGroup
+                      id={stepFieldInputIds.street}
+                      label="Ulice"
+                      required
+                      error={Boolean(fieldErrors.street)}
+                      filled={Boolean(data.street.trim())}
+                      errorMessage={renderFieldError("street")}
+                    >
                       <input
                         {...fieldA11yProps("street")}
                         value={data.street}
@@ -2655,14 +3708,22 @@ export function OrderWizard({
                           clearFieldError("street");
                           setSubmitError(null);
                         }}
-                        onBlur={revealPostalAreaStatusIfAddressComplete}
-                        className={fieldClass("street")}
+                        onBlur={() => {
+                          revealPostalAreaStatusIfAddressComplete();
+                          validateFieldOnBlur("street");
+                        }}
+                        className="floating-field__control"
                       />
-                      {renderFieldError("street")}
-                    </label>
+                    </FloatingFieldGroup>
 
-                    <label className="flex flex-col gap-2 text-sm">
-                      Číslo popisné
+                    <FloatingFieldGroup
+                      id={stepFieldInputIds.houseNumber}
+                      label="Číslo popisné"
+                      required
+                      error={Boolean(fieldErrors.houseNumber)}
+                      filled={Boolean(data.houseNumber.trim())}
+                      errorMessage={renderFieldError("houseNumber")}
+                    >
                       <input
                         {...fieldA11yProps("houseNumber")}
                         value={data.houseNumber}
@@ -2672,17 +3733,19 @@ export function OrderWizard({
                           clearFieldError("houseNumber");
                           setSubmitError(null);
                         }}
-                        onBlur={revealPostalAreaStatusIfAddressComplete}
-                        className={fieldClass("houseNumber")}
+                        onBlur={() => {
+                          revealPostalAreaStatusIfAddressComplete();
+                          validateFieldOnBlur("houseNumber");
+                        }}
+                        className="floating-field__control"
                       />
-                      {renderFieldError("houseNumber")}
-                    </label>
+                    </FloatingFieldGroup>
                   </div>
                 ) : null}
                 <div className="min-h-5">
-                  {hasFullAddressData && postalAreaStatusVisible ? (
-                    <p className={cx("text-sm", postalCodeOk ? "text-emerald-300" : "text-amber-300")}>
-                      {postalCodeOk ? "PSČ je v obsluhované oblasti." : "PSČ zatím není v obsluze přes web."}
+                  {hasFullAddressData && postalAreaStatusVisible && !postalCodeOk ? (
+                    <p className="text-sm text-amber-300">
+                      PSČ zatím není v obsluze přes web.
                     </p>
                   ) : null}
                 </div>
@@ -2726,7 +3789,7 @@ export function OrderWizard({
         ) : null}
 
         {step === 1 ? (
-          <div className="space-y-2.5 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-2.5 sm:space-y-3 sm:p-3">
+          <div className="space-y-3.5 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-4">
             <p className="text-sm text-zinc-300">Vyberte typ odpadu, počet kontejnerů a doplňkové služby.</p>
 
             <div id="order-waste-type" className="grid gap-1.5 sm:grid-cols-2 sm:gap-2">
@@ -2845,7 +3908,7 @@ export function OrderWizard({
         ) : null}
 
         {step === 2 ? (
-          <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
+          <div className="space-y-4 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-4">
             <DeliveryDatePicker
               value={data.deliveryDateRequested}
               rentalDays={data.rentalDays}
@@ -2923,10 +3986,14 @@ export function OrderWizard({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm">
-                Umístění kontejneru
+              <FloatingField
+                id="order-placement-type"
+                label="Umístění kontejneru"
+                filled
+              >
                 <div className="relative">
                   <select
+                    id="order-placement-type"
                     value={data.placementType}
                     onChange={(event) => {
                       const nextPlacementType = event.target.value as "soukromy" | "verejny";
@@ -2935,7 +4002,7 @@ export function OrderWizard({
                       update("permitConfirmed", false);
                       clearFieldError("permitConfirmed");
                     }}
-                    className={cx(ui.field, "appearance-none pr-10")}
+                    className="floating-field__control floating-field__control--select appearance-none pr-10"
                   >
                     <option value="soukromy">Soukromý pozemek</option>
                     <option value="verejny">Veřejná komunikace</option>
@@ -2945,7 +4012,7 @@ export function OrderWizard({
                     className="pointer-events-none absolute right-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b-2 border-r-2 border-zinc-400"
                   />
                 </div>
-              </label>
+              </FloatingField>
 
               <div className="text-sm">
                 <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">Orientační kalkulace</p>
@@ -2993,7 +4060,7 @@ export function OrderWizard({
         ) : null}
 
         {step === 3 ? (
-          <div className="space-y-3 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-3">
+          <div className="space-y-4 rounded-2xl border border-zinc-700 bg-zinc-950/80 p-4">
             <div className="inline-flex rounded-full border border-zinc-700 bg-zinc-900 p-1 text-sm">
               <button
                 type="button"
@@ -3015,6 +4082,8 @@ export function OrderWizard({
                     customerType: "fo",
                     name: previous.name.trim() ? previous.name : previous.companyName,
                   }));
+                  clearFieldError("companyName");
+                  clearFieldError("ico");
                 }}
                 className={cx(
                   "rounded-full px-4 py-2 font-semibold",
@@ -3025,24 +4094,33 @@ export function OrderWizard({
               </button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {data.customerType === "firma" ? (
                 <>
                   <div className="flex flex-col gap-2 text-sm sm:col-span-2">
-                    <label htmlFor={stepFieldInputIds.companyName}>Název firmy (ARES našeptávač)</label>
-                    <input
-                      {...fieldA11yProps("companyName")}
-                      value={data.companyName}
-                      onChange={(event) => {
-                        update("companyName", event.target.value);
-                        setCompanyNameEditedByUser(true);
-                        clearFieldError("companyName");
-                      }}
-                      className={fieldClass("companyName")}
-                      autoComplete="organization"
-                      placeholder="Začněte psát název firmy"
-                    />
-                    {renderFieldError("companyName")}
+                    <FloatingFieldGroup
+                      id={stepFieldInputIds.companyName}
+                      label="Název firmy (ARES našeptávač)"
+                      required
+                      error={Boolean(fieldErrors.companyName)}
+                      filled={Boolean(data.companyName.trim())}
+                      errorMessage={renderFieldError("companyName")}
+                    >
+                      <input
+                        {...fieldA11yProps("companyName")}
+                        value={data.companyName}
+                        onChange={(event) => {
+                          update("companyName", event.target.value);
+                          setCompanyNameEditedByUser(true);
+                          clearFieldError("companyName");
+                        }}
+                        onBlur={() => {
+                          validateFieldOnBlur("companyName");
+                        }}
+                        className="floating-field__control"
+                        autoComplete="organization"
+                      />
+                    </FloatingFieldGroup>
 
                     {companyLookupLoading ? <p className="text-xs text-zinc-400">Vyhledávám firmu v ARES...</p> : null}
                     {companyLookupError ? <p className="text-xs text-amber-300">{companyLookupError}</p> : null}
@@ -3072,8 +4150,14 @@ export function OrderWizard({
                     ) : null}
                   </div>
 
-                  <label className="flex flex-col gap-2 text-sm">
-                    IČO
+                  <FloatingFieldGroup
+                    id={stepFieldInputIds.ico}
+                    label="IČO"
+                    required
+                    error={Boolean(fieldErrors.ico)}
+                    filled={Boolean(data.ico.trim())}
+                    errorMessage={renderFieldError("ico")}
+                  >
                     <input
                       {...fieldA11yProps("ico")}
                       value={data.ico}
@@ -3083,30 +4167,43 @@ export function OrderWizard({
                         setIcoLookupError(null);
                         lastIcoLookupRef.current = "";
                       }}
-                      className={fieldClass("ico")}
+                      onBlur={() => {
+                        validateFieldOnBlur("ico");
+                      }}
+                      className="floating-field__control"
                       inputMode="numeric"
                     />
-                    {renderFieldError("ico")}
-                    {icoLookupLoading ? <span className="text-xs text-zinc-400">Načítám data firmy podle IČO...</span> : null}
-                    {icoLookupError ? <span className="text-xs text-amber-300">{icoLookupError}</span> : null}
-                  </label>
+                  </FloatingFieldGroup>
+                  {icoLookupLoading ? <span className="text-xs text-zinc-400">Načítám data firmy podle IČO...</span> : null}
+                  {icoLookupError ? <span className="text-xs text-amber-300">{icoLookupError}</span> : null}
 
-                  <label className="flex flex-col gap-2 text-sm">
-                    DIČ (volitelné)
+                  <FloatingField
+                    id="order-dic"
+                    label="DIČ"
+                    filled={Boolean(data.dic.trim())}
+                  >
                     <input
+                      id="order-dic"
                       value={data.dic}
                       onChange={(event) => {
                         update("dic", event.target.value);
                         setDicEditedByUser(true);
                       }}
-                      className={ui.field}
+                      className="floating-field__control"
                     />
-                  </label>
+                  </FloatingField>
                 </>
               ) : null}
 
-              <label className="flex flex-col gap-2 text-sm sm:col-span-2">
-                Jméno a příjmení
+              <FloatingFieldGroup
+                id={stepFieldInputIds.name}
+                label="Jméno a příjmení"
+                required
+                error={Boolean(fieldErrors.name)}
+                filled={Boolean(data.name.trim())}
+                wrapperClassName="sm:col-span-2"
+                errorMessage={renderFieldError("name")}
+              >
                 <input
                   {...fieldA11yProps("name")}
                   value={data.name}
@@ -3115,14 +4212,22 @@ export function OrderWizard({
                     clearFieldError("name");
                     setSubmitError(null);
                   }}
-                  className={fieldClass("name")}
+                  onBlur={() => {
+                    validateFieldOnBlur("name");
+                  }}
+                  className="floating-field__control"
                   autoComplete="name"
                 />
-                {renderFieldError("name")}
-              </label>
+              </FloatingFieldGroup>
 
-              <label className="flex flex-col gap-2 text-sm">
-                E-mail
+              <FloatingFieldGroup
+                id={stepFieldInputIds.email}
+                label="E-mail"
+                required
+                error={Boolean(fieldErrors.email)}
+                filled={Boolean(data.email.trim())}
+                errorMessage={renderFieldError("email")}
+              >
                 <input
                   {...fieldA11yProps("email")}
                   value={data.email}
@@ -3131,15 +4236,23 @@ export function OrderWizard({
                     clearFieldError("email");
                     setSubmitError(null);
                   }}
-                  className={fieldClass("email")}
+                  onBlur={() => {
+                    validateFieldOnBlur("email");
+                  }}
+                  className="floating-field__control"
                   type="email"
                   autoComplete="email"
                 />
-                {renderFieldError("email")}
-              </label>
+              </FloatingFieldGroup>
 
-              <label className="flex flex-col gap-2 text-sm">
-                Telefon
+              <FloatingFieldGroup
+                id={stepFieldInputIds.phone}
+                label="Telefon"
+                required
+                error={Boolean(fieldErrors.phone)}
+                filled={Boolean(data.phone.trim())}
+                errorMessage={renderFieldError("phone")}
+              >
                 <input
                   {...fieldA11yProps("phone")}
                   value={data.phone}
@@ -3148,22 +4261,29 @@ export function OrderWizard({
                     clearFieldError("phone");
                     setSubmitError(null);
                   }}
-                  className={fieldClass("phone")}
+                  onBlur={() => {
+                    validateFieldOnBlur("phone");
+                  }}
+                  className="floating-field__control"
                   inputMode="tel"
                   autoComplete="tel"
                 />
-                {renderFieldError("phone")}
-              </label>
+              </FloatingFieldGroup>
 
-              <label className="flex flex-col gap-2 text-sm sm:col-span-2">
-                Poznámka k objednávce (volitelné)
+              <FloatingField
+                id="order-note"
+                label="Poznámka k objednávce"
+                className="sm:col-span-2"
+                filled={Boolean(data.note.trim())}
+              >
                 <textarea
+                  id="order-note"
                   value={data.note}
                   onChange={(event) => update("note", event.target.value)}
-                  className={ui.field}
+                  className="floating-field__control floating-field__control--textarea"
                   rows={3}
                 />
-              </label>
+              </FloatingField>
             </div>
 
             <div className="rounded-2xl border border-zinc-700 bg-zinc-900 p-2.5 text-sm">
@@ -3258,7 +4378,7 @@ export function OrderWizard({
           aria-hidden="true"
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
           <div className="flex flex-wrap items-center gap-3">
             {step > 0 ? (
               <button type="button" onClick={prev} disabled={submitting} className={ui.buttonSecondary}>
@@ -3270,6 +4390,7 @@ export function OrderWizard({
               onClick={() => {
                 setCallbackError(null);
                 setCallbackSuccess(null);
+                setCallbackPhoneFieldError(null);
                 setCallbackForm((previous) => ({
                   ...previous,
                   phone: previous.phone || data.phone,
@@ -3290,8 +4411,11 @@ export function OrderWizard({
               onClick={() => {
                 void next();
               }}
-              disabled={submitting || resolvingAddress || resolvingPin}
-              className={ui.buttonPrimary}
+              disabled={submitting || resolvingAddress || resolvingPin || !canContinueCurrentStep}
+              className={cx(
+                ui.buttonPrimary,
+                "disabled:bg-zinc-300 disabled:text-zinc-500 disabled:opacity-100 disabled:hover:bg-zinc-300 disabled:focus-visible:outline-zinc-300",
+              )}
             >
               {resolvingAddress ? "Ověřuji adresu..." : resolvingPin ? "Aktualizuji bod na mapě..." : "Pokračovat"}
             </button>
@@ -3307,10 +4431,7 @@ export function OrderWizard({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="presentation"
-          onClick={() => {
-            setCallbackModalOpen(false);
-            setCallbackError(null);
-          }}
+          onClick={closeCallbackModal}
         >
           <div
             className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-4"
@@ -3320,50 +4441,71 @@ export function OrderWizard({
               <h3 className="font-heading text-lg font-bold">Zavolejte mi</h3>
               <button
                 type="button"
-                onClick={() => {
-                  setCallbackModalOpen(false);
-                  setCallbackError(null);
-                }}
+                onClick={closeCallbackModal}
                 className="rounded-lg border border-zinc-700 px-3 py-1 text-sm"
             >
               Zavřít
             </button>
           </div>
 
-          <p className="mt-2 text-sm text-zinc-300">Pošleme kontakt operátorovi. Objednávku pak můžete dokončit přes web.</p>
+            <p className="mt-2 text-sm text-zinc-300">Pošleme kontakt operátorovi. Objednávku pak můžete dokončit přes web.</p>
 
-            <form className="mt-4 space-y-3" onSubmit={(event) => void submitCallbackRequest(event)}>
-              <label className="flex flex-col gap-2 text-sm">
-                Telefon (povinné)
+            <form className="mt-4 space-y-4" onSubmit={(event) => void submitCallbackRequest(event)}>
+              <FloatingField
+                id="callback-phone"
+                label="Telefon"
+                required
+                error={Boolean(callbackPhoneFieldError)}
+                filled={Boolean(callbackForm.phone.trim())}
+              >
                 <input
+                  id="callback-phone"
                   value={callbackForm.phone}
-                  onChange={(event) => setCallbackForm((previous) => ({ ...previous, phone: event.target.value }))}
-                  className={ui.field}
+                  onChange={(event) => {
+                    const nextPhone = event.target.value;
+                    setCallbackForm((previous) => ({ ...previous, phone: nextPhone }));
+                    setCallbackError(null);
+                    if (callbackPhoneFieldError && validateCallbackPhone(nextPhone) === "") {
+                      setCallbackPhoneFieldError(null);
+                    }
+                  }}
+                  onBlur={(event) => {
+                    setCallbackPhoneFieldError(validateCallbackPhone(event.target.value));
+                  }}
+                  className="floating-field__control"
                   required
                   inputMode="tel"
                   autoComplete="tel"
                 />
-              </label>
+              </FloatingField>
 
-              <label className="flex flex-col gap-2 text-sm">
-                Jméno (volitelné)
+              <FloatingField
+                id="callback-name"
+                label="Jméno"
+                filled={Boolean(callbackForm.name.trim())}
+              >
                 <input
+                  id="callback-name"
                   value={callbackForm.name}
                   onChange={(event) => setCallbackForm((previous) => ({ ...previous, name: event.target.value }))}
-                  className={ui.field}
+                  className="floating-field__control"
                   autoComplete="name"
                 />
-              </label>
+              </FloatingField>
 
-              <label className="flex flex-col gap-2 text-sm">
-                Poznámka (volitelné)
+              <FloatingField
+                id="callback-note"
+                label="Poznámka"
+                filled={Boolean(callbackForm.note.trim())}
+              >
                 <textarea
+                  id="callback-note"
                   value={callbackForm.note}
                   onChange={(event) => setCallbackForm((previous) => ({ ...previous, note: event.target.value }))}
-                  className={ui.field}
+                  className="floating-field__control floating-field__control--textarea"
                   rows={3}
                 />
-              </label>
+              </FloatingField>
 
               <input
                 type="text"
@@ -3376,15 +4518,13 @@ export function OrderWizard({
                 aria-hidden="true"
               />
 
-              {callbackError ? <p className="text-sm text-red-300">{callbackError}</p> : null}
+              {callbackPhoneFieldError ? <p className="order-field-error text-sm">{callbackPhoneFieldError}</p> : null}
+              {callbackError && !callbackPhoneFieldError ? <p className="order-field-error text-sm">{callbackError}</p> : null}
 
               <div className="flex flex-wrap justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setCallbackModalOpen(false);
-                    setCallbackError(null);
-                  }}
+                  onClick={closeCallbackModal}
                   className={ui.buttonSecondary}
                 >
                   Zrušit

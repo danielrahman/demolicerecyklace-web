@@ -49,6 +49,131 @@ a {
   text-decoration: none;
 }
 
+.floating-field {
+  --floating-field-bg: #09090b;
+  position: relative;
+  border: 1px solid #3f3f46;
+  border-radius: 12px;
+  background-color: rgb(9 9 11 / 0.86);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.floating-field:focus-within {
+  border-color: #e4e4e7;
+  box-shadow: 0 0 0 3px rgb(228 228 231 / 0.12);
+}
+
+.floating-field--filled .floating-field__label,
+.floating-field:focus-within .floating-field__label {
+  top: 0.1rem;
+  transform: translateY(-56%);
+  font-size: 0.76rem;
+  letter-spacing: 0.01em;
+  color: #e4e4e7;
+  background-color: var(--floating-field-bg);
+}
+
+.floating-field--error {
+  border-color: #ef4444;
+}
+
+.floating-field--error:focus-within {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgb(239 68 68 / 0.14);
+}
+
+.floating-field--error .floating-field__label {
+  color: #f87171;
+}
+
+.floating-field__label {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+  padding: 0 0.25rem;
+  color: #a1a1aa;
+  font-size: 0.95rem;
+  line-height: 1;
+  pointer-events: none;
+  transition:
+    top 180ms ease,
+    transform 180ms ease,
+    font-size 180ms ease,
+    color 180ms ease,
+    background-color 180ms ease;
+}
+
+.floating-field__required {
+  font-weight: 700;
+}
+
+.floating-field__control {
+  width: 100%;
+  min-height: 3.65rem;
+  margin: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.2;
+  padding: 1.15rem 0.95rem 0.55rem;
+}
+
+.floating-field__control::placeholder {
+  color: transparent;
+}
+
+.floating-field__control--textarea {
+  min-height: 6.35rem;
+  resize: vertical;
+}
+
+.floating-field__control--select {
+  min-height: 3.65rem;
+}
+
+.floating-field-has-leading-icon .floating-field__label {
+  left: 2rem;
+}
+
+.floating-field-has-leading-icon .floating-field__control {
+  padding-left: 2.25rem;
+}
+
+.order-field-error {
+  color: #fca5a5;
+}
+
+.order-error-summary {
+  border: 1px solid rgb(248 113 113 / 0.78);
+  background: linear-gradient(180deg, rgb(127 29 29 / 0.36) 0%, rgb(69 10 10 / 0.32) 100%);
+  color: #fecaca;
+}
+
+.order-error-summary__title {
+  color: #fee2e2;
+}
+
+.order-error-summary__list,
+.order-error-summary__message {
+  color: #fecaca;
+}
+
+.order-error-summary__link {
+  color: #ffe4e6;
+  text-decoration-color: #fecdd3;
+}
+
+.order-error-summary__link:hover {
+  color: #fff1f2;
+  text-decoration-color: #fff1f2;
+}
+
 .btn-primary {
   color: #111111 !important;
 }
@@ -561,6 +686,68 @@ a {
 
   .home-hero {
     background: linear-gradient(120deg, #0b1220 0%, #172235 56%, #202d3f 100%);
+  }
+
+  .floating-field {
+    --floating-field-bg: #ffffff;
+    border-color: #cbd5e1;
+    background-color: #ffffff;
+  }
+
+  .floating-field:focus-within {
+    border-color: #334155;
+    box-shadow: 0 0 0 3px rgb(51 65 85 / 0.12);
+  }
+
+  .floating-field--filled .floating-field__label,
+  .floating-field:focus-within .floating-field__label {
+    color: #334155;
+  }
+
+  .floating-field--error {
+    border-color: #dc2626;
+  }
+
+  .floating-field--error:focus-within {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgb(220 38 38 / 0.14);
+  }
+
+  .floating-field--error .floating-field__label {
+    color: #dc2626;
+  }
+
+  .floating-field__label {
+    color: #64748b;
+  }
+
+  .order-field-error {
+    color: #dc2626;
+  }
+
+  .order-error-summary {
+    border-color: #ef4444;
+    background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
+    color: #9f1239;
+  }
+
+  .order-error-summary__title {
+    color: #881337;
+  }
+
+  .order-error-summary__list,
+  .order-error-summary__message {
+    color: #9f1239;
+  }
+
+  .order-error-summary__link {
+    color: #881337;
+    text-decoration-color: #be123c;
+  }
+
+  .order-error-summary__link:hover {
+    color: #6f1231;
+    text-decoration-color: #9f1239;
   }
 
   .home-hero-overlay {
