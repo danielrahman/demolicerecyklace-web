@@ -251,6 +251,16 @@ export type CmsMarketingSection = {
   items?: Array<string | null> | null;
 };
 
+export type CmsMarketingProject = {
+  title?: string | null;
+  service?: string | null;
+  location?: string | null;
+  description?: string | null;
+  output?: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+};
+
 export type CmsMarketingPage = {
   title?: string | null;
   slug?: string | null;
@@ -262,12 +272,26 @@ export type CmsMarketingPage = {
   seoTitle?: string | null;
   seoDescription?: string | null;
   sections?: Array<CmsMarketingSection | null> | null;
+  referenceProjectsTitle?: string | null;
+  referenceProjects?: Array<CmsMarketingProject | null> | null;
+  processTitle?: string | null;
+  processSteps?: Array<string | null> | null;
 };
 
 export type MarketingSectionContent = {
   heading: string;
   body: string;
   items: string[];
+};
+
+export type MarketingProjectContent = {
+  title: string;
+  service: "Demolice" | "Recyklace" | "Kontejnery";
+  location: string;
+  description: string;
+  output: string;
+  imageUrl: string;
+  imageAlt: string;
 };
 
 export type MarketingPageContent = {
@@ -281,6 +305,10 @@ export type MarketingPageContent = {
   seoTitle: string;
   seoDescription: string;
   sections: MarketingSectionContent[];
+  referenceProjectsTitle: string;
+  referenceProjects: MarketingProjectContent[];
+  processTitle: string;
+  processSteps: string[];
 };
 
 export const fallbackHomePageContent: HomePageContent = {
@@ -441,6 +469,10 @@ const defaultMarketingFallback: MarketingPageContent = {
   seoTitle: "",
   seoDescription: "",
   sections: [],
+  referenceProjectsTitle: "",
+  referenceProjects: [],
+  processTitle: "",
+  processSteps: [],
 };
 
 export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
@@ -492,6 +524,65 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     slug: "realizace",
     heroTitle: "Realizace",
     heroDescription: "Výběr realizovaných zakázek z oblasti demolice, recyklace a kontejnerové dopravy.",
+    referenceProjectsTitle: "Vybrané realizace",
+    referenceProjects: [
+      {
+        title: "Demolice objektu s tříděním odpadu",
+        service: "Demolice",
+        location: "Praha 6",
+        description: "Postupná demolice s oddělením betonových a směsných frakcí.",
+        output: "Bezpečné vyklizení staveniště a návazný odvoz odpadu.",
+        imageUrl: "/legacy/current-web/images_ffgallery_20180320_5ab15428e0152_demolice_IMG_1762.jpg",
+        imageAlt: "Demolice objektu s tříděním odpadu",
+      },
+      {
+        title: "Demoliční práce ve stísněném prostoru",
+        service: "Demolice",
+        location: "Praha 10",
+        description: "Nasazení pásové techniky s důrazem na logistiku přístupu.",
+        output: "Plynulý průběh bez omezení okolních provozů.",
+        imageUrl: "/legacy/current-web/images_ffgallery_20180320_5ab15428e0152_demolice_IMG_2600.jpg",
+        imageAlt: "Demoliční práce ve stísněném prostoru",
+      },
+      {
+        title: "Zpracování inertního materiálu",
+        service: "Recyklace",
+        location: "Ruzyně",
+        description: "Příjem a třídění stavebního materiálu s následným využitím.",
+        output: "Připravené frakce pro další stavební použití.",
+        imageUrl: "/legacy/current-web/images_ffgallery_20180320_5ab179c8d5689_recyklace_IMG_2094.jpg",
+        imageAlt: "Zpracování inertního materiálu",
+      },
+      {
+        title: "Provoz recyklační linky",
+        service: "Recyklace",
+        location: "Středočeský kraj",
+        description: "Zpracování materiálu ve středisku s kontrolou kvality frakcí.",
+        output: "Stabilní výstup recyklátu pro stavební podklady.",
+        imageUrl: "/legacy/current-web/images_ffgallery_20180320_5ab179c8d5689_recyklace_IMG_2105.jpg",
+        imageAlt: "Provoz recyklační linky",
+      },
+      {
+        title: "Sériové přistavování kontejnerů",
+        service: "Kontejnery",
+        location: "Praha a okolí",
+        description: "Opakované přistavení a odvoz kontejnerů dle harmonogramu stavby.",
+        output: "Stabilní odvoz bez prostojů na stavbě.",
+        imageUrl: "/legacy/current-web/images_ffgallery_20180320_5ab18a05cb602_pronajem_IMG_2585.jpg",
+        imageAlt: "Sériové přistavování kontejnerů",
+      },
+      {
+        title: "Kontejnerový odvoz stavební suti",
+        service: "Kontejnery",
+        location: "Kladno",
+        description: "Rychlé přistavení kontejneru s ručním potvrzením termínu operátorem.",
+        output: "Odvoz dle kapacity a jasných pravidel odpadu.",
+        imageUrl: "/legacy/current-web/images_ffgallery_20180320_5ab18a05cb602_pronajem_IMG_2627.jpg",
+        imageAlt: "Kontejnerový odvoz stavební suti",
+      },
+    ],
+    processTitle: "Jak vedeme realizaci",
+    processSteps: ["Prohlídka a zadání", "Návrh postupu", "Realizace a odvoz", "Předání a dokumentace"],
     seoTitle: "Realizace | Demolice Recyklace",
     seoDescription: "Ukázky realizovaných zakázek v oblasti demolice, recyklace a kontejnerů.",
   },
@@ -620,6 +711,52 @@ function normalizeMarketingSections(value: Array<CmsMarketingSection | null> | n
       };
     })
     .filter((section): section is MarketingSectionContent => Boolean(section));
+}
+
+const serviceVariants = new Set<MarketingProjectContent["service"]>(["Demolice", "Recyklace", "Kontejnery"]);
+
+function normalizeMarketingService(
+  value: string | null | undefined,
+  fallback: MarketingProjectContent["service"],
+): MarketingProjectContent["service"] {
+  if (!value) {
+    return fallback;
+  }
+
+  return serviceVariants.has(value as MarketingProjectContent["service"])
+    ? (value as MarketingProjectContent["service"])
+    : fallback;
+}
+
+function normalizeMarketingProjects(
+  value: Array<CmsMarketingProject | null> | null | undefined,
+  fallback: MarketingProjectContent[],
+) {
+  if (!value?.length) {
+    return fallback;
+  }
+
+  const next = value
+    .map((project, index) => {
+      if (!project?.title || !project.location || !project.description || !project.output) {
+        return null;
+      }
+
+      const fallbackProject = fallback[index] ?? fallback[0];
+
+      return {
+        title: project.title,
+        service: normalizeMarketingService(project.service, fallbackProject?.service || "Demolice"),
+        location: project.location,
+        description: project.description,
+        output: project.output,
+        imageUrl: project.imageUrl?.trim() || fallbackProject?.imageUrl || "",
+        imageAlt: project.imageAlt?.trim() || fallbackProject?.imageAlt || project.title,
+      };
+    })
+    .filter((project): project is MarketingProjectContent => Boolean(project));
+
+  return next.length ? next : fallback;
 }
 
 function normalizeStringList(value: Array<string | null> | null | undefined, fallback: string[]) {
@@ -901,6 +1038,10 @@ export function mapMarketingPageContent(slug: string, data: CmsMarketingPage | n
   const heroDescription = data.heroDescription?.trim() || fallback.heroDescription;
   const heroImageUrl = data.heroImageUrl?.trim() || fallback.heroImageUrl;
   const heroImageAlt = data.heroImageAlt?.trim() || fallback.heroImageAlt;
+  const referenceProjectsTitle = data.referenceProjectsTitle?.trim() || fallback.referenceProjectsTitle;
+  const referenceProjects = normalizeMarketingProjects(data.referenceProjects, fallback.referenceProjects);
+  const processTitle = data.processTitle?.trim() || fallback.processTitle;
+  const processSteps = normalizeStringList(data.processSteps, fallback.processSteps);
 
   return {
     title,
@@ -913,5 +1054,9 @@ export function mapMarketingPageContent(slug: string, data: CmsMarketingPage | n
     seoTitle: data.seoTitle?.trim() || fallback.seoTitle || heroTitle,
     seoDescription: data.seoDescription?.trim() || fallback.seoDescription || heroDescription,
     sections: normalizeMarketingSections(data.sections),
+    referenceProjectsTitle,
+    referenceProjects,
+    processTitle,
+    processSteps,
   };
 }

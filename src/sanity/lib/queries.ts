@@ -161,6 +161,18 @@ export const MARKETING_PAGE_QUERY = defineQuery(`
     heading,
     body,
     items
-  }
+  },
+  referenceProjectsTitle,
+  referenceProjects[]{
+    title,
+    service,
+    location,
+    description,
+    output,
+    imageAlt,
+    "imageUrl": image.asset->url
+  },
+  processTitle,
+  processSteps
 }
 `);

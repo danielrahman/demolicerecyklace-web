@@ -77,6 +77,81 @@ export const marketingPage = defineType({
       type: "array",
       of: [defineArrayMember({ type: "marketingSection" })],
     }),
+    defineField({
+      name: "referenceProjectsTitle",
+      title: "Nadpis sekce realizací",
+      type: "string",
+    }),
+    defineField({
+      name: "referenceProjects",
+      title: "Reference realizací",
+      type: "array",
+      of: [
+        defineArrayMember({
+          type: "object",
+          fields: [
+            defineField({ name: "title", title: "Název realizace", type: "string", validation: (rule) => rule.required() }),
+            defineField({
+              name: "service",
+              title: "Typ služby",
+              type: "string",
+              options: {
+                list: ["Demolice", "Recyklace", "Kontejnery"],
+              },
+              validation: (rule) => rule.required(),
+            }),
+            defineField({ name: "location", title: "Lokalita", type: "string", validation: (rule) => rule.required() }),
+            defineField({
+              name: "description",
+              title: "Popis",
+              type: "text",
+              rows: 3,
+              validation: (rule) => rule.required(),
+            }),
+            defineField({
+              name: "output",
+              title: "Výsledek",
+              type: "string",
+              validation: (rule) => rule.required(),
+            }),
+            defineField({ name: "image", title: "Obrázek", type: "image", options: { hotspot: true } }),
+            defineField({
+              name: "imageAlt",
+              title: "Alt text obrázku",
+              type: "string",
+              validation: (rule) =>
+                rule.custom((value, context) => {
+                  const parent = context.parent as { image?: unknown } | undefined;
+
+                  if (parent?.image && !value) {
+                    return "Alt text je povinný, pokud je vyplněný obrázek.";
+                  }
+
+                  return true;
+                }),
+            }),
+          ],
+          preview: {
+            select: {
+              title: "title",
+              subtitle: "service",
+              media: "image",
+            },
+          },
+        }),
+      ],
+    }),
+    defineField({
+      name: "processTitle",
+      title: "Nadpis sekce postupu",
+      type: "string",
+    }),
+    defineField({
+      name: "processSteps",
+      title: "Kroky realizace",
+      type: "array",
+      of: [defineArrayMember({ type: "string" })],
+    }),
   ],
   preview: {
     select: {
