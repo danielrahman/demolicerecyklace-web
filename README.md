@@ -74,8 +74,11 @@ NEXT_PUBLIC_SANITY_PROJECT_ID=
 NEXT_PUBLIC_SANITY_DATASET=production
 NEXT_PUBLIC_SANITY_API_VERSION=2026-02-20
 SANITY_REVALIDATE_SECRET=
+SANITY_API_READ_TOKEN=
 SANITY_API_WRITE_TOKEN=
 ```
+
+Poznámka: `SANITY_API_READ_TOKEN` je doporučený pro server-side čtení CMS obsahu (např. dokumenty s ID typu `marketingPage.*`).
 
 ### Seed obsahu
 Jednorázové naplnění singletonů a FAQ:
@@ -88,6 +91,12 @@ Seed globálních nastavení a marketing stránek:
 
 ```bash
 npm run cms:seed:phase2
+```
+
+Jednorázová migrace starých ID s tečkou (např. `marketingPage.realizace`) na ID bez tečky:
+
+```bash
+npm run cms:migrate:dot-ids
 ```
 
 Oprava historicky nevalidních image hodnot v ceníku (pokud Studio hlásí `Invalid property value`):

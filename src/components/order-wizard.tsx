@@ -2410,12 +2410,6 @@ export function OrderWizard({
           <a href={`/kontejnery/objednat?copyOrder=${encodeURIComponent(orderId)}`} className={cx(ui.buttonPrimary, "inline-flex")}>
             Objednat další kontejner
           </a>
-          <a
-            href={CONTACT.phoneHref}
-            className="inline-flex items-center justify-center rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/35 hover:bg-white/10"
-          >
-            Zavolat operátorovi
-          </a>
         </div>
       </div>
     );

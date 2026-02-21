@@ -16,6 +16,7 @@
     "admin:seed": "node scripts/admin-seed.mts",
     "cms:seed:phase1": "node scripts/sanity-seed-phase1.mts",
     "cms:seed:phase2": "node scripts/sanity-seed-phase2.mts",
+    "cms:migrate:dot-ids": "node scripts/sanity-migrate-dot-ids.mts",
     "cms:fix:pricing-images": "node scripts/sanity-fix-pricing-images.mts",
     "seo:mini-audit": "bash scripts/seo-mini-audit.sh"
   },

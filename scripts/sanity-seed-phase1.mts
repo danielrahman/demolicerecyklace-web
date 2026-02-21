@@ -173,7 +173,7 @@ const pricingPageDoc = {
 
 const faqDocs = [
   {
-    _id: "faqCategory.containers",
+    _id: "faqCategory-containers",
     _type: "faqCategory",
     key: "containers",
     title: "Kontejnery",
@@ -182,7 +182,7 @@ const faqDocs = [
     items: CONTAINER_FAQ.map((item, index) => ({ _key: `containers-${index + 1}`, ...item })),
   },
   {
-    _id: "faqCategory.demolition",
+    _id: "faqCategory-demolition",
     _type: "faqCategory",
     key: "demolition",
     title: "Demolice",
@@ -191,7 +191,7 @@ const faqDocs = [
     items: DEMOLITION_FAQ.map((item, index) => ({ _key: `demolition-${index + 1}`, ...item })),
   },
   {
-    _id: "faqCategory.recycling",
+    _id: "faqCategory-recycling",
     _type: "faqCategory",
     key: "recycling",
     title: "Recyklace a materiál",

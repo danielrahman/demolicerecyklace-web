@@ -208,7 +208,7 @@ async function run() {
   console.log("Upserted siteSettings");
 
   for (const page of marketingPages) {
-    const docId = `marketingPage.${page.slug}`;
+    const docId = `marketingPage-${page.slug}`;
     await client.createIfNotExists({
       _id: docId,
       _type: "marketingPage",

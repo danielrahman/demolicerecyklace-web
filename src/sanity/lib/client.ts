@@ -1,6 +1,6 @@
 import { createClient } from "next-sanity";
 
-import { apiVersion, dataset, hasSanityConfig, projectId } from "@/sanity/env";
+import { apiVersion, dataset, hasSanityConfig, projectId, sanityReadToken, sanityWriteToken } from "@/sanity/env";
 
 const baseConfig = {
   projectId: projectId || "missing-project-id",
@@ -11,17 +11,18 @@ const baseConfig = {
 export const sanityClient = hasSanityConfig
   ? createClient({
       ...baseConfig,
-      useCdn: true,
+      useCdn: !sanityReadToken,
+      ...(sanityReadToken ? { token: sanityReadToken } : {}),
       perspective: "published",
     })
   : null;
 
 export const sanityWriteClient =
-  hasSanityConfig && process.env.SANITY_API_WRITE_TOKEN?.trim()
+  hasSanityConfig && sanityWriteToken
     ? createClient({
         ...baseConfig,
         useCdn: false,
-        token: process.env.SANITY_API_WRITE_TOKEN.trim(),
+        token: sanityWriteToken,
         perspective: "published",
       })
     : null;

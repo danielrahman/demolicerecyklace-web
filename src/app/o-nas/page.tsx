@@ -54,7 +54,23 @@ const cooperationSteps = [
   "Předáme výsledek a navrhneme další postup, pokud je potřeba.",
 ] as const;
 
-const audiences = ["Soukromé osoby", "Řemeslníci a menší stavební firmy", "Developerské a průmyslové projekty"] as const;
+const audiences = [
+  {
+    title: "Developerské a průmyslové projekty",
+    description:
+      "Koordinujeme demolice, odvoz i recyklaci po etapách stavby tak, aby navazovaly na harmonogram generálního dodavatele.",
+  },
+  {
+    title: "Řemeslníci a stavební firmy",
+    description:
+      "Řešíme průběžné přistavení kontejnerů, odvoz materiálu a operativní změny podle reálného postupu prací na stavbě.",
+  },
+  {
+    title: "Soukromé osoby",
+    description:
+      "Pomáháme s menšími zakázkami kolem rekonstrukcí a vyklízení, včetně jasných pravidel odpadu a potvrzení termínu.",
+  },
+] as const;
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("o-nas");
@@ -122,13 +138,16 @@ export default async function ONasPage() {
 
         <article className={cx(ui.card, "p-6")}>
           <h2 className="text-2xl font-bold">Pro koho pracujeme</h2>
-          <ul className="mt-4 space-y-2 text-zinc-300">
+          <ul className="mt-4 space-y-3">
             {audiences.map((audience) => (
-              <li key={audience}>- {audience}</li>
+              <li key={audience.title} className="rounded-xl border border-zinc-700 bg-zinc-950 p-4">
+                <p className="font-semibold text-zinc-100">{audience.title}</p>
+                <p className="mt-1 text-sm text-zinc-300">{audience.description}</p>
+              </li>
             ))}
           </ul>
           <p className="mt-4 text-sm text-zinc-400">
-            Typ zakázky i harmonogram řešíme individuálně podle rozsahu, přístupu na místo a požadavků na logistiku.
+            Typ zakázky i harmonogram řešíme individuálně podle rozsahu, přístupu na místo a návaznosti na další profese.
           </p>
         </article>
       </section>
@@ -144,9 +163,6 @@ export default async function ONasPage() {
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/dokumenty" className={ui.buttonSecondary}>
             Otevřít dokumenty
-          </Link>
-          <Link href="/kontejnery/objednat" className={ui.buttonSecondary}>
-            Objednat kontejner
           </Link>
         </div>
       </section>

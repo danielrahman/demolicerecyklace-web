@@ -7,3 +7,5 @@ export const apiVersion = process.env.NEXT_PUBLIC_SANITY_API_VERSION?.trim() || 
 export const hasSanityConfig = Boolean(projectId);
 
 export const sanityRevalidateSecret = process.env.SANITY_REVALIDATE_SECRET?.trim() ?? "";
+export const sanityWriteToken = process.env.SANITY_API_WRITE_TOKEN?.trim() ?? "";
+export const sanityReadToken = process.env.SANITY_API_READ_TOKEN?.trim() || sanityWriteToken;
