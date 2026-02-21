@@ -120,7 +120,7 @@ export default async function AdminOrdersPage({
                       {formatAdminDateRange(order.deliveryDateRequested, order.deliveryDateEndRequested)}{" "}
                       ({order.timeWindowRequested}) · {formatCzechDayCount(order.rentalDays)}
                     </p>
-                    {order.callbackNote ? <p className="text-xs text-amber-300">Callback: {order.callbackNote}</p> : null}
+                    {order.callbackNote ? <p className="text-xs text-amber-300">Zpětné zavolání: {order.callbackNote}</p> : null}
                   </div>
                   <div className="hidden grid-cols-[130px_1fr_1.2fr_1.1fr_90px_130px] items-center gap-3 md:grid">
                     <p className="font-mono text-xs text-zinc-300">{order.id}</p>

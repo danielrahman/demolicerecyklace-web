@@ -161,7 +161,7 @@ function loadGoogleMapsApi(apiKey: string) {
         },
         { once: true },
       );
-      existingScript.addEventListener("error", () => reject(new Error("Google Maps script load failed")), {
+      existingScript.addEventListener("error", () => reject(new Error("Nepodařilo se načíst Google Maps.")), {
         once: true,
       });
       return;
@@ -179,7 +179,7 @@ function loadGoogleMapsApi(apiKey: string) {
       }
       resolve();
     };
-    script.onerror = () => reject(new Error("Google Maps script load failed"));
+    script.onerror = () => reject(new Error("Nepodařilo se načíst Google Maps."));
     document.head.append(script);
   });
 
@@ -456,8 +456,8 @@ export function AdminOrderPinMap({
           )}
         </div>
         <p className="text-xs text-zinc-400">
-          {pinLocation ? `Pin: ${pinLocation.lat.toFixed(6)}, ${pinLocation.lng.toFixed(6)}` : "Pin není nastaven."}
-          {editable ? " Klikněte do mapy nebo přetáhněte pin." : " Mapa je jen pro náhled."}
+          {pinLocation ? `Bod na mapě: ${pinLocation.lat.toFixed(6)}, ${pinLocation.lng.toFixed(6)}` : "Bod na mapě není nastaven."}
+          {editable ? " Klikněte do mapy nebo přetáhněte bod." : " Mapa je jen pro náhled."}
         </p>
         {mapsStatus === "missing-key" || mapsStatus === "error" ? (
           <p className="text-xs text-amber-300">{mapsErrorDetail ?? "Mapu se nepodařilo načíst."}</p>

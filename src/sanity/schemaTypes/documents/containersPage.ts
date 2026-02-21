@@ -2,38 +2,38 @@ import { defineArrayMember, defineField, defineType } from "sanity";
 
 export const containersPage = defineType({
   name: "containersPage",
-  title: "Kontejnery stranka",
+  title: "Stránka kontejnery",
   type: "document",
   fields: [
     defineField({
       name: "heroTitle",
-      title: "Hero titulek",
+      title: "Hlavní titulek",
       type: "string",
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: "heroDescription",
-      title: "Hero popis",
+      title: "Hlavní popis",
       type: "text",
       rows: 3,
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: "heroImage",
-      title: "Hero obrazek",
+      title: "Hlavní obrázek",
       type: "image",
       options: { hotspot: true },
     }),
     defineField({
       name: "heroImageAlt",
-      title: "Hero alt text",
+      title: "Hlavní alt text",
       type: "string",
       validation: (rule) =>
         rule.custom((value, context) => {
           const parent = context.parent as { heroImage?: unknown } | undefined;
 
           if (parent?.heroImage && !value) {
-            return "Alt text je povinny, pokud je vyplneny obrazek.";
+            return "Alt text je povinný, pokud je vyplněný obrázek.";
           }
 
           return true;
@@ -41,7 +41,7 @@ export const containersPage = defineType({
     }),
     defineField({
       name: "howItWorks",
-      title: "Jak funguje objednavka",
+      title: "Jak funguje objednávka",
       type: "array",
       validation: (rule) => rule.required().min(1),
       of: [
@@ -68,14 +68,14 @@ export const containersPage = defineType({
     }),
     defineField({
       name: "trustPoints",
-      title: "Body duvery",
+      title: "Body důvěry",
       type: "array",
       of: [defineArrayMember({ type: "string" })],
       validation: (rule) => rule.required().min(1),
     }),
     defineField({
       name: "ruleWarnings",
-      title: "Upozorneni",
+      title: "Upozornění",
       type: "array",
       of: [defineArrayMember({ type: "string" })],
       validation: (rule) => rule.required().min(1),

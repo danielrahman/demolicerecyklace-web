@@ -8,7 +8,7 @@ import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "FAQ | Demolice Recyklace",
+  title: "Časté dotazy (FAQ) | Demolice Recyklace",
   description:
     "Nejčastější dotazy k objednávce kontejneru, demolici a recyklaci pro Prahu a Středočeský kraj.",
   canonicalPath: "/faq",
@@ -38,7 +38,7 @@ export default async function FaqPage() {
           __html: JSON.stringify(faqSchema),
         }}
       />
-      <h1 className="text-4xl font-bold">FAQ</h1>
+      <h1 className="text-4xl font-bold">Časté dotazy (FAQ)</h1>
       <p className="max-w-4xl text-zinc-300">
         Nejčastější dotazy před objednávkou kontejneru, poptávkou demolice nebo řešením recyklace. Pokud nenajdete
         odpověď, ozvěte se dispečinku.
@@ -77,7 +77,7 @@ export default async function FaqPage() {
       <section className={cx(ui.cardSoft, "p-6")}>
         <h2 className="text-2xl font-bold">Potřebujete rychlou odpověď?</h2>
         <p className="mt-2 text-zinc-300">
-          Nejrychlejší je krátký hovor s dispečinkem. U kontejnerů můžete zároveň rovnou založit objednávku online.
+          Nejrychlejší je krátký hovor s dispečinkem. U kontejnerů můžete zároveň rovnou založit objednávku přes web.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>

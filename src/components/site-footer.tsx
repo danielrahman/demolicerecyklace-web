@@ -163,7 +163,7 @@ export function SiteFooter({ settings }: SiteFooterProps) {
                 />
               </Link>
               <p className="mt-3 text-sm text-zinc-300">
-                Online objednávka kontejneru {CONTAINER_PRODUCT.availableNow} pro oblast {settings.regionsLabel}. Termín potvrzuje operátor.
+                Objednávka kontejneru {CONTAINER_PRODUCT.availableNow} přes web pro oblast {settings.regionsLabel}. Termín potvrzuje operátor.
               </p>
             </div>
 

@@ -8,8 +8,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("cookies");
   const title = marketing?.seoTitle || "Zásady používání cookies | Demolice Recyklace";
   const description =
-    marketing?.seoDescription ||
-    "Přehled používání cookies na webu služby pronájmu kontejnerů, včetně Google Analytics a možností správy souhlasu.";
+    marketing?.seoDescription
+    || "Přehled používání cookies na webu, včetně Google Analytics a možností správy souhlasu.";
 
   return createPageMetadata({
     title,
@@ -27,12 +27,12 @@ export default async function CookiesPage() {
         <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Zásady používání cookies"}</h1>
         <p className="max-w-4xl text-zinc-300">
           {marketing?.heroDescription ||
-            "Tyto zásady vysvětlují, jak na našem webu používáme cookies při poskytování služeb pronájmu kontejnerů, demolice a recyklace."}
+            "Tyto zásady vysvětlují, jak na našem webu používáme cookies při objednávce služeb kontejnerů, demolice a recyklace."}
         </p>
       </section>
 
       <section className="space-y-3 border-t border-zinc-800 pt-6">
-        <h2 className="text-2xl font-bold">1. Co jsou cookies</h2>
+        <h2 className="text-2xl font-bold">1. Co jsou soubory cookies</h2>
         <p className="text-zinc-300">
           Cookies jsou malé textové soubory, které web ukládá do vašeho zařízení. Pomáhají zajistit správné fungování
           webu a umožňují nám porozumět tomu, jak je web používán.
@@ -55,7 +55,7 @@ export default async function CookiesPage() {
         </p>
         <p className="text-zinc-300">
           <strong>Souhlas:</strong> Nezbytné cookies používáme, protože jsou nutné pro fungování webu. Pro použití
-          analytických cookies je potřeba váš souhlas.
+          analytických cookies potřebujeme váš souhlas.
         </p>
       </section>
 

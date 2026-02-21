@@ -8,8 +8,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("obchodni-podminky");
   const title = marketing?.seoTitle || "Obchodní podmínky | Demolice Recyklace";
   const description =
-    marketing?.seoDescription ||
-    "Obchodní podmínky služby pronájmu a odvozu kontejneru 3m³ společnosti MINUTY a.s. pro Prahu a Středočeský kraj.";
+    marketing?.seoDescription
+    || "Obchodní podmínky služby pronájmu a odvozu kontejneru 3 m³ společnosti MINUTY a.s. pro Prahu a Středočeský kraj.";
 
   return createPageMetadata({
     title,
@@ -27,7 +27,7 @@ export default async function ObchodniPodminkyPage() {
         <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Obchodní podmínky"}</h1>
         <p className="max-w-4xl text-zinc-300">
           {marketing?.heroDescription ||
-            `Tyto obchodní podmínky upravují pronájem a odvoz kontejneru 3m³ poskytovaný společností ${SITE_META.companyName} pro oblast ${SERVICE_AREA.regionsLabel}. Podmínky platí pro spotřebitele i podnikatele.`}
+            `Tyto obchodní podmínky upravují pronájem a odvoz kontejneru 3 m³ poskytovaný společností ${SITE_META.companyName} pro oblast ${SERVICE_AREA.regionsLabel}. Podmínky platí pro spotřebitele i podnikatele.`}
         </p>
       </section>
 
@@ -35,7 +35,7 @@ export default async function ObchodniPodminkyPage() {
         <h2 className="text-2xl font-bold">1. Úvodní ustanovení</h2>
         <ul className="list-disc space-y-2 pl-5 text-zinc-300">
           <li>Poskytovatelem služby je {SITE_META.companyName}, sídlo {CONTACT.operatorAddressLine}.</li>
-          <li>Služba zahrnuje přistavení, pronájem a odvoz kontejneru o objemu 3m³.</li>
+          <li>Služba zahrnuje přistavení, pronájem a odvoz kontejneru o objemu 3 m³.</li>
           <li>Právní vztahy se řídí právem České republiky, zejména občanským zákoníkem.</li>
         </ul>
       </section>
@@ -43,7 +43,7 @@ export default async function ObchodniPodminkyPage() {
       <section className="space-y-3 border-t border-zinc-800 pt-6">
         <h2 className="text-2xl font-bold">2. Objednávka a uzavření smlouvy</h2>
         <ul className="list-disc space-y-2 pl-5 text-zinc-300">
-          <li>Objednávka se podává online formulářem na webu.</li>
+          <li>Objednávka se podává formulářem přes web.</li>
           <li>
             Odeslaná objednávka je návrhem na uzavření smlouvy. Smlouva vzniká až po ručním potvrzení termínu a ceny
             operátorem (telefonicky nebo e-mailem).

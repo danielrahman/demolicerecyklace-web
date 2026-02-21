@@ -141,10 +141,10 @@ export default async function KompletníCeníkPage() {
         <p className="mt-3 max-w-3xl text-zinc-300">{content.introDescription}</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <a href={content.sourcePdfUrl} target="_blank" rel="noreferrer" className={ui.buttonPrimary}>
-            Otevřít originální PDF ceník
+            Otevřít původní ceník (PDF)
           </a>
           <Link href="/kontejnery/objednat" className={ui.buttonSecondary}>
-            Objednat kontejner online
+            Objednat kontejner přes web
           </Link>
         </div>
       </section>

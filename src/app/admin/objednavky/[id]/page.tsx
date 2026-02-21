@@ -40,8 +40,8 @@ const eventLabels: Record<OrderEventType, string> = {
   internal_note_updated: "Interní poznámka upravena",
   customer_updated: "Zákazník a kontakt upraven",
   order_params_updated: "Parametry objednávky upraveny",
-  rate_limited_rejected: "Blokováno rate-limitem",
-  honeypot_rejected: "Blokováno honeypot ochranou",
+  rate_limited_rejected: "Blokováno limitem požadavků",
+  honeypot_rejected: "Blokováno ochranou proti robotům",
 };
 
 const workflowSteps: Array<{ status: OrderStatus; label: string }> = [
@@ -281,7 +281,7 @@ function getEventSummary(event: OrderEvent) {
 
   if (event.eventType === "location_updated") {
     const locationLabel = formatLocationPreview(payload.nextLocation);
-    return locationLabel ? `Nová lokalita: ${locationLabel}.` : "Byla upravena adresa nebo pin přistavení.";
+    return locationLabel ? `Nová lokalita: ${locationLabel}.` : "Byla upravena adresa nebo bod na mapě přistavení.";
   }
 
   if (event.eventType === "status_cancelled") {
@@ -493,7 +493,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Kontakt</p>
                 <p className="mt-1 text-sm font-semibold text-zinc-100">{order.phone}</p>
                 <p className="mt-1 text-sm text-zinc-300">{order.email}</p>
-                {order.callbackNote ? <p className="mt-2 text-xs text-amber-300">Callback: {order.callbackNote}</p> : null}
+                {order.callbackNote ? <p className="mt-2 text-xs text-amber-300">Zpětné zavolání: {order.callbackNote}</p> : null}
               </div>
             </div>
 

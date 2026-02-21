@@ -122,10 +122,10 @@ export function CookieConsentManager({ gaMeasurementId }: { gaMeasurementId: str
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-zinc-100">Používání cookies</p>
+          <p className="text-sm font-semibold text-zinc-100">Používání souborů cookies</p>
           <p className="max-w-3xl text-sm text-zinc-300">
-            Pro měření návštěvnosti používáme Google Analytics pouze s vaším souhlasem. Nezbytné cookies jsou potřeba
-            pro základní funkce webu.
+            Pro měření návštěvnosti používáme Google Analytics pouze s vaším souhlasem. Nezbytné soubory cookies jsou
+            nutné pro základní fungování webu.
           </p>
           <Link href="/cookies" className="text-sm text-[var(--color-accent)] underline underline-offset-4">
             Zobrazit zásady cookies
@@ -137,7 +137,7 @@ export function CookieConsentManager({ gaMeasurementId }: { gaMeasurementId: str
             className={cx(ui.buttonPrimary, "min-w-40")}
             onClick={() => writeCookieConsent("accepted")}
           >
-            Souhlasím
+            Povolit analytiku
           </button>
           <button
             type="button"

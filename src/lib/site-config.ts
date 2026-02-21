@@ -40,8 +40,8 @@ export const CONTACT = {
 } as const;
 
 export const CONTAINER_PRODUCT = {
-  availableNow: "3m³",
-  futureSizes: ["5m³", "7m³", "9m³", "12m³"],
+  availableNow: "3 m³",
+  futureSizes: ["5 m³", "7 m³", "9 m³", "12 m³"],
   maxContainerCountPerOrder: 3,
 } as const;
 
@@ -56,7 +56,7 @@ export const HEADER_LINKS = [
   { href: "/kontejnery", label: "Kontejnery" },
   { href: "/demolice", label: "Demolice" },
   { href: "/recyklace", label: "Recyklace" },
-  { href: "/prodej-materialu", label: "Materiál" },
+  { href: "/prodej-materialu", label: "Prodej materiálu" },
   { href: "/cenik", label: "Ceník" },
   { href: "/o-nas", label: "O nás" },
   { href: "/kontakt", label: "Kontakt" },
@@ -76,7 +76,7 @@ export const FOOTER_SERVICE_LINKS = [
 export const FOOTER_INFO_LINKS = [
   { href: "/kontakt", label: "Kontakt" },
   { href: "/dokumenty", label: "Dokumenty ke stažení" },
-  { href: "/faq", label: "FAQ" },
+  { href: "/faq", label: "Časté dotazy (FAQ)" },
   { href: "/gdpr", label: "Zásady zpracování osobních údajů" },
   { href: "/obchodni-podminky", label: "Obchodní podmínky" },
   { href: "/cookies", label: "Cookies" },

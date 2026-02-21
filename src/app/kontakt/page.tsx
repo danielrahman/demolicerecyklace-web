@@ -30,7 +30,7 @@ const reasons = [
 const contactFlow = [
   {
     title: "Kontejnery",
-    detail: "Nejrychlejší je online objednávka. Pro nejasnosti zavolejte dispečink.",
+    detail: "Nejrychlejší je objednávka přes web. Pro nejasnosti zavolejte dispečink.",
     cta: "Otevřít objednávku",
     href: "/kontejnery/objednat",
   },
@@ -71,7 +71,7 @@ export default async function KontaktPage() {
         <h1 className="text-4xl font-bold">{marketing?.heroTitle || "Kontakt"}</h1>
         <p className="max-w-4xl text-zinc-300">
           {marketing?.heroDescription ||
-            "Nejrychlejší cesta je dispečink. Pomůžeme s objednávkou kontejneru, poptávkou demolice i recyklací. Pro online objednávky kontejneru termín vždy finálně potvrzuje operátor."}
+            "Nejrychlejší cesta je dispečink. Pomůžeme s objednávkou kontejneru, poptávkou demolice i recyklací. U objednávky přes web termín vždy finálně potvrzuje operátor."}
         </p>
         <div className="flex flex-wrap gap-3">
           <a href={CONTACT.phoneHref} className={ui.buttonPrimary}>

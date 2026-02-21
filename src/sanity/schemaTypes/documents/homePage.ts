@@ -2,38 +2,38 @@ import { defineArrayMember, defineField, defineType } from "sanity";
 
 export const homePage = defineType({
   name: "homePage",
-  title: "Homepage",
+  title: "Úvodní stránka",
   type: "document",
   fields: [
     defineField({
       name: "heroEyebrow",
-      title: "Hero nadpis (maly)",
+      title: "Předtitulek (malý nadpis)",
       type: "string",
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: "heroTitle",
-      title: "Hero titulek",
+      title: "Hlavní titulek",
       type: "string",
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: "heroDescription",
-      title: "Hero popis",
+      title: "Hlavní popis",
       type: "text",
       rows: 3,
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: "quickFacts",
-      title: "Rychle body",
+      title: "Rychlé body",
       type: "array",
       of: [defineArrayMember({ type: "string" })],
       validation: (rule) => rule.required().min(1),
     }),
     defineField({
       name: "serviceCards",
-      title: "Karty sluzeb",
+      title: "Karty služeb",
       type: "array",
       validation: (rule) => rule.required().min(1),
       of: [
@@ -56,9 +56,9 @@ export const homePage = defineType({
               of: [defineArrayMember({ type: "string" })],
               validation: (rule) => rule.required().min(1),
             }),
-            defineField({ name: "href", title: "Cilove URL", type: "string", validation: (rule) => rule.required() }),
-            defineField({ name: "cta", title: "Text tlacitka", type: "string", validation: (rule) => rule.required() }),
-            defineField({ name: "image", title: "Obrazek", type: "image", options: { hotspot: true } }),
+            defineField({ name: "href", title: "Cílová URL", type: "string", validation: (rule) => rule.required() }),
+            defineField({ name: "cta", title: "Text tlačítka", type: "string", validation: (rule) => rule.required() }),
+            defineField({ name: "image", title: "Obrázek", type: "image", options: { hotspot: true } }),
             defineField({
               name: "imageAlt",
               title: "Alt text",
@@ -68,7 +68,7 @@ export const homePage = defineType({
                   const parent = context.parent as { image?: unknown } | undefined;
 
                   if (parent?.image && !value) {
-                    return "Alt text je povinny, pokud je vyplneny obrazek.";
+                    return "Alt text je povinný, pokud je vyplněný obrázek.";
                   }
 
                   return true;
@@ -87,7 +87,7 @@ export const homePage = defineType({
     }),
     defineField({
       name: "processSteps",
-      title: "Kroky spoluprace",
+      title: "Kroky spolupráce",
       type: "array",
       validation: (rule) => rule.required().min(1),
       of: [
@@ -108,7 +108,7 @@ export const homePage = defineType({
     }),
     defineField({
       name: "trustSignals",
-      title: "Duvody proc vybrat",
+      title: "Důvody, proč si vybrat",
       type: "array",
       of: [defineArrayMember({ type: "string" })],
       validation: (rule) => rule.required().min(1),
@@ -116,7 +116,7 @@ export const homePage = defineType({
   ],
   preview: {
     prepare: () => ({
-      title: "Homepage",
+      title: "Úvodní stránka",
       subtitle: "Singleton dokument",
     }),
   },

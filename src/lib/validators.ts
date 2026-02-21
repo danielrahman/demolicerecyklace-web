@@ -14,7 +14,7 @@ export const pricingPreviewSchema = z.object({
   postalCode: z
     .string()
     .regex(/^\d{5}$/, "PSČ musí mít 5 číslic")
-    .refine(isSupportedPostalCode, "PSČ zatím online nepodporujeme"),
+    .refine(isSupportedPostalCode, "PSČ zatím v objednávce přes web nepodporujeme"),
   wasteType: z.string().trim().min(1, "Vyberte typ odpadu"),
   containerCount: z.number().int().min(1).max(3),
   rentalDays: z.number().int().min(1).max(10).default(1),
@@ -37,7 +37,7 @@ export const createOrderSchema = z
     postalCode: z
       .string()
       .regex(/^\d{5}$/, "PSČ musí mít 5 číslic")
-      .refine(isSupportedPostalCode, "PSČ zatím online nepodporujeme"),
+      .refine(isSupportedPostalCode, "PSČ zatím v objednávce přes web nepodporujeme"),
     city: z.string().trim().min(2),
     street: z.string().trim().min(2),
     houseNumber: z.string().trim().min(1),

@@ -15,7 +15,7 @@ const segmentLabels: Record<string, string> = {
   dokumenty: "Dokumenty",
   icp: "iČP",
   zpo: "ZPO",
-  faq: "FAQ",
+  faq: "Časté dotazy (FAQ)",
   gdpr: "Zásady osobních údajů",
   kontakt: "Kontakt",
   kontejnery: "Kontejnery",

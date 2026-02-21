@@ -17,7 +17,7 @@ export function estimatePrice(input: {
   const rentalDays = Math.max(1, input.rentalDays);
   const basePriceCzk = Math.max(0, Math.round(input.basePriceCzk));
   const base = basePriceCzk * input.containerCount * rentalDays;
-  // Keep the online estimate aligned with the public container price list row.
+  // Keep the web estimate aligned with the public container price list row.
   const transport = 0;
 
   let surchargePerDay = 0;

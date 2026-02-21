@@ -18,7 +18,7 @@ export function FaqSection(props: FaqSectionProps) {
     >
       <div className="space-y-3">
         <span className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-300">
-          FAQ
+          Časté dotazy
         </span>
         <h2 className="text-3xl font-bold">{props.title}</h2>
         {props.description ? <p className="max-w-4xl text-zinc-300">{props.description}</p> : null}

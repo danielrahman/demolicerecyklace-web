@@ -13,7 +13,7 @@ const values = [
   },
   {
     title: "Ruční kontrola termínů",
-    description: "Každou online objednávku finálně potvrzuje operátor podle reálné kapacity.",
+    description: "Každou objednávku přes web finálně potvrzuje operátor podle reálné kapacity.",
   },
   {
     title: "Provozní praxe",
@@ -29,7 +29,7 @@ const services = [
   {
     title: "Kontejnerová doprava",
     description:
-      "Online objednávka 3m³ kontejneru s ověřením PSČ, jasnými pravidly odpadu a ručním potvrzením termínu.",
+      "Objednávka kontejneru 3 m³ přes web s ověřením PSČ, jasnými pravidly odpadu a ručním potvrzením termínu.",
     href: "/kontejnery/objednat",
     cta: "Objednat kontejner",
   },
@@ -138,8 +138,8 @@ export default async function ONasPage() {
         <ul className="mt-4 space-y-2 text-zinc-300">
           <li>- Provozovatel: {SITE_META.companyName}</li>
           <li>- IČZ: {CONTACT.icz}</li>
-          <li>- Ceník a pravidla odpadu dostupné online i v dokumentech ke stažení</li>
-          <li>- Ruční potvrzení termínu operátorem u online objednávek</li>
+          <li>- Ceník a pravidla odpadu dostupné na webu i v dokumentech ke stažení</li>
+          <li>- Ruční potvrzení termínu operátorem u objednávek přes web</li>
         </ul>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/dokumenty" className={ui.buttonSecondary}>
@@ -154,7 +154,7 @@ export default async function ONasPage() {
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
         <h2 className="text-2xl font-bold">Chcete řešit konkrétní zakázku?</h2>
         <p className="mt-2 max-w-3xl text-zinc-300">
-          Nejjistější cesta je krátký hovor s dispečinkem. U kontejnerů můžete objednávku založit online a termín pak
+          Nejjistější cesta je krátký hovor s dispečinkem. U kontejnerů můžete objednávku založit přes web a termín pak
           ručně potvrdíme podle kapacity.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">

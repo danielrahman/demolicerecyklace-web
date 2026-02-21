@@ -1,32 +1,32 @@
 export const CONTAINER_HOW_IT_WORKS = [
   {
-    title: "Zadáte adresu a PSČ",
-    description: "Hned ověříme, zda obsluhujeme danou lokalitu v Praze nebo Středočeském kraji.",
+    title: "Vyplníte adresu a PSČ",
+    description: "Okamžitě ověříme, zda do vaší lokality doručujeme v Praze nebo ve Středočeském kraji.",
   },
   {
     title: "Vyberete typ odpadu",
-    description: "Dostanete jasné upozornění, co do kontejneru patří a co nepatří.",
+    description: "Hned uvidíte, co do kontejneru patří a co do něj nepatří.",
   },
   {
     title: "Zadáte požadovaný termín",
-    description: "Vyberete datum, časové okno a umístění kontejneru.",
+    description: "Vyberete datum, časové okno a místo, kam chcete kontejner přistavit.",
   },
   {
     title: "Doplníte kontakt a odešlete",
-    description: "Objednávku přijmeme e-mailem a operátor termín potvrdí ručně.",
+    description: "Objednávku přijmeme a operátor vám potvrdí přesný termín telefonicky nebo e-mailem.",
   },
 ] as const;
 
 export const CONTAINER_TRUST_POINTS = [
   "Ruční potvrzení každého termínu operátorem",
-  "Jasná pravidla odpadu přímo na webu, ne jen v PDF",
-  "Transparentní ceník v HTML včetně poznámek a limitů",
+  "Pravidla odpadu jsou přehledně přímo na webu",
+  "Přehledný ceník včetně poznámek a limitů",
   "Kontaktní údaje, provozní doba a dokumenty veřejně dostupné",
 ] as const;
 
 export const CONTAINER_RULE_WARNINGS = [
   "Do kontejneru nepatří nebezpečný odpad, chemikálie, barvy ani azbest.",
-  "Materiál nepřeplňujte nad horní hranu kontejneru.",
-  "Směsný odpad a příměsi mohou změnit výslednou cenu.",
+  "Odpad nenakládejte nad horní hranu kontejneru.",
+  "Směsný odpad nebo příměsi mohou změnit výslednou cenu.",
   "Při umístění na veřejnou komunikaci je nutné mít příslušné povolení.",
 ] as const;

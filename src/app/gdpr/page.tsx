@@ -8,8 +8,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const marketing = await getMarketingPageContent("gdpr");
   const title = marketing?.seoTitle || "Zásady zpracování osobních údajů | Demolice Recyklace";
   const description =
-    marketing?.seoDescription ||
-    "Informace o zpracování osobních údajů při online objednávce kontejneru a souvisejících službách společnosti MINUTY a.s.";
+    marketing?.seoDescription
+    || "Informace o zpracování osobních údajů při objednávce kontejneru přes web a souvisejících službách společnosti MINUTY a.s.";
 
   return createPageMetadata({
     title,
@@ -35,7 +35,7 @@ export default async function GdprPage() {
         <h2 className="text-2xl font-bold">1. Kdo je správce osobních údajů</h2>
         <p className="text-zinc-300">
           Správcem osobních údajů je {SITE_META.companyName}, se sídlem {CONTACT.operatorAddressLine}. Provozujeme
-          služby pronájmu kontejnerů (3m³), demolice a recyklace.
+          služby pronájmu kontejnerů (3 m³), demolice a recyklace.
         </p>
       </section>
 

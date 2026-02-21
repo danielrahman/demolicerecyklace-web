@@ -123,7 +123,7 @@ export function AdminOrderLocationEditor({
     <section className={cx(ui.card, "p-4 sm:p-5")}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-zinc-100">Lokalita a přesný pin</h2>
+          <h2 className="text-xl font-semibold text-zinc-100">Lokalita a přesný bod na mapě</h2>
           <p className="mt-1 text-sm text-zinc-400">Adresa přistavení a přesná poloha kontejneru na mapě.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -202,11 +202,11 @@ export function AdminOrderLocationEditor({
                   />
                 </label>
               </div>
-              <p className="mt-3 text-xs text-zinc-500">Při posunutí pinu se adresa doplní automaticky podle mapy.</p>
+              <p className="mt-3 text-xs text-zinc-500">Při posunutí bodu na mapě se adresa doplní automaticky.</p>
             </div>
 
             <AdminOrderPinMap
-              title="Přesný pin přistavení"
+              title="Přesný bod přistavení na mapě"
               address={editingAddress}
               initialPin={currentPin}
               inputTargets={[{ latName: "pinLat", lngName: "pinLng", formId }]}

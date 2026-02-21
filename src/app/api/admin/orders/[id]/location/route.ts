@@ -67,14 +67,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const hasPinInput = pinLatRaw.length > 0 || pinLngRaw.length > 0;
   if (hasPinInput) {
     if (!pinLatRaw || !pinLngRaw) {
-      return NextResponse.json({ error: "Neplatný pin lokality." }, { status: 400 });
+      return NextResponse.json({ error: "Neplatný bod na mapě lokality." }, { status: 400 });
     }
 
     const pinLat = Number(pinLatRaw);
     const pinLng = Number(pinLngRaw);
     const hasValidRange = Number.isFinite(pinLat) && Number.isFinite(pinLng) && Math.abs(pinLat) <= 90 && Math.abs(pinLng) <= 180;
     if (!hasValidRange) {
-      return NextResponse.json({ error: "Neplatný pin lokality." }, { status: 400 });
+      return NextResponse.json({ error: "Neplatný bod na mapě lokality." }, { status: 400 });
     }
 
     pinLocation = {

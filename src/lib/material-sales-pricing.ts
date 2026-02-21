@@ -1,9 +1,9 @@
 import type { CmsPricingRow } from "@/lib/cms/mappers";
 
-export const MATERIAL_SALES_MARKER_INFO_TEXT = "Tento materiál je nutné předem ověřit telefonicky.";
+export const MATERIAL_SALES_MARKER_INFO_TEXT = "Tento materiál je potřeba předem ověřit telefonicky.";
 
 export const MATERIAL_SALES_NOTES = [
-  "Položky označené ikonou info je nutné předem ověřit telefonicky.",
+  "Položky označené ikonou i je potřeba předem ověřit telefonicky.",
   "Materiály označené A/B/C jsou v cenovém rozpětí dle kvality vstupního materiálu.",
 ] as const;
 

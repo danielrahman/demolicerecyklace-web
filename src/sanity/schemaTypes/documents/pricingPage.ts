@@ -2,18 +2,18 @@ import { defineArrayMember, defineField, defineType } from "sanity";
 
 export const pricingPage = defineType({
   name: "pricingPage",
-  title: "Cenik stranka",
+  title: "Stránka ceník",
   type: "document",
   fields: [
-    defineField({ name: "introTitle", title: "Uvodni nadpis", type: "string", validation: (rule) => rule.required() }),
+    defineField({ name: "introTitle", title: "Úvodní nadpis", type: "string", validation: (rule) => rule.required() }),
     defineField({
       name: "introDescription",
-      title: "Uvodni popis",
+      title: "Úvodní popis",
       type: "text",
       rows: 3,
       validation: (rule) => rule.required(),
     }),
-    defineField({ name: "sourcePdfUrl", title: "URL puvodniho PDF", type: "string", validation: (rule) => rule.required() }),
+    defineField({ name: "sourcePdfUrl", title: "URL původního PDF", type: "string", validation: (rule) => rule.required() }),
     defineField({
       name: "containerSectionTitle",
       title: "Nadpis sekce kontejnery",
@@ -27,55 +27,55 @@ export const pricingPage = defineType({
       rows: 3,
       validation: (rule) => rule.required(),
     }),
-    defineField({ name: "containerLimitNote", title: "Poznamka k limitu", type: "string", validation: (rule) => rule.required() }),
+    defineField({ name: "containerLimitNote", title: "Poznámka k limitu", type: "string", validation: (rule) => rule.required() }),
     defineField({
       name: "containerPricing",
-      title: "Cenik kontejneru",
+      title: "Ceník kontejnerů",
       type: "array",
       of: [defineArrayMember({ type: "pricingRow" })],
       validation: (rule) => rule.required().min(1),
     }),
-    defineField({ name: "inertMaterialsTitle", title: "Nadpis inertni materialy", type: "string", validation: (rule) => rule.required() }),
-    defineField({ name: "inertMaterialsSubtitle", title: "Podnadpis inertni materialy", type: "string" }),
+    defineField({ name: "inertMaterialsTitle", title: "Nadpis inertní materiály", type: "string", validation: (rule) => rule.required() }),
+    defineField({ name: "inertMaterialsSubtitle", title: "Podnadpis inertní materiály", type: "string" }),
     defineField({
       name: "inertMaterialsPricing",
-      title: "Cenik inertnich materialu",
+      title: "Ceník inertních materiálů",
       type: "array",
       of: [defineArrayMember({ type: "pricingRow" })],
       validation: (rule) => rule.required().min(1),
     }),
-    defineField({ name: "materialSalesTitle", title: "Nadpis prodej materialu", type: "string", validation: (rule) => rule.required() }),
+    defineField({ name: "materialSalesTitle", title: "Nadpis prodej materiálu", type: "string", validation: (rule) => rule.required() }),
     defineField({
       name: "materialSalesPricing",
-      title: "Cenik prodeje materialu",
+      title: "Ceník prodeje materiálu",
       type: "array",
       of: [defineArrayMember({ type: "pricingRow" })],
       validation: (rule) => rule.required().min(1),
     }),
-    defineField({ name: "mobileRecyclingTitle", title: "Nadpis mobilni recyklace", type: "string", validation: (rule) => rule.required() }),
+    defineField({ name: "mobileRecyclingTitle", title: "Nadpis mobilní recyklace", type: "string", validation: (rule) => rule.required() }),
     defineField({
       name: "mobileRecyclingPricing",
-      title: "Cenik mobilni recyklace",
+      title: "Ceník mobilní recyklace",
       type: "array",
       of: [defineArrayMember({ type: "pricingRow" })],
       validation: (rule) => rule.required().min(1),
     }),
-    defineField({ name: "machineSectionTitle", title: "Nadpis pronajem stroju", type: "string", validation: (rule) => rule.required() }),
-    defineField({ name: "machineSectionSubtitle", title: "Podnadpis pronajem stroju", type: "text", rows: 3 }),
+    defineField({ name: "machineSectionTitle", title: "Nadpis pronájem strojů", type: "string", validation: (rule) => rule.required() }),
+    defineField({ name: "machineSectionSubtitle", title: "Podnadpis pronájem strojů", type: "text", rows: 3 }),
     defineField({
       name: "machinePricing",
-      title: "Polozky pronajmu stroju",
+      title: "Položky pronájmu strojů",
       type: "array",
       validation: (rule) => rule.required().min(1),
       of: [
         defineArrayMember({
           type: "object",
           fields: [
-            defineField({ name: "machine", title: "Nazev stroje", type: "string", validation: (rule) => rule.required() }),
+            defineField({ name: "machine", title: "Název stroje", type: "string", validation: (rule) => rule.required() }),
             defineField({ name: "specification", title: "Specifikace", type: "string", validation: (rule) => rule.required() }),
             defineField({ name: "price", title: "Cena", type: "string", validation: (rule) => rule.required() }),
-            defineField({ name: "note", title: "Poznamka", type: "string" }),
-            defineField({ name: "image", title: "Obrazek", type: "image", options: { hotspot: true } }),
+            defineField({ name: "note", title: "Poznámka", type: "string" }),
+            defineField({ name: "image", title: "Obrázek", type: "image", options: { hotspot: true } }),
             defineField({
               name: "imageAlt",
               title: "Alt text",
@@ -85,7 +85,7 @@ export const pricingPage = defineType({
                   const parent = context.parent as { image?: unknown } | undefined;
 
                   if (parent?.image && !value) {
-                    return "Alt text je povinny, pokud je vyplneny obrazek.";
+                    return "Alt text je povinný, pokud je vyplněný obrázek.";
                   }
 
                   return true;
@@ -102,7 +102,7 @@ export const pricingPage = defineType({
         }),
       ],
     }),
-    defineField({ name: "footerNote", title: "Poznamka pod cenikem", type: "text", rows: 4, validation: (rule) => rule.required() }),
+    defineField({ name: "footerNote", title: "Poznámka pod ceníkem", type: "text", rows: 4, validation: (rule) => rule.required() }),
   ],
   preview: {
     prepare: () => ({

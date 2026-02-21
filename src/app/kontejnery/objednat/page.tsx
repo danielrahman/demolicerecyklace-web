@@ -19,7 +19,7 @@ export default async function ObjednatPage() {
   return (
     <div className="space-y-3 pb-5">
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-        <h1 className="text-3xl font-bold">Objednávka kontejneru 3m³</h1>
+        <h1 className="text-3xl font-bold">Objednávka kontejneru 3 m³</h1>
         <p className="mt-2 text-zinc-300">Vyplňte adresu, vyberte termín a odešlete objednávku. Termín potvrzuje operátor ručně.</p>
       </section>
       <Suspense

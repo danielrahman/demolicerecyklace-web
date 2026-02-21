@@ -19,14 +19,14 @@ export const siteSettings = defineType({
     }),
     defineField({
       name: "metaTitle",
-      title: "SEO title (globální)",
+      title: "SEO titulek (globální)",
       type: "string",
-      description: "Výchozí title pro layout, pokud stránka nemá vlastní metadata.",
+      description: "Výchozí titulek pro layout, pokud stránka nemá vlastní metadata.",
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: "metaDescription",
-      title: "SEO description (globální)",
+      title: "SEO popis (globální)",
       type: "text",
       rows: 3,
       validation: (rule) => rule.required(),
@@ -82,7 +82,7 @@ export const siteSettings = defineType({
     }),
     defineField({
       name: "headerLinks",
-      title: "Linky v headeru",
+      title: "Odkazy v hlavičce",
       type: "array",
       of: [defineArrayMember({ type: "navLink" })],
       validation: (rule) => rule.required().min(1),

@@ -12,11 +12,11 @@ import { cx, ui } from "@/lib/ui";
 
 function statusLabel(status: CookieConsentStatus | null) {
   if (status === "accepted") {
-    return "Analytické cookies jsou povolené.";
+    return "Analytické soubory cookies jsou povolené.";
   }
 
   if (status === "rejected") {
-    return "Analytické cookies jsou odmítnuté.";
+    return "Analytické soubory cookies jsou odmítnuté.";
   }
 
   return "Volba ještě nebyla nastavena.";
@@ -43,14 +43,14 @@ export function CookieConsentSettings() {
       <p className="text-sm text-zinc-300">{statusLabel(status)}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className={cx(ui.buttonPrimary, "min-w-44")} onClick={() => writeCookieConsent("accepted")}>
-          Povolit analytiku
+          Povolit analytické cookies
         </button>
         <button
           type="button"
           className={cx(ui.buttonSecondary, "min-w-44")}
           onClick={() => writeCookieConsent("rejected")}
         >
-          Odmítnout analytiku
+          Odmítnout analytické cookies
         </button>
       </div>
     </div>

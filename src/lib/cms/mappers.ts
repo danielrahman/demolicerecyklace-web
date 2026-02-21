@@ -281,21 +281,21 @@ export type MarketingPageContent = {
 
 export const fallbackHomePageContent: HomePageContent = {
   heroEyebrow: `Demolice Recyklace | ${SERVICE_AREA.regionsLabel}`,
-  heroTitle: "Kontejnery, demolice i recyklace na jednom místě.",
+  heroTitle: "Kontejner, demolice i recyklace bez složitého vyřizování.",
   heroDescription:
-    "Na webu najdete přehled služeb, ceny i podmínky bez složitého hledání. Pro kontejner je k dispozici online objednávka, aktuálně pro velikost 3m³.",
+    "Na jednom místě najdete služby, ceník i podmínky. Kontejner 3 m³ objednáte přes web během pár minut a termín vám potvrdí operátor.",
   quickFacts: [
     `Oblast: ${SERVICE_AREA.regionsLabel}`,
-    "Online objednávka kontejneru",
+    "Objednávka kontejneru přes web",
     "Termín potvrzuje operátor",
   ],
   serviceCards: [
     {
       title: "Kontejnery",
-      subtitle: "Rychlé online objednání",
+      subtitle: "Objednávka přes web za pár minut",
       description:
-        "Objednávku založíte během několika minut. Hned ověříme lokalitu a po odeslání vám termín potvrdíme telefonicky nebo e-mailem.",
-      points: ["Jasný ceník a podmínky", "Co patří a nepatří do odpadu", "Pohodlné vyplnění i na mobilu"],
+        "Vyplníte adresu, vyberete odpad a odešlete objednávku. Lokalitu ověříme hned a přesný termín potvrdíme telefonicky nebo e-mailem.",
+      points: ["Přehledný ceník a podmínky", "Jasná pravidla odpadu", "Jednoduché vyplnění i na telefonu"],
       href: "/kontejnery",
       cta: "Přejít na kontejnery",
       imageUrl: "/photos/homepage/service-kontejnery.jpg",
@@ -305,7 +305,7 @@ export const fallbackHomePageContent: HomePageContent = {
       title: "Demolice",
       subtitle: "Kompletní demoliční servis",
       description:
-        "Od vstupní konzultace přes obhlídku až po realizaci a odvoz materiálu. Zakázku vedeme tak, aby byl postup bezpečný a plynulý.",
+        "Od úvodní konzultace přes obhlídku až po samotné práce a odvoz materiálu. Postup vedeme bezpečně a bez zbytečných prostojů.",
       points: ["Postupné bourání", "Třídění frakcí", "Návazná logistika odpadu"],
       href: "/demolice",
       cta: "Poptat demolici",
@@ -316,8 +316,8 @@ export const fallbackHomePageContent: HomePageContent = {
       title: "Recyklace a materiál",
       subtitle: "Příjem, zpracování, prodej",
       description:
-        "V recyklačním středisku přijímáme stavební materiál, třídíme ho a připravujeme k dalšímu využití.",
-      points: ["Jasné podmínky příjmu", "Provozní informace na jednom místě", "Návazný prodej materiálu"],
+        "Ve středisku přijímáme stavební materiál, třídíme ho a připravujeme k dalšímu využití nebo prodeji.",
+      points: ["Jasné podmínky příjmu", "Přehledné provozní informace", "Dodání i osobní odběr materiálu"],
       href: "/recyklace",
       cta: "Zobrazit podmínky",
       imageUrl: "/photos/homepage/service-recyklace.jpg",
@@ -327,33 +327,33 @@ export const fallbackHomePageContent: HomePageContent = {
   processSteps: [
     {
       title: "Konzultace a zadání",
-      text: "Řeknete nám, co potřebujete řešit: kontejner, demolici nebo recyklaci.",
+      text: "Řeknete nám, zda potřebujete kontejner, demolici nebo recyklaci.",
     },
     {
       title: "Ověření podmínek",
-      text: "Potvrdíme lokalitu, typ materiálu, dostupnost techniky a navrhneme termín.",
+      text: "Prověříme lokalitu, typ materiálu, dostupnost techniky a navrhneme termín.",
     },
     {
       title: "Realizace",
-      text: "Zakázku provedeme podle domluveného rozsahu a provozního režimu.",
+      text: "Práci provedeme podle domluveného rozsahu a provozních podmínek.",
     },
     {
       title: "Odvoz, recyklace a předání",
-      text: "Materiál následně vytřídíme, odvezeme a připravíme k dalšímu využití.",
+      text: "Materiál vytřídíme, odvezeme a předáme podle domluveného postupu.",
     },
   ],
   trustSignals: [
-    "Jedno číslo pro kontejnery, demolici i recyklaci.",
-    "Předem víte orientační cenu i základní podmínky.",
+    "Jedno kontaktní místo pro kontejnery, demolici i recyklaci.",
+    "Dopředu víte orientační cenu i hlavní podmínky.",
     "Na standardní poptávku reagujeme do 1 pracovního dne.",
     `Působíme v oblasti ${SERVICE_AREA.regionsLabel}.`,
   ],
 };
 
 export const fallbackContainersPageContent: ContainersPageContent = {
-  heroTitle: "Objednejte kontejner jednoduše online",
+  heroTitle: "Objednejte kontejner jednoduše přes web",
   heroDescription:
-    "Začněte adresou, vyberte typ odpadu a odešlete objednávku. Aktuálně objednáte kontejner 3m³. Termín vždy potvrzuje operátor ručně.",
+    "Začněte adresou, vyberte typ odpadu a odešlete objednávku. Aktuálně objednáte kontejner 3 m³. Přesný termín vždy potvrzuje operátor.",
   heroImageUrl: "/legacy/current-web/cache_template_bg-image__1239x698_fit_to_width_1521724840_img-2627.jpg",
   heroImageAlt: "Kontejnerový vůz v provozu",
   howItWorks: CONTAINER_HOW_IT_WORKS.map((item) => ({ ...item })),
@@ -363,10 +363,10 @@ export const fallbackContainersPageContent: ContainersPageContent = {
 
 export const fallbackPricingPageContent: PricingPageContent = {
   introTitle: "Kompletní ceník služeb",
-  introDescription: "Přehled je převzatý z aktuálního ceníku 2026 a převedený do HTML kvůli přehlednosti. Ceny jsou bez DPH.",
+  introDescription: "Přehled vychází z aktuálního ceníku 2026 a je převedený do čitelné podoby na webu. Ceny jsou uvedené bez DPH.",
   sourcePdfUrl: "/documents/cenik-2026.pdf",
-  containerSectionTitle: "Ceník kontejnerů 3m³",
-  containerSectionDescription: "Ceny podle typu odpadu. Po odeslání objednávky vždy potvrzujeme termín operátorem.",
+  containerSectionTitle: "Ceník kontejnerů 3 m³",
+  containerSectionDescription: "Ceny jsou podle typu odpadu. Po odeslání objednávky vždy potvrzujeme termín operátorem.",
   containerLimitNote: "Max 4 t, finální kontrola při převzetí.",
   containerPricing: CONTAINER_3M3_PRICING.map((item) => ({ ...item })),
   inertMaterialsTitle: "Ukládka inertních materiálů",
@@ -379,29 +379,28 @@ export const fallbackPricingPageContent: PricingPageContent = {
   machineSectionTitle: "Pronájem strojů",
   machineSectionSubtitle: "Fotky strojů jsou pro náhled kombinované z aktuálního webu a veřejně dostupných ilustračních zdrojů.",
   machinePricing: MACHINE_RENTAL_PRICING.map((item) => ({ ...item })),
-  footerNote:
-    "Poznámky k ceníku: ceny jsou uvedené bez DPH 21 %. U nejasností nebo atypických dodávek kontaktujte dispečink.",
+  footerNote: "Poznámka k ceníku: ceny jsou uvedené bez DPH 21 %. U nejasností nebo atypických dodávek kontaktujte dispečink.",
 };
 
 export const fallbackFaqContent: FaqContentMap = {
   containers: {
     key: "containers",
     title: "Kontejnery",
-    description: "Objednávka, pravidla odpadu a potvrzení termínu.",
+    description: "Objednávka přes web, pravidla odpadu a potvrzení termínu.",
     order: 1,
     items: CONTAINER_FAQ,
   },
   demolition: {
     key: "demolition",
     title: "Demolice",
-    description: "Nejčastější otázky k poptávce, rozsahu prací a návazné logistice.",
+    description: "Nejčastější otázky k poptávce, rozsahu prací a návaznému odvozu.",
     order: 2,
     items: DEMOLITION_FAQ,
   },
   recycling: {
     key: "recycling",
     title: "Recyklace a materiál",
-    description: "Příjem materiálu, podmínky přejímky a dostupnost navazujících služeb.",
+    description: "Příjem materiálu, podmínky přejímky a navazující služby.",
     order: 3,
     items: RECYCLING_FAQ,
   },
@@ -410,8 +409,8 @@ export const fallbackFaqContent: FaqContentMap = {
 export const fallbackSiteSettingsContent: SiteSettingsContent = {
   brandName: SITE_META.brandName,
   companyName: SITE_META.companyName,
-  metaTitle: "Demolice Recyklace - Kontejnery 3m³",
-  metaDescription: "Demolice, recyklace a online objednávka kontejneru 3m³ pro Prahu a Středočeský kraj.",
+  metaTitle: "Demolice Recyklace - Kontejnery 3 m³",
+  metaDescription: "Demolice, recyklace a objednávka kontejneru 3 m³ přes web pro Prahu a Středočeský kraj.",
   regionsLabel: SERVICE_AREA.regionsLabel,
   phone: CONTACT.phone,
   phoneHref: CONTACT.phoneHref,
@@ -445,7 +444,7 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     slug: "demolice",
     heroTitle: "Demolice s jasným postupem a navazující recyklací",
     heroDescription:
-      "Zajišťujeme demoliční práce od menších objektů po technicky náročnější realizace. Zakázku vedeme od prvního zadání přes obhlídku až po odvoz a zpracování materiálu.",
+      "Zajišťujeme demoliční práce od menších objektů po náročnější realizace. Zakázku vedeme od zadání přes obhlídku až po odvoz a zpracování materiálu.",
     seoTitle: "Demolice | Demolice Recyklace",
     seoDescription: "Demolice objektů a navazující recyklace materiálu pro Prahu a Středočeský kraj.",
   },
@@ -464,7 +463,7 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     title: "Prodej materiálu",
     slug: "prodej-materialu",
     heroTitle: "Prodej materiálu",
-    heroDescription: "Dodáváme písky, kamenivo i recykláty pro stavby a terénní úpravy.",
+    heroDescription: "Dodáváme písky, kamenivo i recykláty pro stavby a terénní úpravy včetně domluvy termínu dodání.",
     seoTitle: "Prodej materiálu | Demolice Recyklace",
     seoDescription: "Přehled stavebních materiálů, recyklátů a cen pro dodání i odběr.",
   },
@@ -473,7 +472,7 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     title: "Technika",
     slug: "technika",
     heroTitle: "Technika",
-    heroDescription: "Přehled techniky pro demolice, recyklaci i zemní práce.",
+    heroDescription: "Přehled techniky pro demolice, recyklaci i zemní práce s možností domluvy konkrétního nasazení.",
     seoTitle: "Technika | Demolice Recyklace",
     seoDescription: "Strojní technika pro demolice, recyklaci a návazné práce.",
   },
@@ -482,7 +481,7 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     title: "Realizace",
     slug: "realizace",
     heroTitle: "Realizace",
-    heroDescription: "Výběr referenčních zakázek z oblasti demolice, recyklace a kontejnerové dopravy.",
+    heroDescription: "Výběr realizovaných zakázek z oblasti demolice, recyklace a kontejnerové dopravy.",
     seoTitle: "Realizace | Demolice Recyklace",
     seoDescription: "Ukázky realizovaných zakázek v oblasti demolice, recyklace a kontejnerů.",
   },
@@ -491,7 +490,7 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     title: "O nás",
     slug: "o-nas",
     heroTitle: "O nás",
-    heroDescription: "Prakticky zaměřený servis pro demolice, recyklaci, kontejnerovou dopravu a prodej materiálu.",
+    heroDescription: "Prakticky zaměřené služby pro demolice, recyklaci, kontejnerovou dopravu a prodej materiálu.",
     seoTitle: "O nás | Demolice Recyklace",
     seoDescription: "Informace o společnosti, službách a způsobu spolupráce.",
   },
@@ -500,8 +499,7 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     title: "Kontakt",
     slug: "kontakt",
     heroTitle: "Kontakt",
-    heroDescription:
-      "Nejrychlejší cesta je dispečink. Pomůžeme s objednávkou kontejneru, poptávkou demolice i recyklací.",
+    heroDescription: "Nejrychlejší cesta je dispečink. Pomůžeme s objednávkou kontejneru, poptávkou demolice i recyklací.",
     seoTitle: "Kontakt | Demolice Recyklace",
     seoDescription: "Kontaktní údaje, provozní doba a dostupnost služeb.",
   },
@@ -519,7 +517,7 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     title: "Obchodní podmínky",
     slug: "obchodni-podminky",
     heroTitle: "Obchodní podmínky",
-    heroDescription: "Obchodní podmínky služby pronájmu a odvozu kontejneru 3m³.",
+    heroDescription: "Obchodní podmínky služby pronájmu a odvozu kontejneru 3 m³.",
     seoTitle: "Obchodní podmínky | Demolice Recyklace",
     seoDescription: "Podmínky poskytování služeb společnosti MINUTY a.s.",
   },

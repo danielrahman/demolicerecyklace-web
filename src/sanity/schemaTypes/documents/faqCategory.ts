@@ -7,7 +7,7 @@ export const faqCategory = defineType({
   fields: [
     defineField({
       name: "key",
-      title: "Interni klic",
+      title: "Interní klíč",
       type: "string",
       options: {
         list: [
@@ -20,10 +20,10 @@ export const faqCategory = defineType({
     }),
     defineField({ name: "title", title: "Nadpis", type: "string", validation: (rule) => rule.required() }),
     defineField({ name: "description", title: "Popis", type: "text", rows: 3 }),
-    defineField({ name: "order", title: "Poradi", type: "number", validation: (rule) => rule.required() }),
+    defineField({ name: "order", title: "Pořadí", type: "number", validation: (rule) => rule.required() }),
     defineField({
       name: "items",
-      title: "Polozky",
+      title: "Položky",
       type: "array",
       of: [defineArrayMember({ type: "faqItem" })],
       validation: (rule) => rule.required().min(1),

@@ -246,7 +246,7 @@ function asOptionalNumber(value: unknown) {
 
 function snapshotRows(snapshot?: Record<string, unknown>): DetailRow[] {
   if (!snapshot) {
-    return [{ label: "Snapshot", value: "Neposkytnut" }];
+    return [{ label: "Souhrn", value: "Neposkytnuto" }];
   }
 
   const addressParts = [
@@ -358,7 +358,7 @@ export function buildInternalNewOrderTemplate(
     { label: "Telefon", value: order.phone },
     { label: "E-mail", value: order.email },
     { label: "Adresa", value: orderAddressLine(order) },
-    { label: "Pin", value: pinLocationLine(order) },
+    { label: "Bod na mapě", value: pinLocationLine(order) },
     { label: "Typ odpadu", value: wasteTypeLabel },
     { label: "Kontejner", value: `${order.containerSizeM3}m³, počet ${order.containerCount}` },
     { label: "Doba pronájmu", value: formatCzechDayCount(order.rentalDays) },
@@ -375,7 +375,7 @@ export function buildInternalNewOrderTemplate(
     { label: "Požadovaný termín", value: requestedTermLine(order) },
     { label: "Orientační cena", value: formatCurrency(order.priceEstimate.total), emphasize: true },
     { label: "Poznámka zákazníka", value: optionalText(order.note, "bez poznámky") },
-    { label: "Callback poznámka", value: optionalText(order.callbackNote, "bez poznámky") },
+    { label: "Poznámka ke zpětnému zavolání", value: optionalText(order.callbackNote, "bez poznámky") },
   );
 
   const text =
@@ -537,10 +537,10 @@ export function buildInternalStatusTemplate(
 }
 
 export function buildCallbackRequestTemplate(callbackRequest: CallbackRequest): EmailTemplatePayload {
-  const subject = `Nový callback lead ${callbackRequest.id}`;
+  const subject = `Nový požadavek na zpětné zavolání ${callbackRequest.id}`;
 
   const leadRows: DetailRow[] = [
-    { label: "Lead ID", value: callbackRequest.id, emphasize: true },
+    { label: "ID požadavku", value: callbackRequest.id, emphasize: true },
     { label: "Vytvořeno", value: formatDateTimeCz(callbackRequest.createdAt) },
     { label: "Telefon", value: callbackRequest.phone, emphasize: true },
     { label: "Jméno", value: optionalText(callbackRequest.name) },
@@ -552,17 +552,17 @@ export function buildCallbackRequestTemplate(callbackRequest: CallbackRequest): 
   const callbackSnapshotRows = snapshotRows(callbackRequest.wizardSnapshot);
 
   const text =
-    `Nový callback lead ${callbackRequest.id}\n` +
+    `Nový požadavek na zpětné zavolání ${callbackRequest.id}\n` +
     `${detailRowsToText(leadRows)}\n` +
     `\n` +
-    `Snapshot z formuláře:\n` +
+    `Souhrn z formuláře:\n` +
     `${detailRowsToText(callbackSnapshotRows)}\n` +
     `\n` +
     `Interní notifikace ${SITE_META.companyName}.`;
 
   const html = renderLayout({
-    preheader: `Nový callback lead ${callbackRequest.id}`,
-    headline: `Nový callback lead ${callbackRequest.id}`,
+    preheader: `Nový požadavek na zpětné zavolání ${callbackRequest.id}`,
+    headline: `Nový požadavek na zpětné zavolání ${callbackRequest.id}`,
     intro: "Přišel nový požadavek na zpětné zavolání.",
     sections: [
       {
@@ -570,7 +570,7 @@ export function buildCallbackRequestTemplate(callbackRequest: CallbackRequest): 
         bodyHtml: renderDetailRows(leadRows),
       },
       {
-        title: "Snapshot z formuláře",
+        title: "Souhrn z formuláře",
         bodyHtml: renderDetailRows(callbackSnapshotRows),
       },
     ],

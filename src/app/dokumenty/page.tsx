@@ -14,7 +14,7 @@ type DocumentLink = {
 const docs: DocumentLink[] = [
   {
     title: "iČP",
-    description: "Interní/legislativní dokument provozovny.",
+    description: "Legislativní dokument provozovny.",
     href: "/dokumenty/icp",
   },
   {
@@ -24,7 +24,7 @@ const docs: DocumentLink[] = [
   },
   {
     title: "Ceník 2026 (PDF)",
-    description: "Originální PDF verze kompletního ceníku.",
+    description: "Původní verze kompletního ceníku ve formátu PDF.",
     href: "/documents/cenik-2026.pdf",
     external: true,
   },
@@ -32,7 +32,7 @@ const docs: DocumentLink[] = [
 
 export const metadata: Metadata = createPageMetadata({
   title: "Dokumenty ke stažení | Demolice Recyklace",
-  description: "Přehled dokumentů ke stažení včetně iČP, ZPO a PDF ceníku.",
+  description: "Přehled dokumentů ke stažení včetně iČP, ZPO a ceníku ve formátu PDF.",
   canonicalPath: "/dokumenty",
 });
 

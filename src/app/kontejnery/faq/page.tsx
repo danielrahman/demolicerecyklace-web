@@ -8,9 +8,9 @@ import { CONTACT } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "FAQ kontejnery | Demolice Recyklace",
+  title: "Časté dotazy (FAQ) ke kontejnerům | Demolice Recyklace",
   description:
-    "Nejčastější dotazy k objednávce kontejneru, pravidlům odpadu a potvrzení termínu přistavení.",
+    "Nejčastější dotazy k objednávce kontejneru přes web, pravidlům odpadu a potvrzení termínu přistavení.",
   canonicalPath: "/kontejnery/faq",
 });
 
@@ -20,16 +20,16 @@ export default async function KontejneryFaqPage() {
   return (
     <div className="space-y-8 pb-8">
       <header className="space-y-3">
-        <h1 className="text-4xl font-bold">FAQ - Kontejnery</h1>
+        <h1 className="text-4xl font-bold">Časté dotazy - kontejnery</h1>
         <p className="max-w-4xl text-zinc-300">
-          Nejčastější dotazy k online objednávce, pravidlům odpadu a potvrzení termínu. Pokud tu nenajdete odpověď,
+          Nejčastější dotazy k objednávce přes web, pravidlům odpadu a potvrzení termínu. Pokud tu nenajdete odpověď,
           zavolejte nám.
         </p>
       </header>
 
       <FaqSection
         title="Kontejnery: nejčastější dotazy"
-        description="Vše důležité k online objednávce, podmínkám odpadu a potvrzení termínu."
+        description="Vše důležité k objednávce přes web, podmínkám odpadu a potvrzení termínu."
         items={faqContent.containers.items}
         columns={1}
       />

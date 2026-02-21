@@ -11,7 +11,7 @@ import { cx, ui } from "@/lib/ui";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Demolice Recyklace - Praha a Středočeský kraj",
-  description: "Demolice, recyklace a online objednávka kontejneru pro Prahu a Středočeský kraj.",
+  description: "Demolice, recyklace a objednávka kontejneru přes web pro Prahu a Středočeský kraj.",
   canonicalPath: "/",
 });
 
@@ -148,9 +148,9 @@ export default async function HomePage() {
       </Suspense>
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
-        <h2 className="text-2xl font-bold">Začít online, nebo rovnou zavolat?</h2>
+        <h2 className="text-2xl font-bold">Začít přes web, nebo rovnou zavolat?</h2>
         <p className="mt-2 max-w-3xl text-zinc-300">
-          Pro kontejner je nejrychlejší online objednávka. Pokud řešíte demolici, recyklaci nebo nestandardní situaci,
+          Pro kontejner je nejrychlejší objednávka přes web. Pokud řešíte demolici, recyklaci nebo nestandardní situaci,
           zavolejte a navrhneme konkrétní postup.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">

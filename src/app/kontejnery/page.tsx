@@ -23,9 +23,9 @@ export default async function KontejneryPage() {
   const containerFaq = faqContent.containers;
   const availableContainer = CONTAINER_OPTIONS.find((container) => container.available) ?? CONTAINER_OPTIONS[0];
   const comingSoonSizes = [
-    { id: "4m3-6t", label: "4m³ / 6 tun" },
-    { id: "4m3-6t-uzky", label: "4m³ / 6 tun - úzký" },
-    { id: "10m3-12t", label: "10m³ / 12 tun" },
+    { id: "4m3-6t", label: "4 m³ / 6 tun" },
+    { id: "4m3-6t-uzky", label: "4 m³ / 6 tun - úzký" },
+    { id: "10m3-12t", label: "10 m³ / 12 tun" },
   ] as const;
 
   return (
@@ -42,7 +42,7 @@ export default async function KontejneryPage() {
         <div className="containers-hero-overlay absolute inset-0" />
         <div className="relative z-10 max-w-4xl space-y-4 text-white">
           <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-accent)]">
-            Kontejnery - online objednávka
+            Kontejnery - objednávka přes web
           </p>
           <h1 className="text-4xl font-bold leading-tight sm:text-5xl">{content.heroTitle}</h1>
           <p className="text-lg text-white/85">{content.heroDescription}</p>
@@ -60,7 +60,7 @@ export default async function KontejneryPage() {
               href="/kontejnery/faq"
               className={cx(ui.buttonSecondary, "!border-white/45 !text-white hover:!border-white/60 hover:!bg-white/12")}
             >
-              FAQ kontejnerů
+              Časté dotazy (FAQ)
             </Link>
           </div>
         </div>
@@ -85,11 +85,11 @@ export default async function KontejneryPage() {
             <div className="grid gap-4 sm:grid-cols-[1fr_168px] sm:items-center">
               <div>
                 <p className="inline-flex rounded-full border border-[var(--color-accent)]/50 bg-[var(--color-accent)]/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">
-                  Dostupné online
+                  Dostupné přes web
                 </p>
                 <h2 className="mt-3 text-2xl font-bold">{availableContainer.label}</h2>
                 <p className="mt-2 text-sm text-zinc-200">
-                  Aktuálně dostupné pro online objednávku s potvrzením termínu operátorem.
+                  Aktuálně dostupné v objednávce přes web s potvrzením termínu operátorem.
                 </p>
                 <Link href="/kontejnery/objednat" className={cx(ui.buttonPrimary, "mt-4")}>
                   Objednat kontejner
@@ -98,7 +98,7 @@ export default async function KontejneryPage() {
               <div className="relative h-32 w-full overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 sm:h-28">
                 <Image
                   src="/photos/kontejnery/kontejner-zluty-01.png"
-                  alt="Žlutý kontejner 3m3"
+                  alt="Žlutý kontejner 3 m3"
                   fill
                   className="object-cover"
                 />

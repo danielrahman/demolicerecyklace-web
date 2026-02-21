@@ -48,17 +48,17 @@ const client = createClient({
 
 const quickFacts = [
   `Oblast: ${serviceAreaLabel}`,
-  "Online objednávka kontejneru",
+  "Objednávka kontejneru přes web",
   "Termín potvrzuje operátor",
 ];
 
 const homeServiceCards = [
   {
     title: "Kontejnery",
-    subtitle: "Rychlé online objednání",
+    subtitle: "Objednávka přes web za pár minut",
     description:
-      "Objednávku založíte během několika minut. Hned ověříme lokalitu a po odeslání vám termín potvrdíme telefonicky nebo e-mailem.",
-    points: ["Jasný ceník a podmínky", "Co patří a nepatří do odpadu", "Pohodlné vyplnění i na mobilu"],
+      "Vyplníte adresu, vyberete odpad a odešlete objednávku. Lokalitu ověříme hned a přesný termín potvrdíme telefonicky nebo e-mailem.",
+    points: ["Přehledný ceník a podmínky", "Jasná pravidla odpadu", "Jednoduché vyplnění i na telefonu"],
     href: "/kontejnery",
     cta: "Přejít na kontejnery",
   },
@@ -66,7 +66,7 @@ const homeServiceCards = [
     title: "Demolice",
     subtitle: "Kompletní demoliční servis",
     description:
-      "Od vstupní konzultace přes obhlídku až po realizaci a odvoz materiálu. Zakázku vedeme tak, aby byl postup bezpečný a plynulý.",
+      "Od úvodní konzultace přes obhlídku až po samotné práce a odvoz materiálu. Postup vedeme bezpečně a bez zbytečných prostojů.",
     points: ["Postupné bourání", "Třídění frakcí", "Návazná logistika odpadu"],
     href: "/demolice",
     cta: "Poptat demolici",
@@ -75,8 +75,8 @@ const homeServiceCards = [
     title: "Recyklace a materiál",
     subtitle: "Příjem, zpracování, prodej",
     description:
-      "V recyklačním středisku přijímáme stavební materiál, třídíme ho a připravujeme k dalšímu využití.",
-    points: ["Jasné podmínky příjmu", "Provozní informace na jednom místě", "Návazný prodej materiálu"],
+      "Ve středisku přijímáme stavební materiál, třídíme ho a připravujeme k dalšímu využití nebo prodeji.",
+    points: ["Jasné podmínky příjmu", "Přehledné provozní informace", "Dodání i osobní odběr materiálu"],
     href: "/recyklace",
     cta: "Zobrazit podmínky",
   },
@@ -85,25 +85,25 @@ const homeServiceCards = [
 const homeProcessSteps = [
   {
     title: "Konzultace a zadání",
-    text: "Řeknete nám, co potřebujete řešit: kontejner, demolici nebo recyklaci.",
+    text: "Řeknete nám, zda potřebujete kontejner, demolici nebo recyklaci.",
   },
   {
     title: "Ověření podmínek",
-    text: "Potvrdíme lokalitu, typ materiálu, dostupnost techniky a navrhneme termín.",
+    text: "Prověříme lokalitu, typ materiálu, dostupnost techniky a navrhneme termín.",
   },
   {
     title: "Realizace",
-    text: "Zakázku provedeme podle domluveného rozsahu a provozního režimu.",
+    text: "Práci provedeme podle domluveného rozsahu a provozních podmínek.",
   },
   {
     title: "Odvoz, recyklace a předání",
-    text: "Materiál následně vytřídíme, odvezeme a připravíme k dalšímu využití.",
+    text: "Materiál vytřídíme, odvezeme a předáme podle domluveného postupu.",
   },
 ];
 
 const homeTrustSignals = [
-  "Jedno číslo pro kontejnery, demolici i recyklaci.",
-  "Předem víte orientační cenu i základní podmínky.",
+  "Jedno kontaktní místo pro kontejnery, demolici i recyklaci.",
+  "Dopředu víte orientační cenu i hlavní podmínky.",
   "Na standardní poptávku reagujeme do 1 pracovního dne.",
   `Působíme v oblasti ${serviceAreaLabel}.`,
 ];
@@ -112,9 +112,9 @@ const homePageDoc = {
   _id: "homePage",
   _type: "homePage",
   heroEyebrow: `Demolice Recyklace | ${serviceAreaLabel}`,
-  heroTitle: "Kontejnery, demolice i recyklace na jednom místě.",
+  heroTitle: "Kontejner, demolice i recyklace bez složitého vyřizování.",
   heroDescription:
-    "Na webu najdete přehled služeb, ceny i podmínky bez složitého hledání. Pro kontejner je k dispozici online objednávka, aktuálně pro velikost 3m³.",
+    "Na jednom místě najdete služby, ceník i podmínky. Kontejner 3 m³ objednáte přes web během pár minut a termín vám potvrdí operátor.",
   quickFacts,
   serviceCards: homeServiceCards.map((card, index) => ({
     _key: `service-${index + 1}`,
@@ -130,9 +130,9 @@ const homePageDoc = {
 const containersPageDoc = {
   _id: "containersPage",
   _type: "containersPage",
-  heroTitle: "Objednejte kontejner jednoduše online",
+  heroTitle: "Objednejte kontejner jednoduše přes web",
   heroDescription:
-    "Začněte adresou, vyberte typ odpadu a odešlete objednávku. Aktuálně objednáte kontejner 3m³. Termín vždy potvrzuje operátor ručně.",
+    "Začněte adresou, vyberte typ odpadu a odešlete objednávku. Aktuálně objednáte kontejner 3 m³. Přesný termín vždy potvrzuje operátor.",
   howItWorks: CONTAINER_HOW_IT_WORKS.map((step, index) => ({
     _key: `how-${index + 1}`,
     ...step,
@@ -145,11 +145,11 @@ const pricingPageDoc = {
   _id: "pricingPage",
   _type: "pricingPage",
   introTitle: "Kompletní ceník služeb",
-  introDescription: "Přehled je převzatý z aktuálního ceníku 2026 a převedený do HTML kvůli přehlednosti. Ceny jsou bez DPH.",
+  introDescription: "Přehled vychází z aktuálního ceníku 2026 a je převedený do čitelné podoby na webu. Ceny jsou uvedené bez DPH.",
   sourcePdfUrl: "/documents/cenik-2026.pdf",
-  containerSectionTitle: "Ceník kontejnerů 3m³",
+  containerSectionTitle: "Ceník kontejnerů 3 m³",
   containerSectionDescription: "Ceny podle typu odpadu. Po odeslání objednávky vždy potvrzujeme termín operátorem.",
-  containerLimitNote: "Limit cca 4 t, finální kontrola při převzetí.",
+  containerLimitNote: "Max 4 t, finální kontrola při převzetí.",
   containerPricing: CONTAINER_3M3_PRICING.map((row, index) => ({ _key: `container-${index + 1}`, ...row })),
   inertMaterialsTitle: "Ukládka inertních materiálů",
   inertMaterialsSubtitle: "U položek je nutné doložit požadované dokumenty dle legislativy.",
@@ -168,7 +168,7 @@ const pricingPageDoc = {
     note: row.note,
   })),
   footerNote:
-    "Poznámky k ceníku: ceny jsou uvedené bez DPH 21 %, materiály musí být bez příměsí a při ukládce odpadu je nutné doložit požadované podklady (ZPO, případně atesty). U nejasností kontaktujte dispečink.",
+    "Poznámka k ceníku: ceny jsou uvedené bez DPH 21 %. U nejasností nebo atypických dodávek kontaktujte dispečink.",
 };
 
 const faqDocs = [
@@ -177,7 +177,7 @@ const faqDocs = [
     _type: "faqCategory",
     key: "containers",
     title: "Kontejnery",
-    description: "Objednávka, pravidla odpadu a potvrzení termínu.",
+    description: "Objednávka přes web, pravidla odpadu a potvrzení termínu.",
     order: 1,
     items: CONTAINER_FAQ.map((item, index) => ({ _key: `containers-${index + 1}`, ...item })),
   },
@@ -186,7 +186,7 @@ const faqDocs = [
     _type: "faqCategory",
     key: "demolition",
     title: "Demolice",
-    description: "Nejčastější otázky k poptávce, rozsahu prací a návazné logistice.",
+    description: "Nejčastější otázky k poptávce, rozsahu prací a návaznému odvozu.",
     order: 2,
     items: DEMOLITION_FAQ.map((item, index) => ({ _key: `demolition-${index + 1}`, ...item })),
   },
@@ -195,7 +195,7 @@ const faqDocs = [
     _type: "faqCategory",
     key: "recycling",
     title: "Recyklace a materiál",
-    description: "Příjem materiálu, podmínky přejímky a dostupnost navazujících služeb.",
+    description: "Příjem materiálu, podmínky přejímky a navazující služby.",
     order: 3,
     items: RECYCLING_FAQ.map((item, index) => ({ _key: `recycling-${index + 1}`, ...item })),
   },

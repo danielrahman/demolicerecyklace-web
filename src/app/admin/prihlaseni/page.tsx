@@ -39,7 +39,7 @@ function AdminLoginForm() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <h1 className="text-3xl font-bold">Admin přihlášení</h1>
+      <h1 className="text-3xl font-bold">Přihlášení do administrace</h1>
       <p className="text-zinc-300">Přihlaste se účtem operátora nebo administrátora.</p>
       <form className="space-y-3" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-2">

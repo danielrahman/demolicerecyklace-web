@@ -519,7 +519,7 @@ function loadGoogleMapsApi(apiKey: string) {
         },
         { once: true },
       );
-      existingScript.addEventListener("error", () => reject(new Error("Google Maps script load failed")), {
+      existingScript.addEventListener("error", () => reject(new Error("Nepodařilo se načíst Google Maps.")), {
         once: true,
       });
       return;
@@ -538,7 +538,7 @@ function loadGoogleMapsApi(apiKey: string) {
       }
       resolve();
     };
-    script.onerror = () => reject(new Error("Google Maps script load failed"));
+    script.onerror = () => reject(new Error("Nepodařilo se načíst Google Maps."));
     document.head.appendChild(script);
   });
 
@@ -1348,7 +1348,7 @@ export function OrderWizard({
       });
 
       if (!parsed) {
-        setPinError("Pin jsme posunuli, ale adresu se nepodařilo automaticky doplnit. Upravte ji ručně.");
+        setPinError("Bod na mapě jsme posunuli, ale adresu se nepodařilo automaticky doplnit. Upravte ji ručně.");
         return;
       }
 
@@ -1411,7 +1411,7 @@ export function OrderWizard({
       } else if (postalCode.length !== 5) {
         nextErrors.postalCode = "PSČ musí mít 5 číslic.";
       } else if (!isSupportedPostalCode(postalCode)) {
-        nextErrors.postalCode = "Do této lokality zatím online nedoručujeme. Zavolejte dispečink.";
+        nextErrors.postalCode = "Do této lokality zatím přes web nedoručujeme. Zavolejte dispečink.";
       }
 
       if (!city) {
@@ -1652,7 +1652,7 @@ export function OrderWizard({
     setCallbackSuccess(null);
 
     if (!phoneRegex.test(callbackForm.phone.trim())) {
-      setCallbackError("Telefon je povinný a musí mít platný formát.");
+      setCallbackError("Telefon je povinný a musí být ve správném formátu.");
       return;
     }
 
@@ -1690,24 +1690,24 @@ export function OrderWizard({
       }
 
       if (!response.ok || !payload.ok) {
-        setCallbackError(payload.error ?? "Požadavek na zavolání se nepodařilo odeslat.");
+        setCallbackError(payload.error ?? "Požadavek na zpětné zavolání se nepodařilo odeslat.");
         return;
       }
 
       const etaMinutes = payload.etaMinutes ?? callbackEtaFallbackMinutes;
-      setCallbackSuccess(`Děkujeme, naši operátoři zavolají do ${etaMinutes} minut.`);
+      setCallbackSuccess(`Děkujeme. Náš operátor vám zavolá do ${etaMinutes} minut.`);
       setCallbackModalOpen(false);
       setData((previous) => ({
         ...previous,
         callbackNote: [
-          `Callback požadován (${new Date().toLocaleString("cs-CZ")})`,
+          `Zpětné zavolání požadováno (${new Date().toLocaleString("cs-CZ")})`,
           callbackForm.note.trim() ? `poznámka: ${callbackForm.note.trim()}` : "",
         ]
           .filter(Boolean)
           .join("; "),
       }));
     } catch {
-      setCallbackError("Požadavek na zavolání se nepodařilo odeslat. Zkuste to prosím znovu.");
+      setCallbackError("Požadavek na zpětné zavolání se nepodařilo odeslat. Zkuste to prosím znovu.");
     } finally {
       setCallbackSubmitting(false);
     }
@@ -2148,7 +2148,7 @@ export function OrderWizard({
       setPricePreview(null);
       setPricingError(
         data.postalCode.length === 5 && !isSupportedPostalCode(data.postalCode)
-          ? "Pro zadané PSČ zatím online orientační kalkulaci nezobrazujeme."
+          ? "Pro zadané PSČ zatím v objednávce přes web orientační cenu nezobrazujeme."
           : null,
       );
       return;
@@ -2251,7 +2251,7 @@ export function OrderWizard({
 
         if (!response.ok) {
           if (!cancelled) {
-            setIcoLookupError(payload.error ?? "ARES lookup se nepodařilo načíst.");
+            setIcoLookupError(payload.error ?? "Načtení z ARES se nepodařilo.");
           }
           return;
         }
@@ -2270,7 +2270,7 @@ export function OrderWizard({
         }
       } catch {
         if (!cancelled) {
-          setIcoLookupError("ARES lookup se nepodařilo načíst.");
+          setIcoLookupError("Načtení z ARES se nepodařilo.");
         }
       } finally {
         if (!cancelled) {
@@ -2644,7 +2644,7 @@ export function OrderWizard({
                 <div className="min-h-5">
                   {hasFullAddressData && postalAreaStatusVisible ? (
                     <p className={cx("text-sm", postalCodeOk ? "text-emerald-300" : "text-amber-300")}>
-                      {postalCodeOk ? "PSČ je v obsluhované oblasti." : "PSČ zatím není v online obsluze."}
+                      {postalCodeOk ? "PSČ je v obsluhované oblasti." : "PSČ zatím není v obsluze přes web."}
                     </p>
                   ) : null}
                 </div>
@@ -2795,7 +2795,7 @@ export function OrderWizard({
                   Aktuálně objednáváte kontejner {CONTAINER_PRODUCT.availableNow}
                 </p>
                 <p className="mt-1 text-sm text-zinc-300">
-                  V této online objednávce je dostupná velikost 3 metry krychlové.
+                  V této objednávce přes web je dostupná velikost 3 metry krychlové.
                 </p>
               </div>
             </article>
@@ -2983,7 +2983,7 @@ export function OrderWizard({
                   data.customerType === "fo" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:bg-zinc-800",
                 )}
               >
-                Člověk
+                Fyzická osoba
               </button>
             </div>
 
@@ -3006,7 +3006,7 @@ export function OrderWizard({
                     />
                     {renderFieldError("companyName")}
 
-                    {companyLookupLoading ? <p className="text-xs text-zinc-400">Vyhledávám firmy v ARES...</p> : null}
+                    {companyLookupLoading ? <p className="text-xs text-zinc-400">Vyhledávám firmu v ARES...</p> : null}
                     {companyLookupError ? <p className="text-xs text-amber-300">{companyLookupError}</p> : null}
 
                 {companySuggestions.length > 0 ? (
@@ -3136,7 +3136,7 @@ export function OrderWizard({
                 </p>
                 {pinLocation ? (
                   <p>
-                    <span className="text-zinc-400">Pin:</span> {formatPinLocation(pinLocation)}
+                    <span className="text-zinc-400">Bod na mapě:</span> {formatPinLocation(pinLocation)}
                   </p>
                 ) : null}
                 <p>
@@ -3255,7 +3255,7 @@ export function OrderWizard({
               disabled={submitting || resolvingAddress || resolvingPin}
               className={ui.buttonPrimary}
             >
-              {resolvingAddress ? "Ověřuji adresu..." : resolvingPin ? "Aktualizuji pin..." : "Pokračovat"}
+              {resolvingAddress ? "Ověřuji adresu..." : resolvingPin ? "Aktualizuji bod na mapě..." : "Pokračovat"}
             </button>
           ) : (
             <button type="button" onClick={submit} disabled={submitting} className={ui.buttonPrimary}>
@@ -3292,7 +3292,7 @@ export function OrderWizard({
             </button>
           </div>
 
-          <p className="mt-2 text-sm text-zinc-300">Pošleme kontakt operátorovi, objednávku pak můžete dokončit online.</p>
+          <p className="mt-2 text-sm text-zinc-300">Pošleme kontakt operátorovi. Objednávku pak můžete dokončit přes web.</p>
 
             <form className="mt-4 space-y-3" onSubmit={(event) => void submitCallbackRequest(event)}>
               <label className="flex flex-col gap-2 text-sm">
