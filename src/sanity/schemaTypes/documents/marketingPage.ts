@@ -40,6 +40,27 @@ export const marketingPage = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: "heroImage",
+      title: "Hlavní obrázek",
+      type: "image",
+      options: { hotspot: true },
+    }),
+    defineField({
+      name: "heroImageAlt",
+      title: "Alt text hlavního obrázku",
+      type: "string",
+      validation: (rule) =>
+        rule.custom((value, context) => {
+          const parent = context.parent as { heroImage?: unknown } | undefined;
+
+          if (parent?.heroImage && !value) {
+            return "Alt text je povinný, pokud je vyplněný obrázek.";
+          }
+
+          return true;
+        }),
+    }),
+    defineField({
       name: "seoTitle",
       title: "SEO titulek",
       type: "string",

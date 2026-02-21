@@ -257,6 +257,8 @@ export type CmsMarketingPage = {
   eyebrow?: string | null;
   heroTitle?: string | null;
   heroDescription?: string | null;
+  heroImageUrl?: string | null;
+  heroImageAlt?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
   sections?: Array<CmsMarketingSection | null> | null;
@@ -274,6 +276,8 @@ export type MarketingPageContent = {
   eyebrow: string;
   heroTitle: string;
   heroDescription: string;
+  heroImageUrl: string;
+  heroImageAlt: string;
   seoTitle: string;
   seoDescription: string;
   sections: MarketingSectionContent[];
@@ -432,6 +436,8 @@ const defaultMarketingFallback: MarketingPageContent = {
   eyebrow: "",
   heroTitle: "",
   heroDescription: "",
+  heroImageUrl: "",
+  heroImageAlt: "",
   seoTitle: "",
   seoDescription: "",
   sections: [],
@@ -445,6 +451,8 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     heroTitle: "Demolice s jasným postupem a navazující recyklací",
     heroDescription:
       "Zajišťujeme demoliční práce od menších objektů po náročnější realizace. Zakázku vedeme od zadání přes obhlídku až po odvoz a zpracování materiálu.",
+    heroImageUrl: "/photos/homepage/service-demolice.jpg",
+    heroImageAlt: "Demoliční technologie",
     seoTitle: "Demolice | Demolice Recyklace",
     seoDescription: "Demolice objektů a navazující recyklace materiálu pro Prahu a Středočeský kraj.",
   },
@@ -455,6 +463,8 @@ export const fallbackMarketingPages: Record<string, MarketingPageContent> = {
     heroTitle: "Recyklace stavebních materiálů",
     heroDescription:
       "V recyklačním středisku řešíme příjem, třídění a další zpracování inertních materiálů. Před příjezdem doporučujeme ověřit složení materiálu.",
+    heroImageUrl: "/photos/homepage/service-recyklace.jpg",
+    heroImageAlt: "Recyklační středisko",
     seoTitle: "Recyklace | Demolice Recyklace",
     seoDescription: "Příjem, třídění a zpracování stavebních materiálů v recyklačním středisku.",
   },
@@ -889,6 +899,8 @@ export function mapMarketingPageContent(slug: string, data: CmsMarketingPage | n
   const normalizedSlug = data.slug?.trim() || fallback.slug || slug;
   const heroTitle = data.heroTitle?.trim() || fallback.heroTitle || title;
   const heroDescription = data.heroDescription?.trim() || fallback.heroDescription;
+  const heroImageUrl = data.heroImageUrl?.trim() || fallback.heroImageUrl;
+  const heroImageAlt = data.heroImageAlt?.trim() || fallback.heroImageAlt;
 
   return {
     title,
@@ -896,6 +908,8 @@ export function mapMarketingPageContent(slug: string, data: CmsMarketingPage | n
     eyebrow: data.eyebrow?.trim() || fallback.eyebrow,
     heroTitle,
     heroDescription,
+    heroImageUrl,
+    heroImageAlt,
     seoTitle: data.seoTitle?.trim() || fallback.seoTitle || heroTitle,
     seoDescription: data.seoDescription?.trim() || fallback.seoDescription || heroDescription,
     sections: normalizeMarketingSections(data.sections),

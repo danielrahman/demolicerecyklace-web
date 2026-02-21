@@ -56,6 +56,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RecyklacePage() {
   const marketing = await getMarketingPageContent("recyklace");
+  const heroImageUrl = marketing?.heroImageUrl || "/photos/homepage/service-recyklace.jpg";
+  const heroImageAlt = marketing?.heroImageAlt || "Recyklační středisko";
 
   return (
     <div className="space-y-10 pb-8">
@@ -100,8 +102,8 @@ export default async function RecyklacePage() {
 
         <div className="overflow-hidden rounded-xl border border-zinc-800">
           <Image
-            src="/photos/homepage/service-recyklace.jpg"
-            alt="Recyklační středisko"
+            src={heroImageUrl}
+            alt={heroImageAlt}
             width={1280}
             height={720}
             className="h-full w-full object-cover"

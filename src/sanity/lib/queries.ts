@@ -153,6 +153,8 @@ export const MARKETING_PAGE_QUERY = defineQuery(`
   eyebrow,
   heroTitle,
   heroDescription,
+  heroImageAlt,
+  "heroImageUrl": heroImage.asset->url,
   seoTitle,
   seoDescription,
   sections[]{

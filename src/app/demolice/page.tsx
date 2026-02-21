@@ -69,6 +69,8 @@ export default async function DemolicePage() {
     getMarketingPageContent("demolice"),
     getPricingPageContent(),
   ]);
+  const heroImageUrl = marketing?.heroImageUrl || "/photos/homepage/service-demolice.jpg";
+  const heroImageAlt = marketing?.heroImageAlt || "Demoliční technologie";
 
   return (
     <div className="space-y-10 pb-8">
@@ -108,8 +110,8 @@ export default async function DemolicePage() {
           </article>
           <div className="overflow-hidden rounded-xl border border-zinc-800">
             <Image
-              src="/photos/homepage/service-demolice.jpg"
-              alt="Demoliční technologie"
+              src={heroImageUrl}
+              alt={heroImageAlt}
               width={960}
               height={720}
               preload
