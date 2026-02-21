@@ -691,7 +691,10 @@ function normalizeSuggestionLocalityLabel(value: string) {
   if (localityParts.length === 0) return "";
 
   let primaryLocality = localityParts[0] ?? "";
-  if (!/\d/.test(primaryLocality) && primaryLocality.includes("-")) {
+  const localityWithDistrictMatch = primaryLocality.match(/^.+\d+\s*-\s*(.+)$/u);
+  if (localityWithDistrictMatch?.[1]) {
+    primaryLocality = normalizeAddressSpacing(localityWithDistrictMatch[1]);
+  } else if (!/\d/.test(primaryLocality) && primaryLocality.includes("-")) {
     const parts = primaryLocality.split("-").map((part) => normalizeAddressSpacing(part)).filter(Boolean);
     if (parts.length > 1) {
       primaryLocality = parts[parts.length - 1] ?? primaryLocality;
@@ -699,6 +702,36 @@ function normalizeSuggestionLocalityLabel(value: string) {
   }
 
   return [primaryLocality, ...localityParts.slice(1)].join(", ");
+}
+
+function pickSuggestionLocalitySource(rawSecondaryText: string, descriptionSecondaryText: string) {
+  const raw = normalizeAddressSpacing(rawSecondaryText);
+  const description = normalizeAddressSpacing(descriptionSecondaryText);
+  if (!raw) return description;
+  if (!description) return raw;
+  const rawWords = raw.split(/\s+/).filter(Boolean).length;
+  const descriptionWords = description.split(/\s+/).filter(Boolean).length;
+  const rawQuality = raw.length + rawWords * 4;
+  const descriptionQuality = description.length + descriptionWords * 4;
+  if (descriptionQuality > rawQuality + 6) return description;
+  return raw;
+}
+
+function extractMostSpecificHouseNumberFromText(value: string) {
+  const normalized = normalizeAddressSpacing(value);
+  if (!normalized) return "";
+
+  const slashMatches = normalized.match(/\b\d+[a-zA-Z0-9.-]*\/\d+[a-zA-Z0-9.-]*\b/gu);
+  if (slashMatches && slashMatches.length > 0) {
+    return parseHouseNumberToken(slashMatches[0] ?? "");
+  }
+
+  const numberMatches = normalized.match(/\b\d+[a-zA-Z0-9/.-]*\b/gu);
+  if (numberMatches && numberMatches.length > 0) {
+    return parseHouseNumberToken(numberMatches[0] ?? "");
+  }
+
+  return "";
 }
 
 function formatSuggestionMainText(suggestion: Pick<AddressAutocompleteSuggestion, "mainText" | "streetLabel" | "houseNumber">) {
@@ -852,8 +885,15 @@ function createAddressAutocompleteSuggestion(prediction: GoogleAutocompletePredi
     }
   }
 
+  const streetNumberAfterCommaMatch = prediction.description.match(/^[^,]+,\s*(\d+[a-zA-Z0-9/.-]*)/u);
+  if (streetNumberAfterCommaMatch?.[1]) {
+    houseNumber = pickMoreSpecificHouseNumber(houseNumber, streetNumberAfterCommaMatch[1]);
+  }
+  houseNumber = pickMoreSpecificHouseNumber(houseNumber, extractMostSpecificHouseNumberFromText(prediction.description));
+
   const descriptionSecondaryText = normalizeAddressSpacing(prediction.description.split(",").slice(1).join(","));
-  const secondaryText = normalizeSuggestionLocalityLabel(rawSecondaryText || descriptionSecondaryText);
+  const localitySource = pickSuggestionLocalitySource(rawSecondaryText, descriptionSecondaryText);
+  const secondaryText = normalizeSuggestionLocalityLabel(localitySource);
   const mainText = formatSuggestionMainText({
     mainText: rawMainText,
     streetLabel,
@@ -3437,13 +3477,10 @@ export function OrderWizard({
                 </FloatingFieldGroup>
                 {shouldShowAddressSuggestionPanel ? (
                   <div className="overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950/95 shadow-[0_8px_24px_-14px_rgba(0,0,0,0.55)]">
-                    <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-3 py-2">
+                    <div className="border-b border-zinc-800 px-3 py-2">
                       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
                         {addressSuggestionMode === "streets" ? "Vyberte ulici" : "Vyberte číslo popisné"}
                       </p>
-                      <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-400">
-                        Nalezeno: {visibleAddressItemCount}
-                      </span>
                     </div>
                     <div className="border-b border-zinc-800 px-3 py-2 text-xs text-zinc-500">
                       {addressSuggestionMode === "streets"
