@@ -6,33 +6,12 @@ import { createPageMetadata } from "@/lib/seo-metadata";
 import { CONTACT, SERVICE_AREA, SITE_META } from "@/lib/site-config";
 import { cx, ui } from "@/lib/ui";
 
-const reasons = [
-  {
-    title: "Kontejnery",
-    description: "Online objednávka, ověření PSČ a rychlé potvrzení termínu operátorem.",
-    href: "/kontejnery/objednat",
-    cta: "Objednat kontejner",
-  },
-  {
-    title: "Demolice a recyklace",
-    description: "Poptávka demoličních prací, zpracování materiálu a návazné logistiky.",
-    href: "/demolice",
-    cta: "Poptat demolici",
-  },
-  {
-    title: "Prodej materiálu",
-    description: "Dostupnost frakcí, ceny a termín dodání nebo osobního odběru.",
-    href: "/prodej-materialu",
-    cta: "Řešit materiál",
-  },
-] as const;
-
 const contactFlow = [
   {
     title: "Kontejnery",
-    detail: "Nejrychlejší je objednávka přes web. Pro nejasnosti zavolejte dispečink.",
-    cta: "Otevřít objednávku",
+    detail: "Nejrychlejší je objednávka přes web. Pro nejasnosti stačí zavolat dispečink.",
     href: "/kontejnery/objednat",
+    cta: "Objednat kontejner",
   },
   {
     title: "Demolice",
@@ -80,25 +59,10 @@ export default async function KontaktPage() {
           <a href={CONTACT.emailHref} className={ui.buttonSecondary}>
             Napsat na {CONTACT.email}
           </a>
-          <Link href="/kontejnery/objednat" className={ui.buttonSecondary}>
-            Otevřít objednávku
-          </Link>
         </div>
         <p className="text-sm text-zinc-400">
           Na standardní dotazy reagujeme nejpozději do 1 pracovního dne. Urgentní situace řešíme primárně telefonicky.
         </p>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        {reasons.map((reason) => (
-          <article key={reason.title} className={cx(ui.card, "p-5")}>
-            <h2 className="text-2xl font-bold">{reason.title}</h2>
-            <p className="mt-2 text-sm text-zinc-300">{reason.description}</p>
-            <Link href={reason.href} className={`${ui.buttonSecondary} mt-4`}>
-              {reason.cta}
-            </Link>
-          </article>
-        ))}
       </section>
 
       <section className="space-y-4 border-t border-zinc-800 pt-8">
@@ -108,7 +72,7 @@ export default async function KontaktPage() {
             <article key={item.title} className={cx(ui.cardSoft, "p-5")}>
               <h3 className="text-2xl font-bold">{item.title}</h3>
               <p className="mt-2 text-zinc-300">{item.detail}</p>
-              <Link href={item.href} className={cx(ui.buttonSecondary, "mt-4")}>
+              <Link href={item.href} className={cx(ui.buttonSecondary, "mt-4 inline-flex")}>
                 {item.cta}
               </Link>
             </article>
@@ -184,11 +148,6 @@ export default async function KontaktPage() {
         <p className="mt-2 text-zinc-300">
           Primární oblast je {SERVICE_AREA.regionsLabel}. U kontejnerů ověříte PSČ přímo v prvním kroku objednávky.
         </p>
-        <div className="mt-4">
-          <Link href="/kontejnery/objednat" className={ui.buttonSecondary}>
-            Otevřít objednávku
-          </Link>
-        </div>
       </section>
     </div>
   );

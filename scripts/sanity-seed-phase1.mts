@@ -159,7 +159,7 @@ const pricingPageDoc = {
   mobileRecyclingTitle: "Recyklace přímo na stavbě",
   mobileRecyclingPricing: MOBILE_RECYCLING_PRICING.map((row, index) => ({ _key: `mobile-${index + 1}`, ...row })),
   machineSectionTitle: "Pronájem strojů",
-  machineSectionSubtitle: "Fotky strojů jsou pro náhled kombinované z aktuálního webu a veřejně dostupných ilustračních zdrojů.",
+  machineSectionSubtitle: "Fotky strojů odpovídají technice, kterou pro tyto služby používáme.",
   machinePricing: MACHINE_RENTAL_PRICING.map((row, index) => ({
     _key: `machine-${index + 1}`,
     machine: row.machine,
@@ -201,12 +201,101 @@ const faqDocs = [
   },
 ];
 
+type PricingImageRow = {
+  _key?: string;
+  item?: string;
+  machine?: string;
+  image?: unknown;
+  imageAlt?: string;
+  [key: string]: unknown;
+};
+
+type ExistingPricingDocument = {
+  containerPricing?: PricingImageRow[];
+  inertMaterialsPricing?: PricingImageRow[];
+  materialSalesPricing?: PricingImageRow[];
+  mobileRecyclingPricing?: PricingImageRow[];
+  machinePricing?: PricingImageRow[];
+};
+
+function preserveRowImages(
+  newRows: PricingImageRow[],
+  existingRows: PricingImageRow[] | undefined,
+  labelField: "item" | "machine",
+) {
+  if (!existingRows?.length) {
+    return newRows;
+  }
+
+  const existingByKey = new Map(existingRows.filter((row) => row?._key).map((row) => [row._key as string, row]));
+
+  return newRows.map((row) => {
+    const nextRow: PricingImageRow = { ...row };
+    let existingRow = row._key ? existingByKey.get(row._key) : undefined;
+
+    if (!existingRow && row[labelField]) {
+      existingRow = existingRows.find((candidate) => candidate?.[labelField] === row[labelField]);
+    }
+
+    if (existingRow?.image && !nextRow.image) {
+      nextRow.image = existingRow.image;
+    }
+
+    if (existingRow?.imageAlt && !nextRow.imageAlt) {
+      nextRow.imageAlt = existingRow.imageAlt;
+    }
+
+    return nextRow;
+  });
+}
+
 async function run() {
-  const docs = [homePageDoc, containersPageDoc, pricingPageDoc, ...faqDocs];
+  const existingPricingPage = await client.fetch<ExistingPricingDocument | null>(
+    `*[_id == "pricingPage"][0]{
+      containerPricing,
+      inertMaterialsPricing,
+      materialSalesPricing,
+      mobileRecyclingPricing,
+      machinePricing
+    }`,
+  );
+
+  const pricingPageWithPreservedImages = {
+    ...pricingPageDoc,
+    containerPricing: preserveRowImages(
+      pricingPageDoc.containerPricing as PricingImageRow[],
+      existingPricingPage?.containerPricing,
+      "item",
+    ),
+    inertMaterialsPricing: preserveRowImages(
+      pricingPageDoc.inertMaterialsPricing as PricingImageRow[],
+      existingPricingPage?.inertMaterialsPricing,
+      "item",
+    ),
+    materialSalesPricing: preserveRowImages(
+      pricingPageDoc.materialSalesPricing as PricingImageRow[],
+      existingPricingPage?.materialSalesPricing,
+      "item",
+    ),
+    mobileRecyclingPricing: preserveRowImages(
+      pricingPageDoc.mobileRecyclingPricing as PricingImageRow[],
+      existingPricingPage?.mobileRecyclingPricing,
+      "item",
+    ),
+    machinePricing: preserveRowImages(
+      pricingPageDoc.machinePricing as PricingImageRow[],
+      existingPricingPage?.machinePricing,
+      "machine",
+    ),
+  };
+
+  const docs = [homePageDoc, containersPageDoc, pricingPageWithPreservedImages, ...faqDocs];
 
   for (const doc of docs) {
-    await client.createOrReplace(doc as never);
-    console.log(`Upserted ${doc._id}`);
+    const { _id, _type, ...fields } = doc as { _id: string; _type: string; [key: string]: unknown };
+    await client.createIfNotExists({ _id, _type } as never);
+    await client.patch(_id).set(fields as never).commit({ autoGenerateArrayKeys: false });
+    console.log(`Upserted ${_id}`);
   }
 
   console.log("Phase 1 seed completed.");

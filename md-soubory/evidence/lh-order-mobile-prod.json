@@ -2028,7 +2028,7 @@
                 "width": 332,
                 "height": 42
               },
-              "snippet": "<input id=\"order-address-input\" aria-invalid=\"false\" class=\"w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-zinc…\" placeholder=\"Např. Na Kodymce 1440/17, Praha\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"done\" data-lpignore=\"true\" data-1p-ignore=\"true\" value=\"\" name=\"order-address-autocomplete\">",
+              "snippet": "<input id=\"order-address-input\" aria-invalid=\"false\" class=\"w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-zinc…\" placeholder=\"Např. Ruzyně, ul. Na Hůrce\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"done\" data-lpignore=\"true\" data-1p-ignore=\"true\" value=\"\" name=\"order-address-autocomplete\">",
               "nodeLabel": "div.space-y-3 > label.relative > div.relative > input#order-address-input"
             },
             "value": {

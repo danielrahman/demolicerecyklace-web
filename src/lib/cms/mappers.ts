@@ -377,7 +377,7 @@ export const fallbackPricingPageContent: PricingPageContent = {
   mobileRecyclingTitle: "Recyklace přímo na stavbě",
   mobileRecyclingPricing: MOBILE_RECYCLING_PRICING.map((item) => ({ ...item })),
   machineSectionTitle: "Pronájem strojů",
-  machineSectionSubtitle: "Fotky strojů jsou pro náhled kombinované z aktuálního webu a veřejně dostupných ilustračních zdrojů.",
+  machineSectionSubtitle: "Fotky strojů odpovídají technice, kterou pro tyto služby používáme.",
   machinePricing: MACHINE_RENTAL_PRICING.map((item) => ({ ...item })),
   footerNote: "Poznámka k ceníku: ceny jsou uvedené bez DPH 21 %. U nejasností nebo atypických dodávek kontaktujte dispečink.",
 };

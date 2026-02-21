@@ -21,7 +21,7 @@ export const CONTAINER_TRUST_POINTS = [
   "Ruční potvrzení každého termínu operátorem",
   "Pravidla odpadu jsou přehledně přímo na webu",
   "Přehledný ceník včetně poznámek a limitů",
-  "Kontaktní údaje, provozní doba a dokumenty veřejně dostupné",
+  "Kontaktní údaje, provozní doba a dokumenty na jednom místě",
 ] as const;
 
 export const CONTAINER_RULE_WARNINGS = [

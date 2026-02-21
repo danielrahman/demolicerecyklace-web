@@ -400,18 +400,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const canEditCustomerAndParams = canEditOperational;
   const canReschedule = canEditOperational;
   const canCancelOrder = canEditOperational;
-  const rescheduleFormId = `reschedule-form-${order.id}`;
   const requestedTerm = `${formatAdminDateRangeCompact(order.deliveryDateRequested, order.deliveryDateEndRequested)} (${order.timeWindowRequested})`;
   const confirmedTerm =
     order.deliveryDateConfirmed && order.timeWindowConfirmed
       ? `${formatAdminDateCompact(order.deliveryDateConfirmed)} (${order.timeWindowConfirmed})`
       : "zatím nepotvrzen";
-
-  const activeExtras = [
-    ["Nakládka od nás", order.extras.nakladkaOdNas],
-    ["Expresní přistavení", order.extras.expresniPristaveni],
-    ["Opakovaný odvoz", order.extras.opakovanyOdvoz],
-  ].filter((item): item is [string, true] => Boolean(item[1]));
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -425,11 +418,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       <section className={cx(ui.card, "admin-order-summary p-3 sm:p-6")}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Detail objednávky</p>
+            <p className="text-sm uppercase tracking-[0.16em] text-zinc-500">Detail objednávky</p>
             <h1 className="text-2xl font-bold text-zinc-100 sm:text-3xl">{order.id}</h1>
             <p className="text-sm text-zinc-400">Vytvořeno {formatAdminDateTime(order.createdAt)}</p>
           </div>
-          <span className={cx("rounded-full border px-3 py-1 text-xs font-semibold", statusBadgeClass[order.status])}>
+          <span className={cx("rounded-full border px-3 py-1 text-sm font-semibold", statusBadgeClass[order.status])}>
             {statusLabels[order.status]}
           </span>
         </div>
@@ -438,27 +431,27 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div className="mt-4 rounded-xl border border-red-200/70 bg-red-50 p-3 text-sm text-red-900 dark:border-red-700/50 dark:bg-red-950/30 dark:text-red-100">
             <p className="font-semibold">Objednávka je stornovaná.</p>
             <p className="mt-1">U stornované objednávky lze jen založit novou kopii.</p>
-            <p className="mt-2 text-xs text-red-700 dark:text-red-200/90">Důvod: {order.cancelReason ?? "storno"}</p>
+            <p className="mt-2 text-sm text-red-700 dark:text-red-200/90">Důvod: {order.cancelReason ?? "storno"}</p>
           </div>
         ) : null}
 
         <div className="mt-4 grid gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
           <div className="admin-order-detail-panel rounded-xl border p-2.5 sm:p-3">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Požadovaný termín</p>
+            <p className="text-sm uppercase tracking-wide text-zinc-500">Požadovaný termín</p>
             <p className="mt-1 text-sm font-semibold text-zinc-100">{requestedTerm}</p>
           </div>
           <div className="admin-order-detail-panel rounded-xl border p-2.5 sm:p-3">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Potvrzený termín</p>
+            <p className="text-sm uppercase tracking-wide text-zinc-500">Potvrzený termín</p>
             <p className="mt-1 text-sm font-semibold text-zinc-100">{confirmedTerm}</p>
           </div>
           <div className="admin-order-detail-panel rounded-xl border p-2.5 sm:p-3">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Pronájem a množství</p>
+            <p className="text-sm uppercase tracking-wide text-zinc-500">Pronájem a množství</p>
             <p className="mt-1 text-sm font-semibold text-zinc-100">
               {formatCzechDayCount(order.rentalDays)} · {order.containerCount}x kontejner
             </p>
           </div>
           <div className="admin-order-detail-panel rounded-xl border p-2.5 sm:p-3">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Orientační cena</p>
+            <p className="text-sm uppercase tracking-wide text-zinc-500">Orientační cena</p>
             <p className="mt-1 text-sm font-semibold text-zinc-100">{formatCurrency(order.priceEstimate.total)}</p>
           </div>
         </div>
@@ -467,7 +460,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {workflowSteps.map((step) => {
             const stepState = getWorkflowStepState(order.status, step.status);
             return (
-              <span key={step.status} className={cx("admin-workflow-pill rounded-full border px-2.5 py-1 text-xs font-semibold", workflowStepPillClass(stepState))}>
+              <span key={step.status} className={cx("admin-workflow-pill rounded-full border px-2.5 py-1 text-sm font-semibold", workflowStepPillClass(stepState))}>
                 {step.label}
               </span>
             );
@@ -480,41 +473,41 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <section className={cx(ui.card, "p-3 sm:p-5")}>
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold text-zinc-100 sm:text-xl">Zákazník a kontakt</h2>
+              {canEditCustomerAndParams ? (
+                <label
+                  htmlFor={`admin-customer-edit-${order.id}`}
+                  className="admin-operator-disclosure-icons cursor-pointer"
+                >
+                  <span className="admin-operator-disclosure-edit-label">Upravit</span>
+                  <span className="admin-operator-disclosure-pencil">
+                    <PencilIcon className="h-4 w-4" />
+                  </span>
+                </label>
+              ) : null}
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="admin-order-detail-panel rounded-xl border p-3">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Firma / zákazník</p>
+                <p className="text-sm uppercase tracking-wide text-zinc-500">Firma / zákazník</p>
                 <p className="mt-1 text-sm font-semibold text-zinc-100">{order.companyName || "Fyzická osoba"}</p>
-                <p className="mt-1 text-xs text-zinc-400">{order.name}</p>
-                {order.ico ? <p className="mt-2 text-xs text-zinc-400">IČO: {order.ico}</p> : null}
-                {order.dic ? <p className="text-xs text-zinc-400">DIČ: {order.dic}</p> : null}
+                <p className="mt-1 text-sm text-zinc-400">{order.name}</p>
+                {order.ico ? <p className="mt-2 text-sm text-zinc-400">IČO: {order.ico}</p> : null}
+                {order.dic ? <p className="text-sm text-zinc-400">DIČ: {order.dic}</p> : null}
               </div>
               <div className="admin-order-detail-panel rounded-xl border p-3">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Kontakt</p>
+                <p className="text-sm uppercase tracking-wide text-zinc-500">Kontakt</p>
                 <p className="mt-1 text-sm font-semibold text-zinc-100">{order.phone}</p>
                 <p className="mt-1 text-sm text-zinc-300">{order.email}</p>
-                {order.callbackNote ? <p className="mt-2 text-xs text-amber-300">Zpětné zavolání: {order.callbackNote}</p> : null}
               </div>
             </div>
 
             {canEditCustomerAndParams ? (
-              <form action={`/api/admin/orders/${order.id}/customer`} method="post" className="admin-order-edit-card mt-3 rounded-xl border">
-                <details className="admin-operator-disclosure group">
-                  <summary className="admin-operator-disclosure-summary p-3">
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-100">Zákazník a kontakt</p>
-                      <p className="admin-operator-hint mt-1 text-xs">Rychlá editace bez opuštění detailu objednávky.</p>
-                    </div>
-                    <span className="admin-operator-disclosure-icons">
-                      <span className="admin-operator-disclosure-edit-label">Upravit</span>
-                      <span className="admin-operator-disclosure-pencil">
-                        <PencilIcon className="h-4 w-4" />
-                      </span>
-                      <span className="admin-operator-disclosure-chevron">
-                        <ChevronDownIcon className="h-4 w-4" />
-                      </span>
-                    </span>
-                  </summary>
+              <>
+                <input id={`admin-customer-edit-${order.id}`} type="checkbox" className="peer sr-only" />
+                <form
+                  action={`/api/admin/orders/${order.id}/customer`}
+                  method="post"
+                  className="admin-order-edit-card mt-3 hidden rounded-xl border peer-checked:block"
+                >
                   <div className="admin-operator-disclosure-body border-t border-zinc-700/60 px-3 pb-3 pt-3">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="flex flex-col gap-1.5 text-sm text-zinc-300">
@@ -546,10 +539,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       Uložit zákazníka
                     </button>
                   </div>
-                </details>
-              </form>
+                </form>
+              </>
             ) : (
-              <p className="mt-3 text-xs text-zinc-500">
+              <p className="mt-3 text-sm text-zinc-500">
                 {isCancelled
                   ? "U stornované objednávky lze jen založit novou kopii."
                   : "Ve stavu Hotovo lze upravit jen cenu a interní poznámku."}
@@ -560,6 +553,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <section className={cx(ui.card, "p-3 sm:p-5")}>
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold text-zinc-100 sm:text-xl">Parametry objednávky</h2>
+              {canEditCustomerAndParams ? (
+                <label
+                  htmlFor={`admin-params-edit-${order.id}`}
+                  className="admin-operator-disclosure-icons cursor-pointer"
+                >
+                  <span className="admin-operator-disclosure-edit-label">Upravit</span>
+                  <span className="admin-operator-disclosure-pencil">
+                    <PencilIcon className="h-4 w-4" />
+                  </span>
+                </label>
+              ) : null}
             </div>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
               <div>
@@ -572,7 +576,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               </div>
               <div>
                 <dt className="text-zinc-500">Požadovaný termín</dt>
-                <dd className="mt-1 text-zinc-100">{requestedTerm}</dd>
+                <dd className="mt-1 font-semibold text-zinc-100">{requestedTerm}</dd>
               </div>
               <div>
                 <dt className="text-zinc-500">Potvrzený termín</dt>
@@ -580,7 +584,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               </div>
               <div>
                 <dt className="text-zinc-500">Doba pronájmu</dt>
-                <dd className="mt-1 text-zinc-100">{formatCzechDayCount(order.rentalDays)}</dd>
+                <dd className="mt-1 font-semibold text-zinc-100">{formatCzechDayCount(order.rentalDays)}</dd>
               </div>
               <div>
                 <dt className="text-zinc-500">Umístění</dt>
@@ -596,46 +600,21 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               </div>
             </dl>
 
-            <div className="mt-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">Doplňkové služby</p>
-              {activeExtras.length > 0 ? (
-                <ul className="mt-2 flex flex-wrap gap-2">
-                  {activeExtras.map(([label]) => (
-                    <li key={label} className="rounded-full border border-zinc-600 bg-zinc-800/60 px-3 py-1 text-xs text-zinc-200">
-                      {label}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-zinc-400">Bez doplňkových služeb.</p>
-              )}
-            </div>
-
             {order.note ? (
               <div className="admin-order-detail-panel mt-4 rounded-xl border p-3">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Poznámka od zákazníka</p>
+                <p className="text-sm uppercase tracking-wide text-zinc-500">Poznámka od zákazníka</p>
                 <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-200">{order.note}</p>
               </div>
             ) : null}
 
             {canEditCustomerAndParams ? (
-              <form action={`/api/admin/orders/${order.id}/params`} method="post" className="admin-order-edit-card mt-3 rounded-xl border">
-                <details className="admin-operator-disclosure group">
-                  <summary className="admin-operator-disclosure-summary p-3">
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-100">Parametry objednávky</p>
-                      <p className="admin-operator-hint mt-1 text-xs">Při změně odpadu, počtu nebo služeb se přepočítá orientační cena.</p>
-                    </div>
-                    <span className="admin-operator-disclosure-icons">
-                      <span className="admin-operator-disclosure-edit-label">Upravit</span>
-                      <span className="admin-operator-disclosure-pencil">
-                        <PencilIcon className="h-4 w-4" />
-                      </span>
-                      <span className="admin-operator-disclosure-chevron">
-                        <ChevronDownIcon className="h-4 w-4" />
-                      </span>
-                    </span>
-                  </summary>
+              <>
+                <input id={`admin-params-edit-${order.id}`} type="checkbox" className="peer sr-only" />
+                <form
+                  action={`/api/admin/orders/${order.id}/params`}
+                  method="post"
+                  className="admin-order-edit-card mt-3 hidden rounded-xl border peer-checked:block"
+                >
                   <div className="admin-operator-disclosure-body border-t border-zinc-700/60 px-3 pb-3 pt-3">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="flex flex-col gap-1.5 text-sm text-zinc-300">
@@ -668,26 +647,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                         Povolení k záboru potvrzeno
                       </label>
                     </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                      <label className="flex items-start gap-2 text-sm text-zinc-300">
-                        <input type="checkbox" name="nakladkaOdNas" defaultChecked={order.extras.nakladkaOdNas} className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-900" />
-                        Nakládka od nás
-                      </label>
-                      <label className="flex items-start gap-2 text-sm text-zinc-300">
-                        <input type="checkbox" name="expresniPristaveni" defaultChecked={order.extras.expresniPristaveni} className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-900" />
-                        Expresní přistavení
-                      </label>
-                      <label className="flex items-start gap-2 text-sm text-zinc-300">
-                        <input type="checkbox" name="opakovanyOdvoz" defaultChecked={order.extras.opakovanyOdvoz} className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-900" />
-                        Opakovaný odvoz
-                      </label>
-                    </div>
                     <button className={cx(ui.buttonSecondary, "mt-4 w-full sm:w-auto")} type="submit">
                       Uložit parametry
                     </button>
                   </div>
-                </details>
-              </form>
+                </form>
+              </>
             ) : null}
           </section>
 
@@ -706,7 +671,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <section className={cx(ui.card, "p-3 sm:p-5")}>
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold text-zinc-100 sm:text-xl">Historie objednávky</h2>
-              <span className="text-xs text-zinc-500">{events.length} událostí</span>
+              <span className="text-sm text-zinc-500">{events.length} událostí</span>
             </div>
 
             {events.length === 0 ? (
@@ -724,14 +689,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       <article className={cx("admin-order-timeline-card rounded-xl border p-3", eventToneCardClass[tone])}>
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                           <p className="text-sm font-semibold text-zinc-100">{eventLabels[event.eventType] ?? event.eventType}</p>
-                          <time className="shrink-0 text-xs text-zinc-500">{formatAdminDateTime(event.createdAt)}</time>
+                          <time className="shrink-0 text-sm text-zinc-500">{formatAdminDateTime(event.createdAt)}</time>
                         </div>
 
                         {summary ? <p className="mt-1.5 text-sm text-zinc-300">{summary}</p> : null}
 
                         {hasPayload ? (
                           <details className="admin-inline-disclosure mt-2">
-                            <summary className="admin-inline-disclosure-summary inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-zinc-400">
+                            <summary className="admin-inline-disclosure-summary inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-zinc-400">
                               Technický detail (JSON)
                               <ChevronDownIcon className="admin-inline-disclosure-chevron h-3.5 w-3.5" />
                             </summary>
@@ -771,7 +736,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 {isDone ? (
                   <div className="admin-operator-card rounded-xl border p-3 text-sm">
                     <p className="font-semibold text-zinc-100">Objednávka je hotová.</p>
-                    <p className="admin-operator-hint mt-1.5 text-xs">U hotové objednávky lze upravit jen orientační cenu a interní poznámku.</p>
+                    <p className="admin-operator-hint mt-1.5 text-sm">U hotové objednávky lze upravit jen orientační cenu a interní poznámku.</p>
                   </div>
                 ) : null}
 
@@ -781,97 +746,128 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                     method="post"
                     className="admin-operator-card admin-operator-card--success rounded-xl border p-3.5"
                   >
-                    <h3 className="text-base font-semibold">Označit jako hotové</h3>
-                    <p className="admin-operator-hint mt-2 text-xs">Po dokončení realizace nastavte stav objednávky na hotovo.</p>
+                    <h3 className="text-sm font-semibold">Označit jako hotové</h3>
+                    <p className="admin-operator-hint mt-2 text-sm">Po dokončení realizace nastavte stav objednávky na hotovo.</p>
                     <button className="mt-4 w-full rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500" type="submit">
                       Označit jako hotové
                     </button>
                   </form>
                 ) : null}
 
-                {canConfirm ? (
-                  <form
-                    action={`/api/admin/orders/${order.id}/confirm`}
-                    method="post"
-                    className="admin-operator-card rounded-xl border p-3.5"
-                  >
-                    <h3 className="text-base font-semibold text-zinc-100">Potvrdit beze změny</h3>
-                    <p className="admin-operator-hint mt-2 text-xs">
-                      Potvrdí se požadovaný termín {requestedTerm}. Změnu data nebo okna proveďte ve formuláři níže.
-                    </p>
-                    <label className="mt-3 flex items-start gap-2 text-sm text-zinc-300">
-                      <input type="checkbox" name="notifyCustomer" defaultChecked className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-900" />
-                      Poslat zákazníkovi potvrzení termínu
-                    </label>
-                    <button className={cx(ui.buttonPrimary, "mt-4 w-full")} type="submit">
-                      Potvrdit termín
-                    </button>
-                  </form>
-                ) : null}
-
-                {canReschedule ? (
-                  <form
-                    id={rescheduleFormId}
-                    action={`/api/admin/orders/${order.id}/reschedule`}
-                    method="post"
-                    className="admin-operator-card rounded-xl border"
-                  >
-                    <details className="admin-operator-disclosure group">
-                      <summary className="admin-operator-disclosure-summary p-3.5">
-                        <div>
-                          <h3 className="text-base font-semibold text-zinc-100">{canConfirm ? "Potvrzení termínu se změnou" : "Přeplánování termínu"}</h3>
-                          <p className="admin-operator-hint mt-1.5 text-xs">
-                            {canConfirm
-                              ? "Uložením změn se objednávka přepne do stavu Potvrzená."
-                              : "Upravte datum, časové okno nebo počet dní."}
-                          </p>
-                        </div>
-                        <span className="admin-operator-disclosure-icons">
+                {(canConfirm || canReschedule) ? (
+                  <div className="admin-operator-card rounded-xl border p-3.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-semibold text-zinc-100">
+                          {canConfirm ? "Potvrdit" : "Přeplánování termínu"}
+                        </h3>
+                        <p className="admin-operator-hint mt-1.5 text-sm">
+                          {canConfirm
+                            ? (
+                              <>
+                                <span className="block font-semibold">
+                                  {requestedTerm}.
+                                </span>
+                                <span>
+                                  Délka pronájmu: <span className="font-semibold">{formatCzechDayCount(order.rentalDays)}</span>.
+                                </span>
+                              </>
+                            )
+                            : "Upravte datum, časové okno nebo počet dní."}
+                        </p>
+                      </div>
+                      {canConfirm || canReschedule ? (
+                        <label
+                          htmlFor={`admin-order-term-edit-${order.id}`}
+                          className="admin-operator-disclosure-icons cursor-pointer"
+                        >
                           <span className="admin-operator-disclosure-edit-label">Upravit</span>
                           <span className="admin-operator-disclosure-pencil">
                             <PencilIcon className="h-4 w-4" />
                           </span>
-                          <span className="admin-operator-disclosure-chevron">
-                            <ChevronDownIcon className="h-4 w-4" />
-                          </span>
-                        </span>
-                      </summary>
-                      <div className="admin-operator-disclosure-body border-t border-zinc-700/60 px-3.5 pb-3.5 pt-3">
-                        <label className="mt-1 flex flex-col gap-2 text-sm text-zinc-300">
-                          Nový termín přistavení
-                          <input
-                            name="date"
-                            type="date"
-                            defaultValue={order.deliveryDateConfirmed ?? order.deliveryDateRequested}
-                            className={ui.field}
-                            required
-                          />
                         </label>
-                        <label className="mt-3 flex flex-col gap-2 text-sm text-zinc-300">
-                          Nový začátek okna (po 15 minutách)
-                          <input
-                            name="windowStart"
-                            type="time"
-                            step={900}
-                            defaultValue={getWindowStart(order.timeWindowConfirmed ?? order.timeWindowRequested)}
-                            className={ui.field}
-                            required
-                          />
-                        </label>
-                        <label className="mt-3 flex flex-col gap-2 text-sm text-zinc-300">
-                          Nová doba pronájmu (dny)
-                          <input name="rentalDays" type="number" min={1} max={10} defaultValue={order.rentalDays} className={ui.field} required />
-                        </label>
+                      ) : null}
+                    </div>
+
+                    {canConfirm || canReschedule ? <input id={`admin-order-term-edit-${order.id}`} type="checkbox" className="peer sr-only" /> : null}
+
+                    {canConfirm ? (
+                      <form
+                        action={`/api/admin/orders/${order.id}/confirm`}
+                        method="post"
+                        className={canReschedule ? "mt-3 peer-checked:hidden" : "mt-3"}
+                      >
                         <label className="mt-3 flex items-start gap-2 text-sm text-zinc-300">
-                          <input type="checkbox" name="notifyCustomer" defaultChecked className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-900" />
-                          {canConfirm ? "Poslat zákazníkovi potvrzení termínu" : "Poslat zákazníkovi e-mail o přeplánování"}
+                          <input
+                            type="checkbox"
+                            name="notifyCustomer"
+                            defaultChecked
+                            className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-900"
+                          />
+                          Poslat zákazníkovi potvrzení termínu
                         </label>
-                        <button className={cx(ui.buttonSecondary, "mt-4 w-full")} type="submit">
-                          {canConfirm ? "Uložit a potvrdit" : "Uložit změny"}
+                        <button className={cx(ui.buttonPrimary, "mt-4 w-full")} type="submit">
+                          Potvrdit termín
                         </button>
-                      </div>
-                    </details>
-                  </form>
+                      </form>
+                    ) : null}
+
+                    {canReschedule ? (
+                      <>
+                        <form
+                          action={`/api/admin/orders/${order.id}/reschedule`}
+                          method="post"
+                          className={canConfirm ? "mt-3 hidden peer-checked:block" : "mt-3 hidden peer-checked:block"}
+                        >
+                          <label className="mt-1 flex flex-col gap-2 text-sm text-zinc-300">
+                            Nový termín přistavení
+                            <input
+                              name="date"
+                              type="date"
+                              defaultValue={order.deliveryDateConfirmed ?? order.deliveryDateRequested}
+                              className={ui.field}
+                              required
+                            />
+                          </label>
+                          <label className="mt-3 flex flex-col gap-2 text-sm text-zinc-300">
+                            Nový začátek okna (po 15 minutách)
+                            <input
+                              name="windowStart"
+                              type="time"
+                              step={900}
+                              defaultValue={getWindowStart(order.timeWindowConfirmed ?? order.timeWindowRequested)}
+                              className={ui.field}
+                              required
+                            />
+                          </label>
+                          <label className="mt-3 flex flex-col gap-2 text-sm text-zinc-300">
+                            Nová doba pronájmu (dny)
+                            <input
+                              name="rentalDays"
+                              type="number"
+                              min={1}
+                              max={10}
+                              defaultValue={order.rentalDays}
+                              className={ui.field}
+                              required
+                            />
+                          </label>
+                          <label className="mt-3 flex items-start gap-2 text-sm text-zinc-300">
+                            <input
+                              type="checkbox"
+                              name="notifyCustomer"
+                              defaultChecked
+                              className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-900"
+                            />
+                            {canConfirm ? "Poslat zákazníkovi potvrzení termínu" : "Poslat zákazníkovi e-mail o přeplánování"}
+                          </label>
+                          <button className={cx(canConfirm ? ui.buttonPrimary : ui.buttonSecondary, "mt-4 w-full")} type="submit">
+                            {canConfirm ? "Uložit a potvrdit" : "Uložit změny"}
+                          </button>
+                        </form>
+                      </>
+                    ) : null}
+                  </div>
                 ) : null}
 
                 <form
@@ -882,16 +878,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   <details className="admin-operator-disclosure group">
                     <summary className="admin-operator-disclosure-summary p-3.5">
                       <div>
-                        <h3 className="text-base font-semibold text-zinc-100">Orientační cena</h3>
-                        <p className="admin-operator-hint mt-1.5 text-xs">Aktuálně: {formatCurrency(order.priceEstimate.total)}</p>
+                        <h3 className="text-sm font-semibold text-zinc-100">Orientační cena</h3>
+                        <p className="admin-operator-hint mt-1.5 text-sm">Aktuálně: {formatCurrency(order.priceEstimate.total)}</p>
                       </div>
                       <span className="admin-operator-disclosure-icons">
                         <span className="admin-operator-disclosure-edit-label">Upravit</span>
                         <span className="admin-operator-disclosure-pencil">
                           <PencilIcon className="h-4 w-4" />
-                        </span>
-                        <span className="admin-operator-disclosure-chevron">
-                          <ChevronDownIcon className="h-4 w-4" />
                         </span>
                       </span>
                     </summary>
@@ -911,9 +904,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   <form
                     action={`/api/admin/orders/${order.id}/cancel`}
                     method="post"
-                    className="admin-operator-card admin-operator-card--danger rounded-xl border p-3.5"
+                    className="admin-operator-card rounded-xl border p-3.5"
                   >
-                    <h3 className="text-base font-semibold">Stornovat objednávku</h3>
+                    <h3 className="text-sm font-semibold">Stornovat objednávku</h3>
                     <label className="mt-3 flex flex-col gap-2 text-sm">
                       Důvod storna
                       <input name="reason" defaultValue={order.cancelReason ?? ""} className={ui.field} required />

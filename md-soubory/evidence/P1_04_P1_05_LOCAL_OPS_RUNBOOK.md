@@ -12,7 +12,7 @@ Use these exact values everywhere:
 - Company: `MINUTY a.s.`
 - Phone: `+420 606 660 655`
 - Email: `info@minutyas.cz`
-- Address: `Na Kodymce 1440/17, 160 00 Praha 6-Dejvice`
+- Address: `Ruzyně, ul. Na Hůrce`
 - Service area: `Praha a Středočeský kraj`
 - Hours:
   - `Po-Pá 7:00-17:00`

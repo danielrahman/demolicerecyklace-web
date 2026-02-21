@@ -30,7 +30,7 @@ export const CONTACT = {
   email: "info@minutyas.cz",
   emailHref: "mailto:info@minutyas.cz",
   operatorAddressLine: "Na Kodymce 1440/17, 160 00 Praha 6-Dejvice",
-  operationAddressLine: "Na Kodymce 1440/17, 160 00 Praha 6-Dejvice",
+  operationAddressLine: "Ruzyně, ul. Na Hůrce",
   icz: "CZA00826",
   mapUrl: "https://www.google.cz/maps/place/Minuty+A.s./@50.0733062,14.2483978,12.88z/data=!4m10!1m2!2m1!1sdemolice+recyklace+praha+6!3m6!1s0x470b954852ecac27:0x8ce976638ef050eb!8m2!3d50.0800077!4d14.2921192!15sChpkZW1vbGljZSByZWN5a2xhY2UgcHJhaGEgNpIBEHJlY3ljbGluZ19jZW50ZXLgAQA!16s%2Fg%2F11h54z_p56",
   hours: [

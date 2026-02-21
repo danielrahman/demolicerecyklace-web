@@ -2358,21 +2358,65 @@ export function OrderWizard({
           >
             <path d="M20 6 9 17l-5-5" />
           </svg>
-          Potvrzeno
+          Přijato
         </div>
-        <h2 className="relative z-10 mt-2 font-heading text-3xl font-bold text-white">Objednávka odeslána</h2>
-        <p className="relative z-10 mt-2 text-white/90">Objednávku jsme přijali pod číslem {orderId}.</p>
-        <p className="relative z-10 mt-1.5 text-white/85">Termín vždy potvrzuje operátor ručně. Ozveme se nejpozději do 1 pracovního dne.</p>
-        <p className="relative z-10 mt-1.5 text-white/85">
-          Potřebujete něco upravit hned? Zavolejte na{" "}
+        <h2 className="relative z-10 mt-2 font-heading text-3xl font-bold text-white">Objednávka je přijatá</h2>
+        <p className="relative z-10 mt-2 text-white/90">
+          Děkujeme. Objednávku evidujeme pod číslem <span className="font-semibold text-[#F2C400]">{orderId}</span>.
+        </p>
+
+        <div className="relative z-10 mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-white/15 bg-zinc-950/55 p-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/65">Stav objednávky</p>
+            <p className="mt-1 text-sm font-medium text-white">Čeká na potvrzení termínu operátorem.</p>
+            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/65">Co máme od Vás</p>
+            <p className="mt-1 text-sm text-white/90">Adresa, typ odpadu i preferovaný termín byly odeslány správně.</p>
+          </div>
+
+          <div className="rounded-xl border border-white/15 bg-zinc-950/55 p-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/65">Co bude následovat</p>
+            <ol className="mt-2 space-y-2 text-sm text-white/90">
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F2C400] text-[11px] font-bold text-black">
+                  1
+                </span>
+                <span>Zkontrolujeme lokalitu a dostupnost vozu.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F2C400] text-[11px] font-bold text-black">
+                  2
+                </span>
+                <span>Nejpozději do 1 pracovního dne Vám potvrdíme přesný termín.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F2C400] text-[11px] font-bold text-black">
+                  3
+                </span>
+                <span>Pokud je potřeba změna, domluvíme ji s Vámi po telefonu.</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <p className="relative z-10 mt-3 text-sm text-white/85">
+          Potřebujete objednávku upravit hned? Zavolejte na{" "}
           <a className="font-semibold text-[#F2C400] underline decoration-[#F2C400]/70 underline-offset-2" href={CONTACT.phoneHref}>
             {CONTACT.phone}
           </a>
           .
         </p>
-        <a href={`/kontejnery/objednat?copyOrder=${encodeURIComponent(orderId)}`} className={cx(ui.buttonPrimary, "relative z-10 mt-4 inline-flex")}>
-          Objednat další kontejner
-        </a>
+
+        <div className="relative z-10 mt-4 flex flex-wrap gap-2">
+          <a href={`/kontejnery/objednat?copyOrder=${encodeURIComponent(orderId)}`} className={cx(ui.buttonPrimary, "inline-flex")}>
+            Objednat další kontejner
+          </a>
+          <a
+            href={CONTACT.phoneHref}
+            className="inline-flex items-center justify-center rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/35 hover:bg-white/10"
+          >
+            Zavolat operátorovi
+          </a>
+        </div>
       </div>
     );
   }
@@ -2504,7 +2548,7 @@ export function OrderWizard({
                         setSubmitError(null);
                       }}
                       className={cx(fieldClass("addressInput"), "pr-10")}
-                      placeholder="Např. Na Kodymce 1440/17, Praha"
+                      placeholder="Např. Ruzyně, ul. Na Hůrce"
                       autoComplete="off"
                       autoCorrect="off"
                       autoCapitalize="off"

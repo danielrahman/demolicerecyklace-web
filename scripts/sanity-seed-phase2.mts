@@ -39,7 +39,7 @@ const CONTACT = {
   phone: "+420 606 660 655",
   email: "info@minutyas.cz",
   operatorAddressLine: "Na Kodymce 1440/17, 160 00 Praha 6-Dejvice",
-  operationAddressLine: "Na Kodymce 1440/17, 160 00 Praha 6-Dejvice",
+  operationAddressLine: "Ruzyně, ul. Na Hůrce",
   icz: "CZA00826",
   mapUrl: "https://www.google.com/maps/search/?api=1&query=Na+Kodymce+1440%2F17%2C+160+00+Praha+6-Dejvice",
   hours: [
@@ -202,26 +202,40 @@ const marketingPages = [
 ];
 
 async function run() {
-  await client.createOrReplace(siteSettingsDoc as never);
+  const { _id: siteId, _type: siteType, ...siteFields } = siteSettingsDoc;
+  await client.createIfNotExists({ _id: siteId, _type: siteType } as never);
+  await client.patch(siteId).set(siteFields as never).commit({ autoGenerateArrayKeys: false });
   console.log("Upserted siteSettings");
 
   for (const page of marketingPages) {
-    await client.createOrReplace({
-      _id: `marketingPage.${page.slug}`,
+    const docId = `marketingPage.${page.slug}`;
+    await client.createIfNotExists({
+      _id: docId,
       _type: "marketingPage",
       title: page.title,
       slug: {
         _type: "slug",
         current: page.slug,
       },
-      heroTitle: page.heroTitle,
-      heroDescription: page.heroDescription,
-      seoTitle: page.seoTitle,
-      seoDescription: page.seoDescription,
       sections: [],
     } as never);
 
-    console.log(`Upserted marketingPage.${page.slug}`);
+    await client
+      .patch(docId)
+      .set({
+        title: page.title,
+        slug: {
+          _type: "slug",
+          current: page.slug,
+        },
+        heroTitle: page.heroTitle,
+        heroDescription: page.heroDescription,
+        seoTitle: page.seoTitle,
+        seoDescription: page.seoDescription,
+      } as never)
+      .commit({ autoGenerateArrayKeys: false });
+
+    console.log(`Upserted ${docId}`);
   }
 
   console.log("Phase 2 seed completed.");

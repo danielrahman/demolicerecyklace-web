@@ -108,10 +108,10 @@ export default async function DemolicePage() {
           </article>
           <div className="overflow-hidden rounded-xl border border-zinc-800">
             <Image
-              src="/photos/homepage/hero-alt.jpg"
-              alt="Demoliční technika - ilustrační náhled"
-              width={1125}
-              height={1500}
+              src="/photos/homepage/service-demolice.jpg"
+              alt="Demoliční technologie"
+              width={960}
+              height={720}
               preload
               sizes="(min-width: 1024px) 40vw, 100vw"
               className="h-full w-full object-cover"
